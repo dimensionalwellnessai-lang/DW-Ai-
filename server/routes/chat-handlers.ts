@@ -38,6 +38,13 @@ import { logDwRolePick } from "../lib/dw-role-pick-log";
 
 /** POST /api/chat — classic single-shot DW chat with tool use. */
 export async function chatHandler(req: Request, res: Response) {
+  // Computed up here so it survives the AI-unavailable fallback path
+  // below — the trigger detector is a pure function on `message` and
+  // must never be gated behind a working OpenAI key. (E.g. when the
+  // user types "i think she's cheating", we still owe them the reset
+  // offer even if the LLM is down.)
+  const triggerSuggestion = detectTriggerSuggestion(req.body?.message);
+
   try {
     const { message, conversationHistory, context, modeLock, previousMode } = req.body;
 
@@ -198,7 +205,6 @@ export async function chatHandler(req: Request, res: Response) {
       }
     }
 
-    const triggerSuggestion = detectTriggerSuggestion(message);
     const personSuggestion = req.session.userId ? await buildPersonSuggestion(req.session.userId, message) : null;
     const personMention = personSuggestion ? { personId: personSuggestion.personId, name: personSuggestion.name } : null;
     const mergedSuggestion = triggerSuggestion
@@ -215,12 +221,16 @@ export async function chatHandler(req: Request, res: Response) {
     });
   } catch (error: any) {
     const errMsg: string = error?.message || String(error);
-    // Graceful degradation: show a human-readable message instead of crashing
+    // Graceful degradation: show a human-readable message instead of crashing.
+    // Even on this fallback we still attach the trigger suggestion if the
+    // user's message asked for emotional regulation — they shouldn't lose
+    // the reset offer just because the LLM is down.
     if (errMsg.includes("DW_AI_UNAVAILABLE")) {
       return res.json({
         response: "I'm here — just had a brief moment of interrupted thinking. Send that again and I'll pick right up.",
         updatedCategories: [],
         actionsTaken: [],
+        ...(triggerSuggestion ? { suggestion: triggerSuggestion } : {}),
       });
     }
     const errStatus: number = typeof error?.status === "number" ? error.status : 500;
@@ -234,6 +244,12 @@ export async function chatHandler(req: Request, res: Response) {
 
 /** POST /api/chat/smart — intent-aware DW chat with tool execution. */
 export async function smartChatHandler(req: Request, res: Response) {
+  // Pure-function detector — must survive every fallback path below so a
+  // user who types "i think she's cheating" still gets the trigger reset
+  // offer even if the LLM is unavailable. See chatHandler for the same
+  // pattern.
+  const triggerSuggestion = detectTriggerSuggestion(req.body?.message);
+
   try {
     const { message, conversationHistory, context, userProfile: clientProfile, lifeSystemContext, energyContext, documentIds, cosmicConsent, modeLock, previousMode } = req.body;
 
@@ -249,6 +265,7 @@ export async function smartChatHandler(req: Request, res: Response) {
       return res.json({
         response: "I'm having a small moment on my end — nothing to worry about. Take a breath, and whenever you're ready, share what's on your mind. I'm not going anywhere.",
         actionsTaken: [],
+        ...(triggerSuggestion ? { suggestion: triggerSuggestion } : {}),
       });
     }
 
@@ -508,7 +525,8 @@ export async function smartChatHandler(req: Request, res: Response) {
     }
 
     const safeResult = { ...result, response: enforceOneQuestion(result.response) };
-    const triggerSuggestion = detectTriggerSuggestion(message);
+    // Use the hoisted triggerSuggestion (computed before the try block) so
+    // there's a single source of truth across success and fallback paths.
     const personSuggestion = req.session.userId ? await buildPersonSuggestion(req.session.userId, message) : null;
     const personMention = personSuggestion ? { personId: personSuggestion.personId, name: personSuggestion.name } : null;
     const mergedSuggestion = triggerSuggestion
@@ -525,7 +543,10 @@ export async function smartChatHandler(req: Request, res: Response) {
     });
   } catch (error: any) {
     const errMsg: string = error?.message || String(error);
-    // Graceful degradation: AI provider temporarily down → return a friendly response
+    // Graceful degradation: AI provider temporarily down → return a friendly
+    // response. Even on this fallback we attach the trigger suggestion if
+    // the user's message asked for emotional regulation — they shouldn't
+    // lose the reset offer just because the LLM is overloaded.
     if (errMsg.includes("DW_AI_UNAVAILABLE") || errMsg.includes("529") || errMsg.includes("overloaded") || errMsg.includes("rate limit") || errMsg.includes("503")) {
       console.warn("Smart chat: AI temporarily unavailable, returning graceful fallback");
       return res.json({
@@ -533,6 +554,7 @@ export async function smartChatHandler(req: Request, res: Response) {
         intent: "general",
         actionsTaken: [],
         navigation: null,
+        ...(triggerSuggestion ? { suggestion: triggerSuggestion } : {}),
       });
     }
     const errStatus: number = typeof error?.status === "number" ? error.status : 500;

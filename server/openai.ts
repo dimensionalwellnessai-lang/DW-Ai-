@@ -438,6 +438,30 @@ TONE ADJUSTMENTS:
 }
 
 /**
+ * Build a guidance block for the chat system prompt that reflects the user's
+ * cosmic consent toggles (astrology, numerology). The opposite branch
+ * ("COSMIC LENSES: Off …") is rendered inline at the call sites when consent
+ * is missing entirely; this helper handles the case where consent exists but
+ * may have one or both lenses enabled.
+ */
+function getCosmicConsentGuidance(consent: {
+  useAstrologyInGuidance?: boolean;
+  useNumerologyInGuidance?: boolean;
+}): string {
+  const lenses: string[] = [];
+  if (consent.useAstrologyInGuidance) lenses.push("astrology");
+  if (consent.useNumerologyInGuidance) lenses.push("numerology");
+  if (lenses.length === 0) {
+    return "COSMIC LENSES: Off — do not reference astrology, birth charts, or numerology in guidance.";
+  }
+  return `COSMIC LENSES: ${lenses.join(" + ")} enabled.
+- You may weave ${lenses.join(" and ")} themes into reflections when relevant and grounding.
+- Always anchor cosmic framing back to a concrete, present-day choice or feeling.
+- Never present cosmic content as deterministic prediction; offer it as one lens among many.
+- Do not mention any lens the user has not enabled.`;
+}
+
+/**
  * Generate a chat response from the DW AI.
  * @param systemOverride - Optional additional context appended after the base DW
  *   system prompt. Callers are responsible for ensuring this value comes from a
