@@ -24,6 +24,12 @@ import {
   deleteProject,
   findPillarRow,
 } from "@/lib/life-system";
+import type { LifeSystemBackfillCarriedItem } from "@/lib/life-system";
+import { useLanguage } from "@/lib/i18n";
+import {
+  formatCarriedEntry,
+  getBackfillBannerStrings,
+} from "@/lib/life-system-backfill-i18n";
 import { ThreeRingOrbit } from "@/components/life-system/three-ring-orbit";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -85,9 +91,21 @@ function backfillStorageKey(userId: string): string {
   return `life-system:backfill-note:${userId}`;
 }
 
+/**
+ * The carried list is stored as either structured tags (current shape) or
+ * plain strings (legacy shape persisted by older client builds before the
+ * banner became localizable). Both are accepted on read so existing users
+ * don't lose their note across the upgrade.
+ */
+type StoredCarriedEntry = LifeSystemBackfillCarriedItem | string;
+
 interface StoredBackfillNote {
-  carried: string[];
+  carried: StoredCarriedEntry[];
   dismissed: boolean;
+}
+
+function isCarriedTag(value: unknown): value is LifeSystemBackfillCarriedItem {
+  return !!value && typeof value === "object" && typeof (value as { kind?: unknown }).kind === "string";
 }
 
 function readBackfillNote(userId: string | undefined): StoredBackfillNote | null {
@@ -97,7 +115,10 @@ function readBackfillNote(userId: string | undefined): StoredBackfillNote | null
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<StoredBackfillNote>;
     if (!parsed || !Array.isArray(parsed.carried)) return null;
-    return { carried: parsed.carried.filter(x => typeof x === "string"), dismissed: !!parsed.dismissed };
+    const carried = parsed.carried.filter(
+      (x): x is StoredCarriedEntry => typeof x === "string" || isCarriedTag(x),
+    );
+    return { carried, dismissed: !!parsed.dismissed };
   } catch {
     return null;
   }
@@ -122,6 +143,8 @@ export default function LifeSystemPage() {
   const [newProjectName, setNewProjectName] = useState("");
   const [savingProject, setSavingProject] = useState(false);
   const [backfillNote, setBackfillNote] = useState<StoredBackfillNote | null>(null);
+  const language = useLanguage();
+  const bannerStrings = getBackfillBannerStrings(language);
 
   // Hydrate the persisted backfill note once we know who the user is.
   useEffect(() => {
@@ -256,16 +279,15 @@ export default function LifeSystemPage() {
           <Sparkles className="w-5 h-5 mt-0.5 text-primary shrink-0" aria-hidden />
           <div className="flex-1 space-y-1">
             <div className="font-medium" data-testid="text-backfill-note-title">
-              We set up your Life System
+              {bannerStrings.title}
             </div>
-            <p className="text-sm text-muted-foreground">
-              We carried over what you'd already shared into your new three-level system —
-              review and edit anything to make it yours.
-            </p>
+            <p className="text-sm text-muted-foreground">{bannerStrings.body}</p>
             {backfillNote && backfillNote.carried.length > 0 && (
               <ul className="text-sm text-muted-foreground list-disc pl-5 mt-1 space-y-0.5">
                 {backfillNote.carried.map((item, i) => (
-                  <li key={i} data-testid={`text-backfill-carried-${i}`}>{item}</li>
+                  <li key={i} data-testid={`text-backfill-carried-${i}`}>
+                    {formatCarriedEntry(item, language)}
+                  </li>
                 ))}
               </ul>
             )}
@@ -274,7 +296,7 @@ export default function LifeSystemPage() {
             variant="ghost"
             size="icon"
             onClick={dismissBackfillNote}
-            aria-label="Dismiss"
+            aria-label={bannerStrings.dismiss}
             data-testid="button-dismiss-backfill-note"
           >
             <X className="w-4 h-4 text-muted-foreground" />

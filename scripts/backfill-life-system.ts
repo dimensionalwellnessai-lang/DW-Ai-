@@ -51,7 +51,31 @@ async function main() {
       const summary = await backfillLifeSystemForUser(userId);
       if (summary) {
         seeded++;
-        const carried = summary.carried?.length ? ` (${summary.carried.join("; ")})` : "";
+        // Logs are operator-facing only — render the structured tags as their
+        // English form (this script never goes near a localized client).
+        const carriedLabels = summary.carried.map((item) => {
+          switch (item.kind) {
+            case "goalsToProjects":
+              return `${item.count} ${item.count === 1 ? "goal" : "goals"} → Creation projects`;
+            case "starterTemplateProjects":
+              return "Starter Template projects";
+            case "dailyRhythm": {
+              const labels = item.parts.map((p) =>
+                p === "peakTime" ? "peak time" : p,
+              );
+              return `${labels.join(" + ")} → Daily Rhythm`;
+            }
+            case "responsibility":
+              return "Responsibilities → Responsibility";
+            case "purpose":
+              return "Priorities & long-term goals → Purpose";
+            case "physicalHealth":
+              return "Wellness focus → Physical Health";
+            case "foundation":
+              return "Active habits → Foundation non-negotiables";
+          }
+        });
+        const carried = carriedLabels.length ? ` (${carriedLabels.join("; ")})` : "";
         console.log(`[backfill-life-system] ✓ Seeded ${userId}${carried}`);
       } else {
         // Helper short-circuited despite our pre-check (race or in-flight seed).

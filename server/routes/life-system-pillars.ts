@@ -16,6 +16,11 @@ import {
   insertLifeSystemProjectSchema,
 } from "@shared/schema";
 import { pillarContentSchema, type PillarContent, type PillarConversationMessage, type LifeSystemDocumentContent } from "@shared/lifeSystemContent";
+import type {
+  LifeSystemBackfillCarriedItem,
+  LifeSystemBackfillSummary,
+  LifeSystemDailyRhythmPart,
+} from "@shared/lifeSystemBackfill";
 import { openai } from "../openai";
 
 // ─── Body schemas ──────────────────────────────────────────────────────────
@@ -141,13 +146,10 @@ function mapLegacyGoalStatus(progress: number | null | undefined): "vision" | "a
   return "vision";
 }
 
-/**
- * Human-readable summary of what got carried over during a backfill, so the
- * client can show a one-time "we set up your Life System" note.
- */
-export interface LifeSystemBackfillSummary {
-  carried: string[];
-}
+// `LifeSystemBackfillSummary` is now a structured, locale-agnostic type that
+// lives in `@shared/lifeSystemBackfill`. The client renders each tag through
+// the i18n layer so the banner translates with the rest of the UI.
+export type { LifeSystemBackfillSummary };
 
 /**
  * One-time seed for users still on the legacy data model. Idempotent and safe
@@ -176,7 +178,7 @@ export async function backfillLifeSystemForUser(userId: string): Promise<LifeSys
   ]);
 
   const overrides = buildLegacyOverrides(profile, habits);
-  const carried: string[] = [];
+  const carried: LifeSystemBackfillCarriedItem[] = [];
 
   for (const def of PILLARS) {
     const base = buildStarterPillarContent(def.id);
@@ -209,7 +211,7 @@ export async function backfillLifeSystemForUser(userId: string): Promise<LifeSys
           sortOrder: i,
         });
       }
-      carried.push(`${activeGoals.length} ${activeGoals.length === 1 ? "goal" : "goals"} → Creation projects`);
+      carried.push({ kind: "goalsToProjects", count: activeGoals.length });
     } else {
       for (let i = 0; i < STARTER_TEMPLATE.projects.length; i++) {
         const p = STARTER_TEMPLATE.projects[i];
@@ -224,29 +226,29 @@ export async function backfillLifeSystemForUser(userId: string): Promise<LifeSys
           sortOrder: i,
         });
       }
-      carried.push("Starter Template projects to get you started");
+      carried.push({ kind: "starterTemplateProjects" });
     }
   }
 
   if (overrides.daily_rhythm) {
     const extras = overrides.daily_rhythm.extras ?? {};
-    const parts: string[] = [];
+    const parts: LifeSystemDailyRhythmPart[] = [];
     if (extras.wakeTarget) parts.push("wake");
     if (extras.sleepTarget) parts.push("sleep");
-    if (extras.peakMotivationTime) parts.push("peak time");
-    if (parts.length) carried.push(`${parts.join(" + ")} → Daily Rhythm`);
+    if (extras.peakMotivationTime) parts.push("peakTime");
+    if (parts.length) carried.push({ kind: "dailyRhythm", parts });
   }
   if (overrides.responsibility) {
-    carried.push("Responsibilities → Responsibility pillar");
+    carried.push({ kind: "responsibility" });
   }
   if (overrides.purpose) {
-    carried.push("Priorities & long-term goals → Purpose pillar");
+    carried.push({ kind: "purpose" });
   }
   if (overrides.physical_health) {
-    carried.push("Wellness focus → Physical Health pillar");
+    carried.push({ kind: "physicalHealth" });
   }
   if (overrides.foundation) {
-    carried.push("Active habits → Foundation non-negotiables");
+    carried.push({ kind: "foundation" });
   }
 
   return { carried };

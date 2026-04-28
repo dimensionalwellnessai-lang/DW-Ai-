@@ -10,6 +10,10 @@ import type {
 import type { LifeSystemPillarId, PillarDefinition } from "@shared/lifeSystemTaxonomy";
 import { PILLARS, PILLAR_BY_ID, LEVEL_META } from "@shared/lifeSystemTaxonomy";
 import type { PillarContent } from "@shared/lifeSystemContent";
+import type {
+  LifeSystemBackfillSummary,
+  LifeSystemBackfillCarriedItem,
+} from "@shared/lifeSystemBackfill";
 
 export {
   PILLARS,
@@ -19,9 +23,7 @@ export {
   type PillarDefinition,
 };
 
-export interface LifeSystemBackfillSummary {
-  carried: string[];
-}
+export type { LifeSystemBackfillSummary, LifeSystemBackfillCarriedItem };
 
 export interface LifeSystemState {
   pillars: LifeSystemPillar[];
