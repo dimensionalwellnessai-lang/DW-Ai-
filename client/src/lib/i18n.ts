@@ -91,8 +91,15 @@ export function resolveLanguage(): string {
  * Persist a user-chosen language and notify any mounted `useLanguage()` hooks.
  * Pass `null` to clear the override and fall back to navigator detection.
  *
- * This only writes to localStorage — server-side persistence (so the choice
- * follows the user across devices) is the caller's responsibility, e.g. via
+ * Writes to localStorage AND mirrors the value into `window.__DW_LANG__`
+ * (the same slot the server bootstrap fills). The bootstrap takes
+ * precedence inside `resolveLanguage()`, so without this mirror a
+ * picker save would have no effect for users whose page loaded with a
+ * server-bootstrapped language — they'd be stuck on the bootstrapped
+ * value until a full page reload.
+ *
+ * Server-side persistence (so the choice follows the user across
+ * devices) is still the caller's responsibility, e.g. via
  * `PATCH /api/auth/me`.
  */
 export function setLanguage(lang: string | null): void {
@@ -106,14 +113,24 @@ export function setLanguage(lang: string | null): void {
   } catch {
     // Ignore — private mode / quota errors shouldn't break the UI.
   }
+  // Keep the bootstrap slot in sync so resolveLanguage() reads the
+  // freshest value on the next call. Setting to undefined (rather than
+  // an empty string) lets the precedence chain fall through to
+  // localStorage / navigator on a clear.
+  const bootstrapHost = window as unknown as { __DW_LANG__?: string };
+  if (lang) {
+    bootstrapHost.__DW_LANG__ = lang;
+  } else {
+    delete bootstrapHost.__DW_LANG__;
+  }
   window.dispatchEvent(new CustomEvent(CHANGE_EVENT));
 }
 
 /**
  * Hydrate the local override from a server-persisted preference when the
- * two are out of sync. Used on auth load so a user who picked a language
- * on another device sees the right strings on first paint instead of
- * English-then-flash.
+ * two are out of sync. Used on auth load as a belt-and-braces in case
+ * the bootstrap script was served stale (e.g. cached by a CDN); the
+ * primary first-paint path is the synchronous bootstrap injection.
  *
  * Passing `null`/`undefined` is a no-op — we don't want to clobber a
  * deliberate local override just because the server hasn't been told yet.
