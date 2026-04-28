@@ -166,16 +166,17 @@ export function LanguagePickerCard() {
 
 /**
  * Map a server-persisted language (or null) to the value the Select
- * should show. Unknown / unsupported codes fall back to the "use browser"
- * sentinel so we never end up with a Select pointing at an option that
- * isn't in the list.
+ * should show.
+ *
+ * - `null` / no preference → the "Use browser language" sentinel.
+ * - A supported code → that code (the matching SelectItem renders).
+ * - An unsupported code (e.g. a region-specific variant set via the
+ *   API rather than the picker) → that code as-is. The CardContent
+ *   renders a one-off SelectItem for it, so the dropdown reflects the
+ *   actual persisted state instead of silently showing "Use browser
+ *   language".
  */
 function pickInitialValue(serverLang: string | null | undefined): string {
   if (!serverLang) return USE_BROWSER_VALUE;
-  // Always surface the persisted code, even when it's outside the
-  // shipped picker list. The Select renders a one-off option for
-  // unsupported codes (see CardContent) so the dropdown reflects the
-  // user's actual stored preference instead of silently misrepresenting
-  // it as "Use browser language".
   return serverLang.toLowerCase();
 }

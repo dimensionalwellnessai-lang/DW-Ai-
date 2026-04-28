@@ -127,16 +127,26 @@ export function setLanguage(lang: string | null): void {
 }
 
 /**
- * Hydrate the local override from a server-persisted preference when the
- * two are out of sync. Used on auth load as a belt-and-braces in case
- * the bootstrap script was served stale (e.g. cached by a CDN); the
- * primary first-paint path is the synchronous bootstrap injection.
+ * Reconcile the local override with a server-persisted preference. Used
+ * on auth load as a belt-and-braces in case the bootstrap script was
+ * served stale (e.g. cached by a CDN); the primary first-paint path is
+ * the synchronous bootstrap injection in server/vite.ts and
+ * server/static.ts.
  *
- * Passing `null`/`undefined` is a no-op — we don't want to clobber a
- * deliberate local override just because the server hasn't been told yet.
+ * Behaviour:
+ *   - `undefined` (preference not yet known) → no-op.
+ *   - non-null string → adopt it locally if the local override differs.
+ *   - explicit `null` (signed-in user has cleared their preference) →
+ *     clear any stale local override too, so a "no preference" choice
+ *     made on Device A wins on Device B even when Device B had an old
+ *     localStorage value from before signing in.
  */
 export function hydrateLanguageFromServer(serverLang: string | null | undefined): void {
-  if (!serverLang || typeof window === "undefined") return;
+  if (typeof window === "undefined" || serverLang === undefined) return;
+  if (serverLang === null) {
+    if (readStoredLanguage() !== null) setLanguage(null);
+    return;
+  }
   const normalized = normalize(serverLang);
   const current = readStoredLanguage();
   if (current && normalize(current) === normalized) return;
