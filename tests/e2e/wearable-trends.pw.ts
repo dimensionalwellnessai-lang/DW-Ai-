@@ -3,6 +3,7 @@ import {
   applyAuth,
   cleanupUser,
   registerUser,
+  seedMultiSourceWearableData,
   seedWearableData,
   setOnboardingCompleted,
 } from "./helpers";
@@ -120,6 +121,75 @@ test.describe("Body dashboard wearable trends", () => {
           async () => countXAxisTicks(page, "chart-wearable-steps"),
           { timeout: 5_000 },
         ).toBeGreaterThan(ticks7);
+      } finally {
+        await context.close();
+      }
+    } finally {
+      await cleanupUser(user.userId);
+    }
+  });
+
+  test("multi-source data renders charts and aggregates summary across sources", async ({
+    browser,
+  }) => {
+    const user = await registerUser("trends-multi");
+    try {
+      await seedMultiSourceWearableData(user.userId);
+
+      const context = await browser.newContext();
+      try {
+        await applyAuth(context, user);
+        const page = await context.newPage();
+        await setOnboardingCompleted(page);
+
+        await page.goto("/health-data", { waitUntil: "domcontentloaded" });
+
+        const summary = page.getByTestId("card-wearable-summary");
+        await expect(summary).toBeVisible({ timeout: 30_000 });
+
+        const trends = page.getByTestId("card-wearable-trends");
+        await expect(trends).toBeVisible();
+
+        // All five trend charts should render even when the data is split
+        // across two sources.
+        for (const key of ["hrv", "restingHr", "sleepHours", "steps", "screenTime"]) {
+          await expect(page.getByTestId(`chart-wearable-${key}`)).toBeVisible();
+        }
+
+        // Steps in the last 24h are summed across sources:
+        // Whoop 8000 + Apple Health 2500 = 10,500. If only one source were
+        // included this would either be 8,000 or 2,500.
+        await expect(page.getByTestId("stat-wearable-steps")).toHaveText("10,500");
+
+        // Sleep is also a sum across sources: 420 + 380 = 800 minutes,
+        // displayed as "13.3h".
+        await expect(page.getByTestId("stat-wearable-sleep")).toHaveText("13.3h");
+
+        // HRV / resting HR pick the most recent reading. Whoop rows are
+        // recorded ~1 minute ago and Apple Health ~2 minutes ago, so the
+        // Whoop values (55 ms / 60 bpm) win.
+        await expect(page.getByTestId("stat-wearable-hrv")).toHaveText("55 ms");
+        await expect(page.getByTestId("stat-wearable-rhr")).toHaveText("60 bpm");
+
+        // Screen time still renders from the single screen-time source.
+        await expect(page.getByTestId("stat-wearable-screentime")).not.toHaveText("—");
+
+        // The trend chart x-axes should populate for both sources too — wait
+        // until at least the steps chart has rendered ticks, then sanity
+        // check the HRV chart (whose data comes from BOTH whoop + apple).
+        await page.waitForFunction(
+          () => {
+            const chart = document.querySelector(
+              '[data-testid="chart-wearable-steps"]',
+            );
+            const xAxis = chart?.querySelector('svg g[class*="recharts-xAxis"]');
+            return !!xAxis && xAxis.querySelectorAll("text").length > 0;
+          },
+          undefined,
+          { timeout: 10_000 },
+        );
+        const hrvTicks = await countXAxisTicks(page, "chart-wearable-hrv");
+        expect(hrvTicks).toBeGreaterThan(0);
       } finally {
         await context.close();
       }

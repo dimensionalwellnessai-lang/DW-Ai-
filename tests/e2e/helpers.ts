@@ -122,6 +122,74 @@ export async function seedWearableData(
   });
 }
 
+/**
+ * Seed two wearable devices for the same user with different `source` values
+ * (Whoop + Apple Health) so the multi-source aggregation can be exercised on
+ * the Body dashboard. Each source emits the same set of metrics across the
+ * last 30 days, but with different per-day values so we can verify the
+ * frontend's headline summary correctly combines them (sum for steps/sleep,
+ * latest reading for HRV / resting HR).
+ *
+ * Whoop rows are recorded ~1 minute ago, Apple Health rows ~2 minutes ago,
+ * so the "last 24h" filter picks up exactly one row per source per metric for
+ * day 0, and the i=1..29 rows fall outside that window without ambiguity.
+ * The Whoop row is the more recent of the two, so HRV / resting HR pick up
+ * Whoop's value.
+ */
+export async function seedMultiSourceWearableData(
+  userId: string,
+): Promise<{ whoopDeviceId: string; appleDeviceId: string }> {
+  return withDb(async (db) => {
+    const whoop = await db.query<{ id: string }>(
+      `INSERT INTO wearable_devices (user_id, device_type, device_name, manufacturer, source, is_active)
+       VALUES ($1, 'smartwatch', 'E2E Whoop', 'Whoop', 'whoop', true)
+       RETURNING id`,
+      [userId],
+    );
+    const whoopDeviceId = whoop.rows[0].id;
+
+    const apple = await db.query<{ id: string }>(
+      `INSERT INTO wearable_devices (user_id, device_type, device_name, manufacturer, source, is_active)
+       VALUES ($1, 'smartwatch', 'E2E Apple Watch', 'Apple', 'apple_health', true)
+       RETURNING id`,
+      [userId],
+    );
+    const appleDeviceId = apple.rows[0].id;
+
+    // Whoop: hrv=55, resting_hr=60, sleep_minutes=420, steps=8000 per day.
+    await db.query(
+      `INSERT INTO wearable_data (device_id, user_id, source, source_record_id, metric_kind, metric_value, recorded_at)
+       SELECT $1, $2, 'whoop', concat('whoop-', k, '-', i::text), k::text, v,
+              now() - interval '1 minute' - (i * interval '1 day')
+       FROM generate_series(0, 29) AS s(i),
+            (VALUES ('hrv', 55), ('resting_hr', 60), ('sleep_minutes', 420), ('steps', 8000)) AS m(k, v)`,
+      [whoopDeviceId, userId],
+    );
+
+    // Apple Health: hrv=45, resting_hr=70, sleep_minutes=380, steps=2500 per day.
+    await db.query(
+      `INSERT INTO wearable_data (device_id, user_id, source, source_record_id, metric_kind, metric_value, recorded_at)
+       SELECT $1, $2, 'apple_health', concat('apple-', k, '-', i::text), k::text, v,
+              now() - interval '2 minutes' - (i * interval '1 day')
+       FROM generate_series(0, 29) AS s(i),
+            (VALUES ('hrv', 45), ('resting_hr', 70), ('sleep_minutes', 380), ('steps', 2500)) AS m(k, v)`,
+      [appleDeviceId, userId],
+    );
+
+    // Screen time has its own dedicated table and only one source, so we
+    // seed it once so the screen-time chart and stat also render.
+    await db.query(
+      `INSERT INTO screen_time_usage (user_id, source, date_key, total_minutes, by_category)
+       SELECT $1, 'screen_time', to_char((now() - (i * interval '1 day'))::date, 'YYYY-MM-DD'), 200,
+              '{"social":60,"productivity":30}'::jsonb
+       FROM generate_series(0, 29) AS s(i)`,
+      [userId],
+    );
+
+    return { whoopDeviceId, appleDeviceId };
+  });
+}
+
 export async function cleanupUser(userId: string): Promise<void> {
   await withDb(async (db) => {
     await db.query(`DELETE FROM wearable_data WHERE user_id = $1`, [userId]);
