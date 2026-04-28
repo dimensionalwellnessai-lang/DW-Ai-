@@ -4,9 +4,15 @@ import { serveStatic } from "./static";
 import { createServer } from "http";
 import { runMigrations } from "./migrate";
 import { registerBillingWebhook } from "./routes/billing";
+import { installRouteDuplicateAudit } from "./lib/route-audit";
 
 const app = express();
 app.set("trust proxy", 1);
+// Wrap app.get/post/... so any duplicate `${METHOD} ${path}` registration
+// is logged at startup. Express only runs the FIRST handler for a given
+// route, so duplicates become silent dead code (see Task #139 fallout).
+// Install BEFORE any route registration so every registration is audited.
+installRouteDuplicateAudit(app);
 const httpServer = createServer(app);
 
 declare module "http" {

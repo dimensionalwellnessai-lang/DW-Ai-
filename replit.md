@@ -73,6 +73,8 @@ The underlying database schemas and unrelated code paths were left intact in cas
 - **OpenAI/AI Provider**: For AI chat, content generation, and recommendations.
 - **Google Cloud Vision API**: For OCR (Optical Character Recognition).
 - **Wearable Integration**: For health data (optional). Whoop/Oura/Garmin are wired through `server/routes/wearable-providers.ts` (Whoop & Oura OAuth2, Garmin OAuth1.0a). Required env vars: `WHOOP_CLIENT_ID`/`WHOOP_CLIENT_SECRET`, `OURA_CLIENT_ID`/`OURA_CLIENT_SECRET`, `GARMIN_CONSUMER_KEY`/`GARMIN_CONSUMER_SECRET`. Tokens are stored encrypted in `wearable_devices`; `/api/wearables/sync/:source` pulls the last 7 days into `wearable_data` deduped on `source_record_id` and updates `wearable_sync_jobs` on success/error.
+  - **Route module boundary**: every `/api/wearables/*` route lives in `server/routes/wearables.ts` (`registerWearablesRoutes`). Do not add new wearable routes to `server/routes.ts` or `server/routes/admin-progress.ts` — Express only runs the FIRST handler for a given method+path, so a duplicate registration becomes silent dead code (cf. Task #139, where three duplicate registrations of `GET /api/wearables/data` hid the canonical handler and broke the Body dashboard).
+  - **Duplicate-route audit**: `server/lib/route-audit.ts` wraps `app.get/post/...` and logs a `[route-audit]` warning at startup whenever the same method+path is registered twice. Installed in `server/index.ts` before any route registration.
 - **PDF Processing**: `pdf-parse`, `Tesseract.js`
 - **Document Parsing**: `mammoth`
 - **Charts**: `Recharts`

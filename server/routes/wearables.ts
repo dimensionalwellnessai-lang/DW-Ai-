@@ -15,12 +15,15 @@ import sax from "sax";
 import yauzl from "yauzl";
 import { db } from "../db";
 import { storage } from "../storage";
+import { detectMoodFromBiometrics } from "./_shared";
 import {
   wearableDevices,
   wearableData,
   wearableSyncJobs,
   screenTimeUsage,
   wearableSourceEnum,
+  insertWearableDataSchema,
+  insertWearableDeviceSchema,
   type WearableSource,
 } from "@shared/schema";
 import {
@@ -832,6 +835,102 @@ export function registerWearablesRoutes(app: Express): void {
       clearSession();
       await upsertSyncJob(userId, source, { status: "error", errorText: detail });
       res.redirect(`/wearable-manager?error=${encodeURIComponent(`${SOURCE_META[source].label} sign-in failed`)}`);
+    }
+  });
+
+  // ── Legacy wearable device + manual-sync endpoints ────────────────────────
+  // These four handlers used to live in two places (server/routes.ts inline
+  // and server/routes/admin-progress.ts). Both copies were byte-for-byte
+  // identical, and Express only ran the first registration — meaning the
+  // other was silent dead code. Moved here as the single source of truth so
+  // every /api/wearables/* route now lives in this module. See Task #201.
+  app.get("/api/wearables/devices", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const devices = await storage.getWearableDevices(userId);
+      res.json(devices);
+    } catch (error) {
+      console.error("Wearable devices error:", error);
+      res.status(500).json({ error: "Failed to get wearable devices" });
+    }
+  });
+
+  app.post("/api/wearables/devices", requireAuth, async (req, res) => {
+    try {
+      const data = insertWearableDeviceSchema.parse({
+        ...req.body,
+        userId: req.session.userId!,
+      });
+      const device = await storage.createWearableDevice(data);
+      res.json(device);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      console.error("Create wearable device error:", error);
+      res.status(500).json({ error: "Failed to create wearable device" });
+    }
+  });
+
+  app.post("/api/wearables/sync", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const data = insertWearableDataSchema.parse({
+        ...req.body,
+        userId,
+      });
+
+      // Save wearable data
+      const wearableDataRow = await storage.createWearableData(data);
+
+      // Detect mood from biometric data
+      let detectedMood = data.detectedMood;
+      if (!detectedMood && data.heartRate && data.stressLevel) {
+        detectedMood = detectMoodFromBiometrics(data.heartRate, data.stressLevel, data.hrvScore);
+      }
+
+      // Update the wearable data with detected mood
+      if (detectedMood && !data.detectedMood) {
+        await storage.updateWearableData(wearableDataRow.id, { detectedMood });
+      }
+
+      // Update device last synced time
+      await storage.updateWearableDevice(data.deviceId, {
+        lastSyncedAt: new Date(),
+      });
+
+      res.json({
+        success: true,
+        data: { ...wearableDataRow, detectedMood },
+        detectedMood,
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      console.error("Wearable sync error:", error);
+      res.status(500).json({ error: "Failed to sync wearable data" });
+    }
+  });
+
+  app.get("/api/wearables/latest-mood", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const latestData = await storage.getLatestWearableData(userId);
+
+      if (!latestData || !latestData.detectedMood) {
+        return res.json({ mood: null });
+      }
+
+      res.json({
+        mood: latestData.detectedMood,
+        timestamp: latestData.timestamp,
+        heartRate: latestData.heartRate,
+        stressLevel: latestData.stressLevel,
+      });
+    } catch (error) {
+      console.error("Latest mood error:", error);
+      res.status(500).json({ error: "Failed to get latest mood" });
     }
   });
 }

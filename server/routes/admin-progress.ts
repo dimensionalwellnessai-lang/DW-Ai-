@@ -3,8 +3,8 @@ import type { Express } from "express";
 import { z } from "zod";
 import { storage } from "../storage";
 
-import { requireAuth, requireAdmin, detectMoodFromBiometrics } from "./_shared";
-import { insertAstrologyPredictionSchema, insertWearableDataSchema, insertWearableDeviceSchema } from "@shared/schema";
+import { requireAuth, requireAdmin } from "./_shared";
+import { insertAstrologyPredictionSchema } from "@shared/schema";
 export function registerAdminProgressRoutes(app: Express): void {
 // ── DW Role Picker telemetry ──────────────────────────────────────────────
   // Lane usage + override rate per lane. Used to tune rules in
@@ -376,96 +376,9 @@ export function registerAdminProgressRoutes(app: Express): void {
     }
   });
 
-  // Wearable Device Integration Endpoints
-  app.get("/api/wearables/devices", requireAuth, async (req, res) => {
-    try {
-      const userId = req.session.userId!;
-      const devices = await storage.getWearableDevices(userId);
-      res.json(devices);
-    } catch (error) {
-      console.error("Wearable devices error:", error);
-      res.status(500).json({ error: "Failed to get wearable devices" });
-    }
-  });
-
-  app.post("/api/wearables/devices", requireAuth, async (req, res) => {
-    try {
-      const data = insertWearableDeviceSchema.parse({ 
-        ...req.body, 
-        userId: req.session.userId! 
-      });
-      const device = await storage.createWearableDevice(data);
-      res.json(device);
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: error.errors });
-      }
-      console.error("Create wearable device error:", error);
-      res.status(500).json({ error: "Failed to create wearable device" });
-    }
-  });
-
-  app.post("/api/wearables/sync", requireAuth, async (req, res) => {
-    try {
-      const userId = req.session.userId!;
-      const data = insertWearableDataSchema.parse({ 
-        ...req.body, 
-        userId 
-      });
-      
-      // Save wearable data
-      const wearableData = await storage.createWearableData(data);
-      
-      // Detect mood from biometric data
-      let detectedMood = data.detectedMood;
-      if (!detectedMood && data.heartRate && data.stressLevel) {
-        detectedMood = detectMoodFromBiometrics(data.heartRate, data.stressLevel, data.hrvScore);
-      }
-      
-      // Update the wearable data with detected mood
-      if (detectedMood && !data.detectedMood) {
-        await storage.updateWearableData(wearableData.id, { detectedMood });
-      }
-      
-      // Update device last synced time
-      await storage.updateWearableDevice(data.deviceId, { 
-        lastSyncedAt: new Date() 
-      });
-      
-      res.json({ 
-        success: true, 
-        data: { ...wearableData, detectedMood },
-        detectedMood 
-      });
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ error: error.errors });
-      }
-      console.error("Wearable sync error:", error);
-      res.status(500).json({ error: "Failed to sync wearable data" });
-    }
-  });
-
-  app.get("/api/wearables/latest-mood", requireAuth, async (req, res) => {
-    try {
-      const userId = req.session.userId!;
-      const latestData = await storage.getLatestWearableData(userId);
-      
-      if (!latestData || !latestData.detectedMood) {
-        return res.json({ mood: null });
-      }
-      
-      res.json({ 
-        mood: latestData.detectedMood,
-        timestamp: latestData.timestamp,
-        heartRate: latestData.heartRate,
-        stressLevel: latestData.stressLevel,
-      });
-    } catch (error) {
-      console.error("Latest mood error:", error);
-      res.status(500).json({ error: "Failed to get latest mood" });
-    }
-  });
+  // ── Wearable device + manual-sync endpoints moved to ────────────────────
+  // server/routes/wearables.ts (the canonical /api/wearables/* module).
+  // See Task #201.
 
   // Astrology Predictions Endpoints
   app.get("/api/astrology/predictions", requireAuth, async (req, res) => {
