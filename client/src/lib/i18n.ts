@@ -46,15 +46,45 @@ function readNavigatorLanguage(): string | null {
   return candidates[0] ?? null;
 }
 
+/**
+ * Read the language the server bootstrapped into the initial HTML. The
+ * server injects `window.__DW_LANG__ = "<bcp47>"` into index.html for
+ * signed-in users with a stored preference, so cross-device users get
+ * the right strings on the very first paint instead of seeing English
+ * until /api/auth/me resolves.
+ */
+function readBootstrappedLanguage(): string | null {
+  if (typeof window === "undefined") return null;
+  const v = (window as unknown as { __DW_LANG__?: unknown }).__DW_LANG__;
+  return typeof v === "string" && v.length > 0 ? v : null;
+}
+
 /** Normalise to a lowercase BCP-47 tag (e.g. `pt-br`). */
 function normalize(lang: string | null | undefined): string {
   if (!lang) return DEFAULT_LANGUAGE;
   return lang.toLowerCase();
 }
 
-/** Resolve the language code we should render right now (non-reactive). */
+/**
+ * Resolve the language code we should render right now (non-reactive).
+ *
+ * Precedence (deterministic, evaluated synchronously on every call):
+ *   1. Server-bootstrapped language (`window.__DW_LANG__`) — the
+ *      cross-device source of truth for signed-in users. Wins because
+ *      the alternative is a flash of English while /api/auth/me settles.
+ *   2. Per-tab localStorage override — what `setLanguage()` writes when
+ *      the picker fires. Used both for anonymous users and as the
+ *      "until the next bootstrap arrives" cache after a save.
+ *   3. Navigator language — best guess for first-time anonymous users.
+ *   4. `DEFAULT_LANGUAGE` (`en`).
+ */
 export function resolveLanguage(): string {
-  return normalize(readStoredLanguage() ?? readNavigatorLanguage() ?? DEFAULT_LANGUAGE);
+  return normalize(
+    readBootstrappedLanguage()
+      ?? readStoredLanguage()
+      ?? readNavigatorLanguage()
+      ?? DEFAULT_LANGUAGE,
+  );
 }
 
 /**

@@ -1199,10 +1199,15 @@ export async function registerRoutes(
    * client-side navigator detection.
    */
   app.patch("/api/auth/me", requireAuth, async (req, res) => {
+    // BCP-47 tag: 2-3 letter primary subtag, optionally followed by one or
+    // more 2-8 alphanumeric subtags (region/script). Strict regex keeps the
+    // value safe to inject into the bootstrap <script> tag served with
+    // index.html (see server/vite.ts and server/static.ts).
+    const BCP47 = /^[a-z]{2,3}(-[a-z0-9]{2,8})*$/i;
     const parsed = z
       .object({
         language: z
-          .union([z.string().min(1).max(20), z.null()])
+          .union([z.string().regex(BCP47), z.null()])
           .optional(),
       })
       .strict()
@@ -1210,12 +1215,14 @@ export async function registerRoutes(
     if (!parsed.success) {
       return res.status(400).json({ error: parsed.error.message });
     }
-    const patch: { language?: string | null } = {};
-    if ("language" in parsed.data) {
-      patch.language = parsed.data.language === null
-        ? null
-        : (parsed.data.language ?? null)?.toLowerCase() ?? null;
+    if (!("language" in parsed.data)) {
+      return res.status(400).json({ error: "No fields to update" });
     }
+    const patch: { language: string | null } = {
+      language: parsed.data.language === null
+        ? null
+        : parsed.data.language!.toLowerCase(),
+    };
     const updated = await storage.updateUser(req.session.userId!, patch);
     if (!updated) {
       return res.status(404).json({ error: "User not found" });
