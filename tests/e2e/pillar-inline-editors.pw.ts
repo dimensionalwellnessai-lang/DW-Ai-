@@ -173,36 +173,76 @@ test.describe("Pillar inline editors", () => {
         const description = page.getByTestId("textarea-description");
         await expect(description).toBeVisible({ timeout: 30_000 });
 
-        // 1. Save a known value so we have something to clear.
+        // 1. Save known values for all three text fields so we have
+        // something to clear.
         const stamp = Date.now().toString(36);
-        const seedValue = `E2E seed ${stamp}`;
-        await description.fill(seedValue);
+        const seedDescription = `E2E seed desc ${stamp}`;
+        const seedVoice = `E2E seed voice ${stamp}`;
+        const seedRhythm = `E2E seed rhythm ${stamp}`;
+
+        await description.fill(seedDescription);
         const saveDescription = page.getByTestId("button-save-description");
         await saveDescription.click();
         await expect(saveDescription).toBeDisabled();
 
+        await page.getByTestId("textarea-user-voice").fill(seedVoice);
+        const saveUserVoice = page.getByTestId("button-save-user-voice");
+        await saveUserVoice.click();
+        await expect(saveUserVoice).toBeDisabled();
+
+        await page.getByTestId("textarea-weekly-rhythm").fill(seedRhythm);
+        const saveWeeklyRhythm = page.getByTestId("button-save-weekly-rhythm");
+        await saveWeeklyRhythm.click();
+        await expect(saveWeeklyRhythm).toBeDisabled();
+
         await page.reload({ waitUntil: "domcontentloaded" });
         await expect(page.getByTestId("textarea-description")).toHaveValue(
-          seedValue,
+          seedDescription,
           { timeout: 30_000 },
         );
+        await expect(page.getByTestId("textarea-user-voice")).toHaveValue(
+          seedVoice,
+        );
+        await expect(page.getByTestId("textarea-weekly-rhythm")).toHaveValue(
+          seedRhythm,
+        );
 
-        // 2. Clear it and save again.
-        const description2 = page.getByTestId("textarea-description");
-        await description2.fill("");
+        // 2. Clear each text field and save again. All three share the
+        // same trim-or-undefined patch logic in saveContentPatch, but
+        // we exercise each one explicitly so a future change to a
+        // single handler can't slip through unnoticed.
+        await page.getByTestId("textarea-description").fill("");
         const saveDescription2 = page.getByTestId("button-save-description");
         await expect(saveDescription2).toBeEnabled();
         await saveDescription2.click();
         await expect(saveDescription2).toBeDisabled();
 
-        // 3. Reload and verify the textarea is empty.
+        await page.getByTestId("textarea-user-voice").fill("");
+        const saveUserVoice2 = page.getByTestId("button-save-user-voice");
+        await expect(saveUserVoice2).toBeEnabled();
+        await saveUserVoice2.click();
+        await expect(saveUserVoice2).toBeDisabled();
+
+        await page.getByTestId("textarea-weekly-rhythm").fill("");
+        const saveWeeklyRhythm2 = page.getByTestId(
+          "button-save-weekly-rhythm",
+        );
+        await expect(saveWeeklyRhythm2).toBeEnabled();
+        await saveWeeklyRhythm2.click();
+        await expect(saveWeeklyRhythm2).toBeDisabled();
+
+        // 3. Reload and verify all three textareas are empty.
         await page.reload({ waitUntil: "domcontentloaded" });
         await expect(page.getByTestId("textarea-description")).toHaveValue("", {
           timeout: 30_000,
         });
+        await expect(page.getByTestId("textarea-user-voice")).toHaveValue("");
+        await expect(page.getByTestId("textarea-weekly-rhythm")).toHaveValue(
+          "",
+        );
 
-        // 4. The DB row's content.description should be absent (saved as
-        // undefined and stripped by JSON.stringify).
+        // 4. All three text fields should be absent from the DB row's
+        // content (saved as undefined and stripped by JSON.stringify).
         const dbRow = await withDb(async (db) => {
           const r = await db.query<{ content: Record<string, unknown> | null }>(
             `SELECT content FROM life_system_pillars
@@ -213,6 +253,8 @@ test.describe("Pillar inline editors", () => {
         });
         expect(dbRow).not.toBeNull();
         expect(dbRow!.description).toBeUndefined();
+        expect(dbRow!.userVoice).toBeUndefined();
+        expect(dbRow!.weeklyRhythm).toBeUndefined();
 
         // 5. Repeat for non-negotiables: removing every row and saving
         // should also clear the field on the server. The list editor
