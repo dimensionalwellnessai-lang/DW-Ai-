@@ -154,7 +154,20 @@ export function useLanguage(): string {
     if (typeof window === "undefined") return;
     const sync = () => setLang(resolveLanguage());
     const onStorage = (e: StorageEvent) => {
-      if (e.key === STORAGE_KEY) sync();
+      if (e.key !== STORAGE_KEY) return;
+      // Mirror the cross-tab change into the bootstrap slot so
+      // resolveLanguage()'s bootstrap-priority precedence sees the
+      // freshest value, not the stale server-injected one from the
+      // initial page load. Without this, a save in tab A would update
+      // tab A's UI but tab B would stay on the bootstrapped value
+      // until the next reload.
+      const bootstrapHost = window as unknown as { __DW_LANG__?: string };
+      if (e.newValue) {
+        bootstrapHost.__DW_LANG__ = e.newValue;
+      } else {
+        delete bootstrapHost.__DW_LANG__;
+      }
+      sync();
     };
     window.addEventListener(CHANGE_EVENT, sync);
     window.addEventListener("storage", onStorage);

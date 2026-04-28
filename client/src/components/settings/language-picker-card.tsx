@@ -122,6 +122,20 @@ export function LanguagePickerCard() {
               >
                 {strings.useBrowser}
               </SelectItem>
+              {/* If the server has a code we don't ship a native label for
+                  (e.g. a region-specific variant set via API), surface it
+                  as a one-off option so the Select reflects the actual
+                  persisted state instead of silently showing "Use browser
+                  language". */}
+              {user?.language && !isSupportedLanguage(user.language) && (
+                <SelectItem
+                  key={user.language}
+                  value={user.language.toLowerCase()}
+                  data-testid={`option-language-${user.language.toLowerCase()}`}
+                >
+                  {user.language}
+                </SelectItem>
+              )}
               {SUPPORTED_LANGUAGES.map((opt) => (
                 <SelectItem
                   key={opt.code}
@@ -158,6 +172,10 @@ export function LanguagePickerCard() {
  */
 function pickInitialValue(serverLang: string | null | undefined): string {
   if (!serverLang) return USE_BROWSER_VALUE;
-  const lower = serverLang.toLowerCase();
-  return isSupportedLanguage(lower) ? lower : USE_BROWSER_VALUE;
+  // Always surface the persisted code, even when it's outside the
+  // shipped picker list. The Select renders a one-off option for
+  // unsupported codes (see CardContent) so the dropdown reflects the
+  // user's actual stored preference instead of silently misrepresenting
+  // it as "Use browser language".
+  return serverLang.toLowerCase();
 }
