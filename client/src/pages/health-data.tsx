@@ -167,19 +167,36 @@ export default function HealthDataPage() {
     staleTime: 60_000,
   });
 
-  // Headline metrics from the past 24h: sum/last across all sources.
+  // Headline metrics from the past 24h.
+  // For cumulative metrics (steps, sleep_minutes), several connected
+  // wearables (e.g. Whoop + Apple Watch + Oura) may all report the same
+  // calendar day. Naively summing across sources causes obviously broken
+  // numbers like "20+ hours of sleep last night". Instead, sum within each
+  // source over the window and then take the MAX across sources, which
+  // gives the most complete view from a single device without
+  // double-counting. HRV / resting HR keep "latest reading" semantics.
   const wearableSummary = (() => {
     const rows = wearables?.data ?? [];
     const since = Date.now() - 24 * 60 * 60 * 1000;
     const recent = rows.filter((r) => r.recordedAt && new Date(r.recordedAt).getTime() >= since);
-    const sumKind = (k: string) => recent.filter((r) => r.metricKind === k).reduce((s, r) => s + (r.metricValue ?? 0), 0);
+    const maxAcrossSources = (k: string) => {
+      const bySource = new Map<string, number>();
+      for (const r of recent) {
+        if (r.metricKind !== k) continue;
+        const src = r.source ?? "_unknown";
+        bySource.set(src, (bySource.get(src) ?? 0) + (r.metricValue ?? 0));
+      }
+      let max = 0;
+      bySource.forEach((v) => { if (v > max) max = v; });
+      return max;
+    };
     const lastKind = (k: string) => recent
       .filter((r) => r.metricKind === k)
       .sort((a, b) => new Date(b.recordedAt!).getTime() - new Date(a.recordedAt!).getTime())[0]?.metricValue ?? null;
     return {
       hasAny: rows.length > 0 || (wearables?.screenTime?.length ?? 0) > 0,
-      sleepMinutes: sumKind("sleep_minutes"),
-      steps: sumKind("steps"),
+      sleepMinutes: maxAcrossSources("sleep_minutes"),
+      steps: maxAcrossSources("steps"),
       hrv: lastKind("hrv"),
       restingHr: lastKind("resting_hr"),
       screenTimeMinutes: wearables?.screenTime?.[0]?.totalMinutes ?? null,
@@ -235,17 +252,27 @@ export default function HealthDataPage() {
       const ts = new Date(r.recordedAt);
       return ts >= earliest && ts < today;
     });
-    const byDay: Record<string, { hrvVals: number[]; rhrVals: number[]; sleepMin: number; steps: number }> = {};
-    for (const k of dateKeys) byDay[k] = { hrvVals: [], rhrVals: [], sleepMin: 0, steps: 0 };
+    // Steps and sleep_minutes are bucketed per (day, source) and then
+    // reconciled across sources via MAX (see `wearableSummary` above for the
+    // full rationale) so a user with two wearables tracking the same night
+    // doesn't show 16 hours of sleep.
+    const byDay: Record<string, { hrvVals: number[]; rhrVals: number[]; sleepBySrc: Map<string, number>; stepsBySrc: Map<string, number> }> = {};
+    for (const k of dateKeys) byDay[k] = { hrvVals: [], rhrVals: [], sleepBySrc: new Map(), stepsBySrc: new Map() };
     for (const r of recent) {
       const k = new Date(r.recordedAt!).toISOString().slice(0, 10);
       if (!byDay[k]) continue;
       const v = r.metricValue ?? 0;
+      const src = r.source ?? "_unknown";
       if (r.metricKind === "hrv" && v > 0) byDay[k].hrvVals.push(v);
       else if (r.metricKind === "resting_hr" && v > 0) byDay[k].rhrVals.push(v);
-      else if (r.metricKind === "sleep_minutes") byDay[k].sleepMin += v;
-      else if (r.metricKind === "steps") byDay[k].steps += v;
+      else if (r.metricKind === "sleep_minutes") byDay[k].sleepBySrc.set(src, (byDay[k].sleepBySrc.get(src) ?? 0) + v);
+      else if (r.metricKind === "steps") byDay[k].stepsBySrc.set(src, (byDay[k].stepsBySrc.get(src) ?? 0) + v);
     }
+    const maxBySource = (m: Map<string, number>): number => {
+      let max = 0;
+      m.forEach((v) => { if (v > max) max = v; });
+      return max;
+    };
     const screenByDay: Record<string, number> = {};
     for (const s of screen) screenByDay[s.dateKey] = s.totalMinutes;
 
@@ -264,10 +291,12 @@ export default function HealthDataPage() {
           out.push(d.hrvVals.reduce((a, b) => a + b, 0) / d.hrvVals.length);
         } else if (key === "restingHr" && d.rhrVals.length) {
           out.push(d.rhrVals.reduce((a, b) => a + b, 0) / d.rhrVals.length);
-        } else if (key === "sleepHours" && d.sleepMin > 0) {
-          out.push(d.sleepMin / 60);
-        } else if (key === "steps" && d.steps > 0) {
-          out.push(d.steps);
+        } else if (key === "sleepHours") {
+          const sleepMin = maxBySource(d.sleepBySrc);
+          if (sleepMin > 0) out.push(sleepMin / 60);
+        } else if (key === "steps") {
+          const steps = maxBySource(d.stepsBySrc);
+          if (steps > 0) out.push(steps);
         } else if (key === "screenTime") {
           // Use hasOwnProperty so a present row with value 0 is counted.
           if (Object.prototype.hasOwnProperty.call(screenByDay, k)) {
@@ -326,17 +355,26 @@ export default function HealthDataPage() {
     const cutoff = new Date(today);
     cutoff.setDate(cutoff.getDate() - (days - 1));
     const recent = rows.filter((r) => r.recordedAt && new Date(r.recordedAt) >= cutoff);
-    const byDay: Record<string, { hrvVals: number[]; rhrVals: number[]; sleepMin: number; steps: number }> = {};
-    for (const k of dateKeys) byDay[k] = { hrvVals: [], rhrVals: [], sleepMin: 0, steps: 0 };
+    // See `wearableSummary` for the rationale: cumulative metrics (steps,
+    // sleep_minutes) are bucketed per (day, source) and reconciled with MAX
+    // across sources so two wearables tracking the same day don't double-count.
+    const byDay: Record<string, { hrvVals: number[]; rhrVals: number[]; sleepBySrc: Map<string, number>; stepsBySrc: Map<string, number> }> = {};
+    for (const k of dateKeys) byDay[k] = { hrvVals: [], rhrVals: [], sleepBySrc: new Map(), stepsBySrc: new Map() };
     for (const r of recent) {
       const k = new Date(r.recordedAt!).toISOString().slice(0, 10);
       if (!byDay[k]) continue;
       const v = r.metricValue ?? 0;
+      const src = r.source ?? "_unknown";
       if (r.metricKind === "hrv" && v > 0) byDay[k].hrvVals.push(v);
       else if (r.metricKind === "resting_hr" && v > 0) byDay[k].rhrVals.push(v);
-      else if (r.metricKind === "sleep_minutes") byDay[k].sleepMin += v;
-      else if (r.metricKind === "steps") byDay[k].steps += v;
+      else if (r.metricKind === "sleep_minutes") byDay[k].sleepBySrc.set(src, (byDay[k].sleepBySrc.get(src) ?? 0) + v);
+      else if (r.metricKind === "steps") byDay[k].stepsBySrc.set(src, (byDay[k].stepsBySrc.get(src) ?? 0) + v);
     }
+    const maxBySource = (m: Map<string, number>): number => {
+      let max = 0;
+      m.forEach((v) => { if (v > max) max = v; });
+      return max;
+    };
     const screenByDay: Record<string, number> = {};
     for (const s of screen) screenByDay[s.dateKey] = s.totalMinutes;
     const labelOf = (k: string) =>
@@ -344,12 +382,14 @@ export default function HealthDataPage() {
     const series = dateKeys.map((k) => {
       const d = byDay[k];
       const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
+      const sleepMin = maxBySource(d.sleepBySrc);
+      const steps = maxBySource(d.stepsBySrc);
       return {
         date: labelOf(k),
         hrv: avg(d.hrvVals),
         restingHr: avg(d.rhrVals),
-        sleepHours: d.sleepMin > 0 ? +(d.sleepMin / 60).toFixed(2) : null,
-        steps: d.steps > 0 ? d.steps : null,
+        sleepHours: sleepMin > 0 ? +(sleepMin / 60).toFixed(2) : null,
+        steps: steps > 0 ? steps : null,
         screenTime: screenByDay[k] ?? null,
       };
     });

@@ -156,14 +156,16 @@ test.describe("Body dashboard wearable trends", () => {
           await expect(page.getByTestId(`chart-wearable-${key}`)).toBeVisible();
         }
 
-        // Steps in the last 24h are summed across sources:
-        // Whoop 8000 + Apple Health 2500 = 10,500. If only one source were
-        // included this would either be 8,000 or 2,500.
-        await expect(page.getByTestId("stat-wearable-steps")).toHaveText("10,500");
+        // Steps in the last 24h are reconciled across sources by taking the
+        // MAX per source (rather than blindly summing) so two devices that
+        // both tracked the same day don't show triple-counted totals.
+        // Whoop reports 8,000 and Apple Health 2,500, so we expect 8,000.
+        await expect(page.getByTestId("stat-wearable-steps")).toHaveText("8,000");
 
-        // Sleep is also a sum across sources: 420 + 380 = 800 minutes,
-        // displayed as "13.3h".
-        await expect(page.getByTestId("stat-wearable-sleep")).toHaveText("13.3h");
+        // Sleep follows the same dedupe rule: max(420, 380) = 420 minutes,
+        // displayed as "7.0h" — a realistic single-night value rather than
+        // the previous "13.3h" that came from blindly adding both sources.
+        await expect(page.getByTestId("stat-wearable-sleep")).toHaveText("7.0h");
 
         // HRV / resting HR pick the most recent reading. Whoop rows are
         // recorded ~1 minute ago and Apple Health ~2 minutes ago, so the
