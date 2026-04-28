@@ -33,7 +33,14 @@ export function serveStatic(app: Express) {
     );
   }
 
-  app.use(express.static(distPath));
+  // `index: false` is critical: by default `express.static` serves
+  // `index.html` directly for any request that resolves to a directory
+  // (including `/`), which would bypass the language-bootstrap injector
+  // below and reintroduce a flash of English on first paint for
+  // signed-in cross-device users. With `index: false` static only
+  // serves real assets and every HTML entry request falls through to
+  // the catch-all that injects `window.__DW_LANG__`.
+  app.use(express.static(distPath, { index: false }));
 
   // Serve the SPA shell, injecting the per-user language bootstrap into the
   // <head> so the client can pick it up synchronously before first render.
