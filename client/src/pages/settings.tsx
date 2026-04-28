@@ -27,6 +27,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { LanguagePickerCard } from "@/components/settings/language-picker-card";
 import { ThemeSelector } from "@/components/theme-selector";
 import { WearableManager } from "@/components/wearable-manager";
 import { VoiceSettings } from "@/components/voice-settings";
@@ -560,6 +561,8 @@ export function SettingsPage() {
             </div>
           </CardContent>
         </Card>
+
+        <LanguagePickerCard />
 
         {/* Voice Settings */}
         <VoiceSettings />

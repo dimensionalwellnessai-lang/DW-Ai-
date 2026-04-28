@@ -296,7 +296,7 @@ export function registerAuthExtraRoutes(app: Express): void {
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
-    res.json({ user: { id: user.id, email: user.email, username: user.username, firstName: user.firstName, systemName: user.systemName, onboardingCompleted: user.onboardingCompleted } });
+    res.json({ user: { id: user.id, email: user.email, username: user.username, firstName: user.firstName, systemName: user.systemName, onboardingCompleted: user.onboardingCompleted, language: user.language ?? null } });
   });
 
   // ─── Billing stub endpoints ───────────────────────────────────────────────

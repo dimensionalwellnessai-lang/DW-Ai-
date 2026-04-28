@@ -1186,7 +1186,41 @@ export async function registerRoutes(
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
-    res.json({ user: { id: user.id, email: user.email, username: user.username, firstName: user.firstName, systemName: user.systemName, onboardingCompleted: user.onboardingCompleted } });
+    res.json({ user: { id: user.id, email: user.email, username: user.username, firstName: user.firstName, systemName: user.systemName, onboardingCompleted: user.onboardingCompleted, language: user.language ?? null } });
+  });
+
+  /**
+   * PATCH /api/auth/me — update the caller's own preference fields. Today
+   * this is just the BCP-47 `language` tag (Task #211 — let users pick a
+   * preferred language); future preference fields can extend the same
+   * Zod schema below.
+   *
+   * Pass `language: null` to clear the preference and fall back to
+   * client-side navigator detection.
+   */
+  app.patch("/api/auth/me", requireAuth, async (req, res) => {
+    const parsed = z
+      .object({
+        language: z
+          .union([z.string().min(1).max(20), z.null()])
+          .optional(),
+      })
+      .strict()
+      .safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error.message });
+    }
+    const patch: { language?: string | null } = {};
+    if ("language" in parsed.data) {
+      patch.language = parsed.data.language === null
+        ? null
+        : (parsed.data.language ?? null)?.toLowerCase() ?? null;
+    }
+    const updated = await storage.updateUser(req.session.userId!, patch);
+    if (!updated) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    res.json({ user: { id: updated.id, email: updated.email, username: updated.username, firstName: updated.firstName, systemName: updated.systemName, onboardingCompleted: updated.onboardingCompleted, language: updated.language ?? null } });
   });
 
   // Billing endpoints (status, checkout, portal, restore, webhook) live in

@@ -24,6 +24,7 @@ import { InteractiveTour } from "@/components/interactive-tour";
 import { ReminderBanner } from "@/components/reminder-banner";
 import { UsernameSetupModal } from "@/components/username-setup-modal";
 import { useAuth } from "@/hooks/use-auth";
+import { hydrateLanguageFromServer } from "@/lib/i18n";
 import { AccountabilityCheckIn } from "@/components/accountability-check-in";
 
 // ── Lazy-loaded page components ───────────────────────────────────────────────
@@ -397,6 +398,16 @@ function AppContent() {
     deepLinkService.setNavigator(setLocation);
     deepLinkService.initialize();
   }, [setLocation]);
+
+  // Hydrate the i18n language override from the server-persisted user
+  // preference on auth load, so a user who picked a language on another
+  // device sees the right strings on first paint instead of an
+  // English-then-flash. No-op when the server has nothing stored or the
+  // local override already matches.
+  useEffect(() => {
+    if (!user) return;
+    hydrateLanguageFromServer(user.language);
+  }, [user]);
 
   // Trigger DW daily affirmation once per session
   useEffect(() => {

@@ -9,6 +9,14 @@ export interface AuthUser {
   systemName?: string;
   role?: "user" | "admin";
   onboardingCompleted?: boolean;
+  /**
+   * Persisted language preference (BCP-47, e.g. "en", "pt-br"). When set,
+   * the client hydrates `useLanguage()` from this value on first paint so
+   * the user doesn't see English first if they've already chosen another
+   * language on a different device. May be null/undefined if the user has
+   * never picked a language explicitly.
+   */
+  language?: string | null;
 }
 
 export interface AuthData {

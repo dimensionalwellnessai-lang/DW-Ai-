@@ -33,6 +33,10 @@ export const users = pgTable("users", {
   stripeCustomerId: text("stripe_customer_id"),
   stripeSubscriptionId: text("stripe_subscription_id"),
   stripePriceId: text("stripe_price_id"),
+  // Optional BCP-47 language tag (e.g. "en", "es", "pt-br"). NULL means
+  // "no explicit preference" — the client falls back to navigator
+  // detection. See client/src/lib/i18n.ts.
+  language: text("language"),
 }, (t) => [
   // Ensure each OAuth identity maps to exactly one user, and make lookups fast
   uniqueIndex("users_oauth_provider_id_idx").on(t.oauthProvider, t.oauthId),

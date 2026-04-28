@@ -60,6 +60,10 @@ export function resolveLanguage(): string {
 /**
  * Persist a user-chosen language and notify any mounted `useLanguage()` hooks.
  * Pass `null` to clear the override and fall back to navigator detection.
+ *
+ * This only writes to localStorage — server-side persistence (so the choice
+ * follows the user across devices) is the caller's responsibility, e.g. via
+ * `PATCH /api/auth/me`.
  */
 export function setLanguage(lang: string | null): void {
   if (typeof window === "undefined") return;
@@ -73,6 +77,23 @@ export function setLanguage(lang: string | null): void {
     // Ignore — private mode / quota errors shouldn't break the UI.
   }
   window.dispatchEvent(new CustomEvent(CHANGE_EVENT));
+}
+
+/**
+ * Hydrate the local override from a server-persisted preference when the
+ * two are out of sync. Used on auth load so a user who picked a language
+ * on another device sees the right strings on first paint instead of
+ * English-then-flash.
+ *
+ * Passing `null`/`undefined` is a no-op — we don't want to clobber a
+ * deliberate local override just because the server hasn't been told yet.
+ */
+export function hydrateLanguageFromServer(serverLang: string | null | undefined): void {
+  if (!serverLang || typeof window === "undefined") return;
+  const normalized = normalize(serverLang);
+  const current = readStoredLanguage();
+  if (current && normalize(current) === normalized) return;
+  setLanguage(normalized);
 }
 
 /**
