@@ -433,6 +433,7 @@ export interface IStorage {
   deleteScheduleBlock(id: string): Promise<void>;
 
   getCategoryEntries(userId: string, category?: string): Promise<CategoryEntry[]>;
+  getCategoryEntry(id: string): Promise<CategoryEntry | undefined>;
   createCategoryEntry(entry: InsertCategoryEntry): Promise<CategoryEntry>;
   createCategoryEntries(entries: InsertCategoryEntry[]): Promise<CategoryEntry[]>;
   deleteCategoryEntry(id: string): Promise<void>;
@@ -1463,6 +1464,11 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(categoryEntries)
       .where(eq(categoryEntries.userId, userId))
       .orderBy(desc(categoryEntries.createdAt));
+  }
+
+  async getCategoryEntry(id: string): Promise<CategoryEntry | undefined> {
+    const [entry] = await db.select().from(categoryEntries).where(eq(categoryEntries.id, id));
+    return entry || undefined;
   }
 
   async createCategoryEntry(entry: InsertCategoryEntry): Promise<CategoryEntry> {

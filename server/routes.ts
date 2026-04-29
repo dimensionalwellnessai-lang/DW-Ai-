@@ -2578,6 +2578,11 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
 
   app.delete("/api/category-entries/:id", requireAuth, async (req, res) => {
     try {
+      const userId = req.session.userId!;
+      const existing = await storage.getCategoryEntry(req.params.id);
+      if (!existing || existing.userId !== userId) {
+        return res.status(404).json({ error: "Entry not found" });
+      }
       await storage.deleteCategoryEntry(req.params.id);
       res.json({ success: true });
     } catch (error) {
@@ -5882,8 +5887,9 @@ Return only valid JSON, no other text.`;
 
   app.get("/api/system-modules/:id", requireAuth, async (req, res) => {
     try {
+      const userId = req.session.userId!;
       const module = await storage.getSystemModule(req.params.id);
-      if (!module) {
+      if (!module || module.userId !== userId) {
         return res.status(404).json({ error: "System module not found" });
       }
       res.json(module);
@@ -5928,6 +5934,11 @@ Return only valid JSON, no other text.`;
 
   app.delete("/api/system-modules/:id", requireAuth, async (req, res) => {
     try {
+      const userId = req.session.userId!;
+      const existing = await storage.getSystemModule(req.params.id);
+      if (!existing || existing.userId !== userId) {
+        return res.status(404).json({ error: "System module not found" });
+      }
       await storage.deleteSystemModule(req.params.id);
       res.json({ success: true });
     } catch (error) {
@@ -5986,6 +5997,11 @@ Return only valid JSON, no other text.`;
 
   app.delete("/api/schedule-events/:id", requireAuth, async (req, res) => {
     try {
+      const userId = req.session.userId!;
+      const existing = await storage.getScheduleEvent(req.params.id);
+      if (!existing || existing.userId !== userId) {
+        return res.status(404).json({ error: "Schedule event not found" });
+      }
       await storage.deleteScheduleEvent(req.params.id);
       res.json({ success: true });
     } catch (error) {
@@ -6248,6 +6264,15 @@ Return only valid JSON, no other text.`;
       const doc = await storage.getImportedDocument(req.params.id);
       if (!doc || doc.userId !== req.session.userId) {
         return res.status(404).json({ error: "Document not found" });
+      }
+
+      const docItems = await storage.getImportedDocumentItems(req.params.id);
+      const validItemIds = new Set(docItems.map(i => i.id));
+
+      for (const item of parsed.data.items) {
+        if (!validItemIds.has(item.id)) {
+          return res.status(404).json({ error: "Item not found" });
+        }
       }
 
       for (const item of parsed.data.items) {
