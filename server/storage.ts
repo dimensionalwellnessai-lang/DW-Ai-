@@ -561,6 +561,7 @@ export interface IStorage {
   createPasswordResetToken(data: InsertPasswordResetToken): Promise<PasswordResetToken>;
   getPasswordResetToken(token: string): Promise<PasswordResetToken | undefined>;
   markPasswordResetTokenUsed(id: string): Promise<void>;
+  invalidatePasswordResetTokensForUser(userId: string): Promise<void>;
 
   createUserFeedback(data: InsertUserFeedback): Promise<UserFeedback>;
 
@@ -2150,6 +2151,17 @@ export class DatabaseStorage implements IStorage {
     await db.update(passwordResetTokens)
       .set({ usedAt: new Date() })
       .where(eq(passwordResetTokens.id, id));
+  }
+
+  async invalidatePasswordResetTokensForUser(userId: string): Promise<void> {
+    await db.update(passwordResetTokens)
+      .set({ usedAt: new Date() })
+      .where(
+        and(
+          eq(passwordResetTokens.userId, userId),
+          isNull(passwordResetTokens.usedAt)
+        )
+      );
   }
 
   async createUserFeedback(data: InsertUserFeedback): Promise<UserFeedback> {

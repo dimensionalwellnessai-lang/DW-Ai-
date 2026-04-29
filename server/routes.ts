@@ -617,17 +617,20 @@ export async function registerRoutes(
       //    that account (i.e. the user is already signed in and adding OAuth).
       //    Otherwise, create a fresh account to prevent account takeover.
       const existingUser = await storage.getUserByEmail(email);
-      if (existingUser) {
-        // OAuth provider has verified the email — safe to link to the matching account.
-        // This lets users who previously signed up with email/password continue
-        // with Google/Apple without a catch-22 situation.
+      if (existingUser && req.session.userId === existingUser.id) {
+        // The logged-in session already belongs to this account — safe to link.
         const updated = await storage.updateUser(existingUser.id, { oauthProvider: provider, oauthId });
         if (!updated) {
           throw new Error("Failed to link OAuth credentials to existing account");
         }
         user = updated;
+      } else if (existingUser) {
+        // An account with this email already exists but the current session does
+        // not belong to it. Refuse to link to prevent account takeover via
+        // recycled or mis-reported email addresses.
+        throw new Error("account_exists_use_password");
       } else {
-        // 3. Create a brand-new account (no password for OAuth users)
+        // 3. Create a brand-new account (no password for OAuth users).
         user = await storage.createUser({
           email,
           oauthProvider: provider,
@@ -1806,6 +1809,9 @@ export async function registerRoutes(
         return res.json({ success: true, message: "If an account exists with this email, a reset link has been sent." });
       }
       
+      // Invalidate any existing unused reset tokens before issuing a new one
+      await storage.invalidatePasswordResetTokensForUser(user.id);
+
       const token = crypto.randomBytes(32).toString('hex');
       const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
       const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
@@ -1854,7 +1860,21 @@ export async function registerRoutes(
       
       const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
       await storage.updateUser(resetToken.userId, { password: hashedPassword });
-      await storage.markPasswordResetTokenUsed(resetToken.id);
+
+      // Invalidate all reset tokens for this user (including any sibling tokens
+      // that were issued earlier and never used)
+      await storage.invalidatePasswordResetTokensForUser(resetToken.userId);
+
+      // Revoke all active sessions for this user so stolen cookies cannot be
+      // reused after a password change
+      try {
+        await pool.query(
+          `DELETE FROM session WHERE sess->>'userId' = $1`,
+          [resetToken.userId]
+        );
+      } catch (sessionErr) {
+        console.error("[auth] Failed to revoke sessions during password reset:", sessionErr);
+      }
       
       res.json({ success: true, message: "Password has been reset successfully" });
     } catch (error) {
