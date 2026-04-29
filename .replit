@@ -54,7 +54,6 @@ integrations = ["javascript_database:1.0.0", "javascript_openai_ai_integrations:
 [userenv.shared]
 APP_BASE_URL = "https://dimensionalwellnessai.com"
 OAUTH_REDIRECT_BASE_URL = "https://dimensionalwellnessai.com"
-sk-proj-rCMRrjrcL8VZp3ntG_VYJFN_qb5W3hTNUXodky9lfGFqW5i_S35vlT5W2xamgdb_kkqhjhhVrXT3BlbkFJjSnznvFGLmDXrREHgq-SARIIkDTgFhrW0pyFwa = "Secret "
 
 [postMerge]
 path = "scripts/post-merge.sh"
