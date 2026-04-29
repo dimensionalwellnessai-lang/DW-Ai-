@@ -78,7 +78,7 @@ export function registerNotificationsRoutes(app: Express): void {
         type: "dw_affirmation",
         title: `Good ${timeOfDay}, ${name} ✨`,
         body: affirmation,
-        actionUrl: "/talk",
+        actionUrl: "/insights",
       });
       res.json({ sent: true, notification: notif });
     } catch (err) {

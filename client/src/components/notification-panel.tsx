@@ -63,12 +63,49 @@ export function NotificationPanel({ open, onClose }: NotificationPanelProps) {
   });
 
   const unread = notifications.filter((n) => !n.read).length;
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   function handleNotifClick(n: Notification) {
     if (!n.read) markReadMutation.mutate(n.id);
-    if (n.actionUrl) {
-      setLocation(n.actionUrl);
+    setExpandedId((prev) => (prev === n.id ? null : n.id));
+  }
+
+  function handleNotifOpen(n: Notification) {
+    if (!n.read) markReadMutation.mutate(n.id);
+    const url = n.actionUrl ?? defaultDestinationFor(n.type);
+    if (url) {
+      setLocation(url);
       onClose();
+    }
+  }
+
+  function defaultDestinationFor(type: string): string | null {
+    switch (type) {
+      case "dw_affirmation":
+      case "dw_insight":
+        return "/insights";
+      case "accountability":
+        return "/accountability";
+      case "friend_request":
+      case "community_reply":
+        return "/friends";
+      default:
+        return null;
+    }
+  }
+
+  function destinationLabelFor(type: string): string {
+    switch (type) {
+      case "dw_affirmation":
+      case "dw_insight":
+        return "Open in Insights";
+      case "accountability":
+        return "Open Accountability";
+      case "friend_request":
+      case "community_reply":
+        return "Open Friends";
+      default:
+        return "Open";
     }
   }
 
@@ -123,12 +160,14 @@ export function NotificationPanel({ open, onClose }: NotificationPanelProps) {
             <div className="divide-y divide-border/40">
               {notifications.map((notif) => {
                 const meta = TYPE_META[notif.type] ?? TYPE_META.system;
+                const isExpanded = expandedId === notif.id;
+                const destination = notif.actionUrl ?? defaultDestinationFor(notif.type);
                 return (
                   <div
                     key={notif.id}
                     className={cn(
-                      "flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-muted/40 transition-colors relative",
-                      !notif.read && "bg-primary/5"
+                      "flex flex-col px-4 py-3 cursor-pointer hover:bg-muted/40 transition-colors relative",
+                      !notif.read && "bg-primary/5",
                     )}
                     onClick={() => handleNotifClick(notif)}
                     data-testid={`notif-item-${notif.id}`}
@@ -136,24 +175,48 @@ export function NotificationPanel({ open, onClose }: NotificationPanelProps) {
                     {!notif.read && (
                       <span className="absolute top-4 right-10 w-2 h-2 rounded-full bg-primary" />
                     )}
-                    <div className={cn("mt-0.5 shrink-0", meta.color)}>{meta.icon}</div>
-                    <div className="flex-1 min-w-0 pr-2">
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <span className="text-xs font-medium text-muted-foreground">{meta.label}</span>
-                        <span className="text-xs text-muted-foreground/60">{formatTime(notif.created_at)}</span>
+                    <div className="flex items-start gap-3">
+                      <div className={cn("mt-0.5 shrink-0", meta.color)}>{meta.icon}</div>
+                      <div className="flex-1 min-w-0 pr-2">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span className="text-xs font-medium text-muted-foreground">{meta.label}</span>
+                          <span className="text-xs text-muted-foreground/60">{formatTime(notif.created_at)}</span>
+                        </div>
+                        <p className="text-sm font-medium leading-snug" data-testid={`text-notif-title-${notif.id}`}>{notif.title}</p>
+                        <p
+                          className={cn(
+                            "text-xs text-muted-foreground mt-0.5",
+                            !isExpanded && "line-clamp-2",
+                          )}
+                          data-testid={`text-notif-body-${notif.id}`}
+                        >
+                          {notif.body}
+                        </p>
                       </div>
-                      <p className="text-sm font-medium leading-snug">{notif.title}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{notif.body}</p>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 shrink-0 opacity-40 hover:opacity-100 self-start"
+                        onClick={(e) => { e.stopPropagation(); deleteMutation.mutate(notif.id); }}
+                        data-testid={`button-delete-notif-${notif.id}`}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 shrink-0 opacity-40 hover:opacity-100 self-start"
-                      onClick={(e) => { e.stopPropagation(); deleteMutation.mutate(notif.id); }}
-                      data-testid={`button-delete-notif-${notif.id}`}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
+                    {isExpanded && destination && (
+                      <div className="flex justify-end mt-2 pl-7">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs"
+                          onClick={(e) => { e.stopPropagation(); handleNotifOpen(notif); }}
+                          data-testid={`button-open-notif-${notif.id}`}
+                        >
+                          {destinationLabelFor(notif.type)}
+                          <ChevronRight className="h-3.5 w-3.5 ml-1" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 );
               })}

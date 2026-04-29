@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -15,14 +15,8 @@ import { useNavigationStore } from "@/stores/useNavigationStore";
 import { useHomeSummary } from "./useHomeSummary";
 import { isE2ETestMode } from "@/lib/e2e-mode";
 import { isFeatureEnabled } from "@/config/featureFlags";
-import { ThreeRingOrbit } from "@/components/life-system/three-ring-orbit";
+import { CommandCenterOrbit } from "@/components/home/command-center-orbit";
 import { TodayBriefCard } from "./components/TodayBriefCard";
-import {
-  useLifeSystem,
-  findPillarRow,
-  type LifeSystemPillarId,
-} from "@/lib/life-system";
-import { PILLARS_BY_LEVEL } from "@shared/lifeSystemTaxonomy";
 import {
   Carousel,
   CarouselContent,
@@ -40,7 +34,6 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { TriggerProtocolSheet } from "@/components/triggers/trigger-protocol-sheet";
 import type { TriggerEventListResponse } from "@/lib/triggers";
-import { ProjectsListSheet } from "@/components/life-system/projects-list-sheet";
 import { JournalPromptSheet } from "@/components/mood/journal-prompt-sheet";
 import { useToast } from "@/hooks/use-toast";
 
@@ -109,7 +102,6 @@ export default function HomeCommandCenter() {
     "Your Life System at a glance — Core, Expression, and Creation in one orbit.",
   );
   const summary = useHomeSummary();
-  const lifeSystem = useLifeSystem();
   const [, navigate] = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [dismissedCards, setDismissedCards] = useState<Set<string>>(new Set());
@@ -118,7 +110,6 @@ export default function HomeCommandCenter() {
   const nameInputRef = useRef<HTMLInputElement>(null);
   const { allFeaturesOpen, closeAllFeatures } = useNavigationStore();
   const [triggerOpen, setTriggerOpen] = useState(false);
-  const [projectsSheetOpen, setProjectsSheetOpen] = useState(false);
   const [journalOpen, setJournalOpen] = useState(false);
   const [journalMoodLogId, setJournalMoodLogId] = useState<string | null>(null);
   const { toast } = useToast();
@@ -193,31 +184,6 @@ export default function HomeCommandCenter() {
   const visibleProactiveCards = isE2ETestMode()
     ? []
     : summary.proactiveCards.filter(c => !dismissedCards.has(c.type));
-
-  // ── Build orbit data from the user's actual Life System ────────────────
-  // Lit set = Core/Expression pillars the user has enabled. Falls back to
-  // pillar `defaultOn` when the user has any pillars saved at all.
-  const lifeData = lifeSystem.data;
-  const { litPillars, orbitProjects, litProjects } = useMemo(() => {
-    const lit = new Set<LifeSystemPillarId>();
-    const allDefs = [
-      ...PILLARS_BY_LEVEL.core,
-      ...PILLARS_BY_LEVEL.expression,
-      ...PILLARS_BY_LEVEL.creation,
-    ];
-    const isEmpty = (lifeData?.pillars ?? []).length === 0;
-    for (const def of allDefs) {
-      const row = findPillarRow(lifeData, def.id);
-      const enabled = row ? row.enabled !== false : !isEmpty && def.defaultOn;
-      if (enabled) lit.add(def.id);
-    }
-    const active = (lifeData?.projects ?? []).filter(p => p.status === "active");
-    return {
-      litPillars: lit,
-      orbitProjects: active.map(p => ({ id: p.id, name: p.name })),
-      litProjects: new Set(active.map(p => p.id)),
-    };
-  }, [lifeData]);
 
   if (summary.isLoading) {
     return (
@@ -343,30 +309,15 @@ export default function HomeCommandCenter() {
           </div>
         </div>
 
-        {/* ── Hero: the user's three-ring orbit ─────────────────────────── */}
+        {/* ── Hero: command center module orbit ─────────────────────────── */}
         <div
-          className="flex flex-col items-center justify-center px-4 pt-2 pb-4 shrink-0"
+          className="flex flex-col items-center justify-center px-4 pt-2 pb-10 shrink-0"
           data-testid="section-orbit-hero"
         >
-          <div
-            className="relative flex items-center justify-center w-full max-w-[360px] mx-auto aspect-square"
-            style={{ maxHeight: "min(360px, 52vh)" }}
-          >
-            {/* Atmospheric background glow */}
-            <div className="absolute rounded-full bg-primary/5 blur-3xl" style={{ width: "80%", height: "80%" }} aria-hidden="true" />
-            <div className="absolute rounded-full bg-primary/10 blur-2xl" style={{ width: "40%", height: "40%" }} aria-hidden="true" />
-
-            <ThreeRingOrbit
-              litPillars={litPillars}
-              projects={orbitProjects}
-              litProjects={litProjects}
-              size={340}
-              className="relative z-10"
-              collapseProjects
-              onPillarClick={(id) => navigate(`/life-system/pillar/${id}`)}
-              onProjectsClick={() => setProjectsSheetOpen(true)}
-              onCenterClick={() => navigate("/life-system/document")}
-            />
+          <div className="relative flex items-center justify-center">
+            <div className="absolute rounded-full bg-primary/5 blur-3xl" style={{ width: 240, height: 240 }} aria-hidden="true" />
+            <div className="absolute rounded-full bg-primary/10 blur-2xl" style={{ width: 120, height: 120 }} aria-hidden="true" />
+            <CommandCenterOrbit size={280} className="relative z-10" />
           </div>
         </div>
 
@@ -450,7 +401,6 @@ export default function HomeCommandCenter() {
       <HamburgerMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
       <AllFeaturesView open={allFeaturesOpen} onClose={closeAllFeatures} />
       <TriggerProtocolSheet open={triggerOpen} onOpenChange={setTriggerOpen} />
-      <ProjectsListSheet open={projectsSheetOpen} onOpenChange={setProjectsSheetOpen} />
       <JournalPromptSheet
         open={journalOpen}
         onOpenChange={setJournalOpen}
