@@ -3,11 +3,12 @@ import type { Express } from "express";
 import { storage } from "../storage";
 
 import { openai } from "../openai";
+import { aiContentLimiter } from "./_limiters";
 
 
 
 export function registerMusicExplainRoutes(app: Express): void {
-  app.get("/api/browse/music", async (req, res) => {
+  app.get("/api/browse/music", aiContentLimiter, async (req, res) => {
     try {
       const userId = req.session?.userId;
       let personalCtx = "";

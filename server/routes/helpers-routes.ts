@@ -1,17 +1,20 @@
 import type { Express } from "express";
 
 import { generateContextualSearch, generateIngredientSubstitutes, generateCookSessionRecipe, openai, type SearchCategory } from "../openai";
+import { publicAiLimiter } from "./_limiters";
 
 
 
 export function registerHelpersRoutes(app: Express): void {
-  app.post("/api/search", async (req, res) => {
+  app.post("/api/search", publicAiLimiter, async (req, res) => {
     try {
       const { query, category, limit, excludedIngredients, includeSubstitutes } = req.body;
       
       if (!query || typeof query !== "string") {
         return res.status(400).json({ error: "Search query is required" });
       }
+
+      const trimmedQuery = query.trim().slice(0, 500);
       
       const validCategories: SearchCategory[] = ["meals", "workouts", "recovery", "spiritual", "community"];
       if (!category || !validCategories.includes(category)) {
@@ -20,7 +23,7 @@ export function registerHelpersRoutes(app: Express): void {
       
       const searchLimit = Math.min(Math.max(limit || 5, 1), 10);
       const excluded = Array.isArray(excludedIngredients) ? excludedIngredients : [];
-      const results = await generateContextualSearch(query, category, searchLimit, excluded, includeSubstitutes === true);
+      const results = await generateContextualSearch(trimmedQuery, category, searchLimit, excluded, includeSubstitutes === true);
       
       res.json(results);
     } catch (error) {

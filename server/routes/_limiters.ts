@@ -24,6 +24,14 @@ export const aiContentLimiter = rateLimit({
   message: { error: "Too many AI requests. Please slow down and try again shortly." },
 });
 
+export const publicAiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 15,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many AI requests. Please slow down and try again shortly." },
+});
+
 export const dwProcessLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 10,

@@ -3,13 +3,14 @@ import type { Express } from "express";
 import { storage } from "../storage";
 
 import { generateDiscoverRandomContent } from "../openai";
+import { aiContentLimiter } from "./_limiters";
 
 
 
 import { DISCOVER_STATIC_LIBRARY } from "../discover-static";
 
 export function registerDiscoverFeedRoutes(app: Express): void {
-  app.get("/api/discover/feed", async (req, res) => {
+  app.get("/api/discover/feed", aiContentLimiter, async (req, res) => {
     try {
       const userId = req.session?.userId;
       const page = parseInt(req.query.page as string) || 1;

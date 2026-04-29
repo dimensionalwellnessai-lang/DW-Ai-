@@ -1,9 +1,10 @@
 import type { Express } from "express";
+import { publicAiLimiter } from "./_limiters";
 
 
 
 export function registerLocalResourcesRoutes(app: Express): void {
-  app.post("/api/local-resources/search", async (req, res) => {
+  app.post("/api/local-resources/search", publicAiLimiter, async (req, res) => {
     try {
       const { query } = req.body;
       

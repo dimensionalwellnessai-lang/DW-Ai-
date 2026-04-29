@@ -3,11 +3,12 @@ import type { Express } from "express";
 import { storage } from "../storage";
 
 import { openai } from "../openai";
+import { aiContentLimiter } from "./_limiters";
 
 
 
 export function registerBrowseMiscRoutes(app: Express): void {
-  app.get("/api/browse/entertainment", async (req, res) => {
+  app.get("/api/browse/entertainment", aiContentLimiter, async (req, res) => {
     try {
       const userId = req.session?.userId;
       let personalCtx = "";
@@ -82,7 +83,7 @@ Return ONLY this JSON, no other text:
   });
 
   // ── Browse: Activities ──────────────────────────────────────────────────────
-  app.get("/api/browse/activities", async (req, res) => {
+  app.get("/api/browse/activities", aiContentLimiter, async (req, res) => {
     try {
       const userId = req.session?.userId;
       let personalCtx = "";
@@ -156,7 +157,7 @@ Return ONLY this JSON (no markdown):
   });
 
   // ── Browse: Learning ────────────────────────────────────────────────────────
-  app.get("/api/browse/learning", async (req, res) => {
+  app.get("/api/browse/learning", aiContentLimiter, async (req, res) => {
     try {
       const userId = req.session?.userId;
       let personalCtx = "";
