@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This spec defines the core intelligence engine of Flip the Switch.
+This spec defines the core intelligence engine of Dimensional Wellness AI.
 This system must remain symmetrical across all dimensions.
 
 ---
@@ -49,7 +49,7 @@ Depth controls:
 Every intake ends with:
 
 1. **Mirror** — "Here's what I'm hearing…"
-2. **Flip** — "Let's flip the switch…"
+2. **Flip** — "Let's make a shift…"
 3. **Choose:**
    - Light option
    - Deeper option

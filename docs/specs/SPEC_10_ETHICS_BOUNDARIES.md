@@ -11,7 +11,7 @@ This spec protects:
 
 ## Ethical Commitments
 
-Flip the Switch will:
+Dimensional Wellness AI will:
 - never shame
 - never coerce
 - never exploit vulnerability

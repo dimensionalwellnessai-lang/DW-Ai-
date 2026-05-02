@@ -119,8 +119,8 @@ dwai://action?type=<action-name>&param1=value1&param2=value2
 
 ### 6. Wake Word Activation
 
-**"Flip the Switch"** - The app is designed with wake word support in mind. When enabled through device settings:
-- Say "Flip the Switch" to activate voice listening
+**"Hey DW"** - The app is designed with wake word support in mind. When enabled through device settings:
+- Say "Hey DW" to activate voice listening
 - App must have microphone permissions granted
 - Works best in quiet environments
 

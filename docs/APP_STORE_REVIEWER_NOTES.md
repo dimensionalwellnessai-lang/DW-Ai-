@@ -4,7 +4,7 @@
 Health & Fitness / Lifestyle
 
 ## Core Description
-Flip the Switch is a calm, consent-based AI assistant that helps users build their own life system through adaptive guidance.
+Dimensional Wellness AI is a calm, consent-based AI assistant that helps users build their own life system through adaptive guidance.
 
 ## Important Disclosures
 

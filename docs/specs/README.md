@@ -1,8 +1,8 @@
-# Flip the Switch — System Specs Index
+# Dimensional Wellness AI — System Specs Index
 
 ## Status: v1.0 (System Complete)
 
-This directory contains the complete, frozen specification set for Flip the Switch.
+This directory contains the complete, frozen specification set for Dimensional Wellness AI.
 
 ---
 

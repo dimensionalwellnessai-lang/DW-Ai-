@@ -1,4 +1,4 @@
-# 🌙 Dark Mode Comprehensive Audit - Flip the Switch (FTS) App
+# 🌙 Dark Mode Comprehensive Audit - Dimensional Wellness AI App
 
 **Audit Date:** January 2026  
 **Status:** ✅ COMPLETED  
@@ -8,7 +8,7 @@
 
 ## 🎯 Executive Summary
 
-This document provides a comprehensive audit of all screens, components, dialogs, and UI elements in the Flip the Switch (FTS) Dimensional Wellness AI application for dark mode compatibility.
+This document provides a comprehensive audit of all screens, components, dialogs, and UI elements in the Dimensional Wellness AI (DWAI) application for dark mode compatibility.
 
 ### Issues Found & Fixed
 - ✅ Fixed **5 instances** of dark text on dark backgrounds
@@ -138,7 +138,7 @@ This document provides a comprehensive audit of all screens, components, dialogs
 | Enhanced Onboarding | `enhanced-onboarding.tsx` | ✅ Verified | Full onboarding |
 | Switchboard Intake | `switchboard-intake.tsx` | ✅ Verified | System preferences |
 | Switch Training | `switch-training.tsx` | ✅ Verified | System training |
-| FTS Home | `fts-home.tsx` | ✅ Verified | Setup home |
+| DW Home | `fts-home.tsx` | ✅ Verified | Setup home |
 | App Tour | `app-tour.tsx` | ✅ Verified | Interactive tour |
 
 #### 📄 Support & Legal
@@ -421,7 +421,7 @@ To fully verify dark mode across all screens:
 
 **All dark mode contrast issues have been identified and fixed.**
 
-The FTS app now has comprehensive dark mode support across:
+The DW app now has comprehensive dark mode support across:
 - ✅ All screens and pages
 - ✅ All dialogs and modals
 - ✅ All navigation components (menu, bottom nav, drawers)
