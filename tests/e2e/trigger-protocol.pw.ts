@@ -192,6 +192,101 @@ test.describe("Trigger Protocol", () => {
     }
   });
 
+  // ───────────────────────────────────────────────────────────────────────────
+  // /api/chat/smart graceful-degradation contract
+  //
+  // smartChatHandler has two non-LLM exit branches that must keep attaching
+  // the trigger reset offer:
+  //   1. The catch block that matches "DW_AI_UNAVAILABLE" / "529" /
+  //      "overloaded" / "rate limit" / "503" — the friendly "small moment"
+  //      response.
+  //   2. The early return when getAiConfigStatus().configured === false.
+  //
+  // Both branches spread `...(triggerSuggestion ? { suggestion: ... } : {})`
+  // so a future refactor could quietly drop them without breaking happy-path
+  // tests. We force each branch via the non-prod-only `x-dw-test-ai-mode`
+  // header (see getSmartChatTestOverride in server/routes/chat-handlers.ts)
+  // and assert the trigger_protocol suggestion is still on the response.
+  // ───────────────────────────────────────────────────────────────────────────
+  test("/api/chat/smart keeps trigger_protocol suggestion when AI is overloaded", async ({
+    browser,
+  }) => {
+    const user = await registerUser("trigger-smart-unavail");
+    try {
+      const context = await browser.newContext();
+      try {
+        await applyAuth(context, user);
+
+        const res = await context.request.post(
+          `${BASE_URL}/api/chat/smart`,
+          {
+            headers: { "x-dw-test-ai-mode": "unavailable" },
+            data: { message: "i think she's cheating on me" },
+          },
+        );
+
+        if (res.ok()) {
+          const body = (await res.json()) as {
+            response?: string;
+            suggestion?: { kind?: string; reason?: string };
+          };
+          // Friendly fallback copy from the catch block.
+          expect(body.response ?? "").toMatch(/brief moment/i);
+          // Contract under test: trigger reset offer survives the
+          // AI-unavailable branch.
+          expect(body.suggestion?.kind).toBe("trigger_protocol");
+          expect(body.suggestion?.reason ?? "").toMatch(/sounds heavy/i);
+        } else {
+          // Same auth / quota gate allowlist as the chat tests above.
+          expect([401, 402, 403, 429]).toContain(res.status());
+        }
+      } finally {
+        await context.close();
+      }
+    } finally {
+      await cleanupUser(user.userId);
+    }
+  });
+
+  test("/api/chat/smart keeps trigger_protocol suggestion when AI is unconfigured", async ({
+    browser,
+  }) => {
+    const user = await registerUser("trigger-smart-unconfig");
+    try {
+      const context = await browser.newContext();
+      try {
+        await applyAuth(context, user);
+
+        const res = await context.request.post(
+          `${BASE_URL}/api/chat/smart`,
+          {
+            headers: { "x-dw-test-ai-mode": "unconfigured" },
+            data: { message: "i think she's cheating on me" },
+          },
+        );
+
+        if (res.ok()) {
+          const body = (await res.json()) as {
+            response?: string;
+            suggestion?: { kind?: string; reason?: string };
+          };
+          // Friendly copy from the !aiConfig.configured early return.
+          expect(body.response ?? "").toMatch(/small moment/i);
+          // Contract under test: trigger reset offer survives the
+          // unconfigured-AI branch.
+          expect(body.suggestion?.kind).toBe("trigger_protocol");
+          expect(body.suggestion?.reason ?? "").toMatch(/sounds heavy/i);
+        } else {
+          expect([401, 402, 403, 429]).toContain(res.status());
+        }
+      } finally {
+        await context.close();
+      }
+    } finally {
+      await cleanupUser(user.userId);
+    }
+  });
+
   test("/api/chat does NOT add a trigger suggestion to neutral messages", async ({
     browser,
   }) => {

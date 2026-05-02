@@ -36,6 +36,30 @@ import { getUserContextSnapshot, toUserLifeContext } from "../lib/user-context";
 import { resolveAdaptiveDWMode } from "../lib/dw-role-picker";
 import { logDwRolePick } from "../lib/dw-role-pick-log";
 
+/**
+ * Test-only escape hatch used by the e2e suite (see
+ * `tests/e2e/trigger-protocol.pw.ts` "fallback path" cases) to force the
+ * smart-chat handler down a specific failure branch without having to
+ * stub the live OpenAI/Perplexity providers.
+ *
+ * Returns:
+ *   - "unavailable"  → behave as if the resilient AI client threw
+ *                      DW_AI_UNAVAILABLE (overloaded / 529 / 503 / rate-limit).
+ *   - "unconfigured" → behave as if `getAiConfigStatus().configured === false`.
+ *   - null           → no override; production code path.
+ *
+ * Hard-gated to NODE_ENV !== "production" so this header is inert in
+ * any deployed build.
+ */
+type SmartChatTestOverride = "unavailable" | "unconfigured" | null;
+function getSmartChatTestOverride(req: Request): SmartChatTestOverride {
+  if (process.env.NODE_ENV === "production") return null;
+  const raw = req.headers["x-dw-test-ai-mode"];
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  if (value === "unavailable" || value === "unconfigured") return value;
+  return null;
+}
+
 /** POST /api/chat — classic single-shot DW chat with tool use. */
 export async function chatHandler(req: Request, res: Response) {
   // Computed up here so it survives the AI-unavailable fallback path
@@ -249,6 +273,7 @@ export async function smartChatHandler(req: Request, res: Response) {
   // offer even if the LLM is unavailable. See chatHandler for the same
   // pattern.
   const triggerSuggestion = detectTriggerSuggestion(req.body?.message);
+  const testOverride = getSmartChatTestOverride(req);
 
   try {
     const { message, conversationHistory, context, userProfile: clientProfile, lifeSystemContext, energyContext, documentIds, cosmicConsent, modeLock, previousMode } = req.body;
@@ -261,7 +286,7 @@ export async function smartChatHandler(req: Request, res: Response) {
     }
 
     const aiConfig = getAiConfigStatus();
-    if (!aiConfig.configured) {
+    if (!aiConfig.configured || testOverride === "unconfigured") {
       return res.json({
         response: "I'm having a small moment on my end — nothing to worry about. Take a breath, and whenever you're ready, share what's on your mind. I'm not going anywhere.",
         actionsTaken: [],
@@ -332,6 +357,15 @@ export async function smartChatHandler(req: Request, res: Response) {
       .join("\n\n");
 
     const wearablesYesterdayForChat = await safeGetWearablesYesterday(req.session.userId!);
+
+    // Test-only short-circuit: e2e suite forces the resilient AI client to
+    // appear unavailable so we can prove the catch block below still
+    // attaches the trigger suggestion. Hard-gated to non-prod inside
+    // getSmartChatTestOverride().
+    if (testOverride === "unavailable") {
+      throw new Error("DW_AI_UNAVAILABLE: forced by x-dw-test-ai-mode header");
+    }
+
     const result = await detectIntentAndRespond(
       enhancedMessage,
       safeHistory,
