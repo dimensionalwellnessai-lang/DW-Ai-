@@ -3309,6 +3309,9 @@ Keep it to 1–2 sentences. Sound like a person, not a notification. Don't start
 
   app.post("/api/habits/:id/log", requireAuth, async (req, res) => {
     try {
+      if (!z.string().uuid().safeParse(req.params.id).success) {
+        return res.status(400).json({ error: "Invalid habit ID" });
+      }
       const habit = await storage.getHabit(req.params.id);
       if (!habit || habit.userId !== req.session.userId) {
         return res.status(404).json({ error: "Habit not found" });
@@ -4866,6 +4869,9 @@ Return ONLY this exact JSON structure, no other text:
 
   app.post("/api/calendar/:eventId/tasks", requireAuth, async (req, res) => {
     try {
+      if (!z.string().uuid().safeParse(req.params.eventId).success) {
+        return res.status(400).json({ error: "Invalid event ID" });
+      }
       const bodySchema = z.object({
         title: z.string().min(1).max(500),
         dwSuggested: z.boolean().optional().default(false),
