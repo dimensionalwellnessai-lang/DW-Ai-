@@ -30,7 +30,7 @@ Every meaningful interaction follows:
 
 Used lightly, never all at once:
 - "Pause for a second."
-- "Let's flip the switch."
+- "Let's make a shift."
 - "What's the energy right now?"
 - "Name the pattern."
 - "One small step."
@@ -83,7 +83,7 @@ Used lightly, never all at once:
 ## On-Voice vs Off-Voice Example
 
 **On-Voice:**
-> "Pause for a second. This feels heavy. Let's flip the switch and choose one small thing that fits today."
+> "Pause for a second. This feels heavy. Let's make a shift and choose one small thing that fits today."
 
 **Off-Voice:**
 > "You should try practicing mindfulness to regulate your emotions."

@@ -3,7 +3,7 @@
 ## Purpose
 
 Measure system health, not user behavior.
-Flip the Switch does not track people to control them.
+Dimensional Wellness AI does not track people to control them.
 
 ---
 

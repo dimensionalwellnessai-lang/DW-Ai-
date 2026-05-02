@@ -19,8 +19,8 @@ export interface FeatureFlags {
   JOURNAL_AUTOGEN: boolean;         // ⏸️ Auto-generate journal entries + insight cards (PR #2)
   ELEVATION_ENGINE: boolean;        // ⏸️ Stagnation detector + 7-day Elevation Plan prompt (PR #3)
   ELEVATION_PLAN: boolean;          // ⏸️ 7-day Elevation Plan builder (PR #5)
-  DAILY_CHECKIN: boolean;           // ⏸️ Daily Check-in card (2 questions, Home + Talk) (PR #6)
-  REMINDERS: boolean;               // ⏸️ Reminder scheduling and banner (PR #7)
+  DAILY_CHECKIN: boolean;           // ✅ Daily Check-in card (2 questions, Home + Talk) (PR #6)
+  REMINDERS: boolean;               // ✅ Reminder scheduling and banner (PR #7)
   DW_LEARNS: boolean;               // ✅ Personalization + "DW learns" layer (PR #8)
   COACH_MODES: boolean;             // ✅ Coaching mode selector in settings
   WEEKLY_REVIEW: boolean;           // ⏸️ Weekly review + next-week plan proposal (PR #15)
@@ -178,14 +178,14 @@ function resolveShareExportFlag(): boolean {
 
 /**
  * Resolves the initial value for the DAILY_CHECKIN feature flag.
- * Default is OFF; enable locally via:
- *   localStorage.setItem('dw_daily_checkin_enabled', 'true')  — persists across sessions
- *   ?dc=1 query param                                          — one-time, per URL
+ * Default is ON; disable locally via:
+ *   localStorage.setItem('dw_daily_checkin_enabled', 'false')  — persists across sessions
+ *   ?dc=0 query param                                           — one-time, per URL
  */
 function resolveDailyCheckinFlag(): boolean {
   try {
-    if (typeof localStorage !== "undefined" && localStorage.getItem("dw_daily_checkin_enabled") === "true") {
-      return true;
+    if (typeof localStorage !== "undefined" && localStorage.getItem("dw_daily_checkin_enabled") === "false") {
+      return false;
     }
   } catch {
     // Blocked storage or restricted environment – ignore and fall back to query param
@@ -193,13 +193,14 @@ function resolveDailyCheckinFlag(): boolean {
 
   try {
     if (typeof location !== "undefined") {
-      return new URLSearchParams(location.search).get("dc") === "1";
+      const param = new URLSearchParams(location.search).get("dc");
+      if (param === "0") return false;
     }
   } catch {
     // URL parsing failed – fail safely
   }
 
-  return false;
+  return true;
 }
 
 /**
@@ -257,14 +258,14 @@ function resolveWeeklyReviewFlag(): boolean {
 
 /**
  * Resolves the initial value for the REMINDERS feature flag.
- * Default is OFF; enable locally via:
- *   localStorage.setItem('dw_reminders_enabled', 'true')  — persists across sessions
- *   ?rm=1 query param                                       — one-time, per URL
+ * Default is ON; disable locally via:
+ *   localStorage.setItem('dw_reminders_enabled', 'false')  — persists across sessions
+ *   ?rm=0 query param                                       — one-time, per URL
  */
 function resolveRemindersFlag(): boolean {
   try {
-    if (typeof localStorage !== "undefined" && localStorage.getItem("dw_reminders_enabled") === "true") {
-      return true;
+    if (typeof localStorage !== "undefined" && localStorage.getItem("dw_reminders_enabled") === "false") {
+      return false;
     }
   } catch {
     // Blocked storage or restricted environment – ignore and fall back to query param
@@ -272,13 +273,14 @@ function resolveRemindersFlag(): boolean {
 
   try {
     if (typeof location !== "undefined") {
-      return new URLSearchParams(location.search).get("rm") === "1";
+      const param = new URLSearchParams(location.search).get("rm");
+      if (param === "0") return false;
     }
   } catch {
     // URL parsing failed – fail safely
   }
 
-  return false;
+  return true;
 }
 
 /**

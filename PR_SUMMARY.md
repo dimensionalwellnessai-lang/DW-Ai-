@@ -2,7 +2,7 @@
 
 ## ✅ All App Store Review Issues Resolved
 
-This PR successfully addresses all 4 critical issues raised in the App Store review for Flip the Switch (Dimensional Wellness AI).
+This PR successfully addresses all 4 critical issues raised in the App Store review for Dimensional Wellness AI.
 
 ---
 

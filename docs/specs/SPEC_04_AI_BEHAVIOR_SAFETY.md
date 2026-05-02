@@ -81,5 +81,5 @@ If generated text violates:
 - structure
 
 The system must:
-- automatically rewrite in Flip the Switch voice
+- automatically rewrite in Dimensional Wellness AI voice
 - or regenerate before displaying to user

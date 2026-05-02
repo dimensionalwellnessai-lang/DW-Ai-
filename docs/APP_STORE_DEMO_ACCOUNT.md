@@ -74,7 +74,7 @@ If you need a fully pre-populated account for testing, the demo account can be s
 
 ### Unique Value Proposition
 
-**Flip the Switch (Dimensional Wellness AI)** is distinct from typical wellness apps in several key ways:
+**Dimensional Wellness AI** is distinct from typical wellness apps in several key ways:
 
 1. **Energy-Based System** - Not prescriptive routines, but adaptive guidance based on user's current energy state
 2. **13 Life Dimensions** - Holistic approach covering physical, emotional, spiritual, financial, intellectual, social, and more

@@ -2,7 +2,7 @@
 
 ## Overview
 
-This pull request addresses all critical issues raised in the App Store review for Flip the Switch (Dimensional Wellness AI). The app has been updated to fix bugs, enhance stability, improve uniqueness, and provide a comprehensive demo account for reviewers.
+This pull request addresses all critical issues raised in the App Store review for Dimensional Wellness AI. The app has been updated to fix bugs, enhance stability, improve uniqueness, and provide a comprehensive demo account for reviewers.
 
 ## Issues Addressed
 

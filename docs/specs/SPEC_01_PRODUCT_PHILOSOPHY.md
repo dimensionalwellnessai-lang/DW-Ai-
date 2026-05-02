@@ -2,14 +2,14 @@
 
 ## Purpose
 
-This spec defines what Flip the Switch is, what it is not, and how it should make people feel.
+This spec defines what Dimensional Wellness AI is, what it is not, and how it should make people feel.
 Any feature that violates this spec does not ship.
 
 ---
 
-## What Flip the Switch Is
+## What Dimensional Wellness AI Is
 
-Flip the Switch is a perception-first wellness system.
+Dimensional Wellness AI is a perception-first wellness system.
 
 It helps people:
 - pause instead of react
@@ -20,9 +20,9 @@ The app prioritizes agency over advice and clarity over control.
 
 ---
 
-## What Flip the Switch Is Not
+## What Dimensional Wellness AI Is Not
 
-Flip the Switch is not:
+Dimensional Wellness AI is not:
 - therapy
 - diagnosis
 - motivation coaching
@@ -43,7 +43,7 @@ It does not force improvement.
 
 ## Emotional Outcome (Success Metric)
 
-After using Flip the Switch, a user should feel:
+After using Dimensional Wellness AI, a user should feel:
 - calmer
 - clearer
 - less rushed
