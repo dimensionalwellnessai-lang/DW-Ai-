@@ -2,6 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { parseLifeSystemRuleBased } from "./life-system-parser-rules";
 import { detectTriggerSuggestion } from "./routes/trigger-detection";
 import { detectPersonMention, buildPersonSuggestion } from "./routes/relationships";
+import { registerVoiceExtrasRoutes } from "./routes/voice-extras";
 import express from "express";
 import { createServer, type Server } from "http";
 import session from "express-session";
@@ -3023,8 +3024,8 @@ Keep it to 1–2 sentences. Sound like a person, not a notification. Don't start
     }
   });
 
-  // Note: /api/integrations/calendar/google/* and /api/voice/* stub endpoints
-  // are registered by registerVoiceExtrasRoutes (server/routes/voice-extras.ts).
+  // Register calendar/voice stub endpoints (503 responses until implemented).
+  registerVoiceExtrasRoutes(app);
 
   app.get("/api/goals", requireAuth, async (req, res) => {
     const goals = await storage.getGoals(req.session.userId!);
@@ -3316,7 +3317,7 @@ Keep it to 1–2 sentences. Sound like a person, not a notification. Don't start
       if (!habit || habit.userId !== req.session.userId) {
         return res.status(404).json({ error: "Habit not found" });
       }
-      const bodySchema = z.object({ notes: z.string().max(2000).optional() });
+      const bodySchema = z.object({ notes: z.string().max(2000).nullish() });
       const parsed = bodySchema.safeParse(req.body ?? {});
       if (!parsed.success) {
         return res.status(400).json({ error: "Invalid log payload", details: parsed.error.flatten() });
