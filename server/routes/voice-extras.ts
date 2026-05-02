@@ -208,33 +208,34 @@ Keep it to 1–2 sentences. Sound like a person, not a notification. Don't start
     }
   });
 
-  // Calendar Sync Stub - for future Google Calendar integration
+  // Calendar Sync — not yet available
   app.get("/api/integrations/calendar/google/status", requireAuth, async (req, res) => {
     res.json({
       connected: false,
-      message: "Google Calendar integration coming soon"
+      available: false,
+      message: "Google Calendar integration is not yet available.",
     });
   });
 
-  app.post("/api/integrations/calendar/google/connect", requireAuth, async (req, res) => {
-    res.status(501).json({
-      error: "Not implemented",
-      message: "Google Calendar sync will be available in a future update"
+  app.post("/api/integrations/calendar/google/connect", requireAuth, async (_req, res) => {
+    res.status(503).json({
+      error: "not_available",
+      message: "Google Calendar sync is coming in a future update. Check back soon.",
     });
   });
 
-  // Voice Query Stubs - for future voice integration
-  app.post("/api/voice/query", requireAuth, async (req, res) => {
-    res.status(501).json({
-      error: "Not implemented",
-      message: "Voice query support coming in Phase 2"
+  // Voice Query / Response — not yet available
+  app.post("/api/voice/query", requireAuth, async (_req, res) => {
+    res.status(503).json({
+      error: "not_available",
+      message: "Voice query support is coming in a future update.",
     });
   });
 
-  app.post("/api/voice/response", requireAuth, async (req, res) => {
-    res.status(501).json({
-      error: "Not implemented",
-      message: "Voice response support coming in Phase 2"
+  app.post("/api/voice/response", requireAuth, async (_req, res) => {
+    res.status(503).json({
+      error: "not_available",
+      message: "Voice response support is coming in a future update.",
     });
   });
 

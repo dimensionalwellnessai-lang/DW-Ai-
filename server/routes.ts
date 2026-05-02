@@ -3023,35 +3023,8 @@ Keep it to 1–2 sentences. Sound like a person, not a notification. Don't start
     }
   });
 
-  // Calendar Sync Stub - for future Google Calendar integration
-  app.get("/api/integrations/calendar/google/status", requireAuth, async (req, res) => {
-    res.json({
-      connected: false,
-      message: "Google Calendar integration coming soon"
-    });
-  });
-
-  app.post("/api/integrations/calendar/google/connect", requireAuth, async (req, res) => {
-    res.status(501).json({
-      error: "Not implemented",
-      message: "Google Calendar sync will be available in a future update"
-    });
-  });
-
-  // Voice Query Stubs - for future voice integration
-  app.post("/api/voice/query", requireAuth, async (req, res) => {
-    res.status(501).json({
-      error: "Not implemented",
-      message: "Voice query support coming in Phase 2"
-    });
-  });
-
-  app.post("/api/voice/response", requireAuth, async (req, res) => {
-    res.status(501).json({
-      error: "Not implemented",
-      message: "Voice response support coming in Phase 2"
-    });
-  });
+  // Note: /api/integrations/calendar/google/* and /api/voice/* stub endpoints
+  // are registered by registerVoiceExtrasRoutes (server/routes/voice-extras.ts).
 
   app.get("/api/goals", requireAuth, async (req, res) => {
     const goals = await storage.getGoals(req.session.userId!);
@@ -3340,7 +3313,12 @@ Keep it to 1–2 sentences. Sound like a person, not a notification. Don't start
       if (!habit || habit.userId !== req.session.userId) {
         return res.status(404).json({ error: "Habit not found" });
       }
-      await storage.createHabitLog({ habitId: req.params.id, notes: req.body.notes });
+      const bodySchema = z.object({ notes: z.string().max(2000).optional() });
+      const parsed = bodySchema.safeParse(req.body ?? {});
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid log payload", details: parsed.error.flatten() });
+      }
+      await storage.createHabitLog({ habitId: req.params.id, notes: parsed.data.notes });
       await storage.updateHabit(req.params.id, { streak: (habit.streak || 0) + 1 });
       res.json({ success: true });
     } catch (error) {
@@ -4888,12 +4866,21 @@ Return ONLY this exact JSON structure, no other text:
 
   app.post("/api/calendar/:eventId/tasks", requireAuth, async (req, res) => {
     try {
+      const bodySchema = z.object({
+        title: z.string().min(1).max(500),
+        dwSuggested: z.boolean().optional().default(false),
+        linkedRoute: z.string().max(500).nullable().optional().default(null),
+      });
+      const parsed = bodySchema.safeParse(req.body ?? {});
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid task payload", details: parsed.error.flatten() });
+      }
       const task = await storage.createEventTask({
         calendarEventId: req.params.eventId,
         userId: req.session.userId!,
-        title: req.body.title,
-        dwSuggested: req.body.dwSuggested ?? false,
-        linkedRoute: req.body.linkedRoute ?? null,
+        title: parsed.data.title,
+        dwSuggested: parsed.data.dwSuggested,
+        linkedRoute: parsed.data.linkedRoute,
       });
       res.json(task);
     } catch (error) {
@@ -6833,13 +6820,24 @@ Return only valid JSON, no other text.`;
 
   app.post("/api/workout-plans", requireAuth, async (req, res) => {
     try {
+      const bodySchema = z.object({
+        title: z.string().min(1).max(500).optional().default("New Workout Plan"),
+        summary: z.string().max(2000).optional(),
+        source: z.string().max(100).optional().default("manual"),
+        importedDocumentId: z.string().optional(),
+        isActive: z.boolean().optional().default(true),
+      });
+      const parsed = bodySchema.safeParse(req.body ?? {});
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid workout plan payload", details: parsed.error.flatten() });
+      }
       const plan = await storage.createWorkoutPlan({
         userId: req.session.userId!,
-        title: req.body.title || "New Workout Plan",
-        summary: req.body.summary,
-        source: req.body.source || "manual",
-        importedDocumentId: req.body.importedDocumentId,
-        isActive: req.body.isActive ?? true,
+        title: parsed.data.title,
+        summary: parsed.data.summary,
+        source: parsed.data.source,
+        importedDocumentId: parsed.data.importedDocumentId,
+        isActive: parsed.data.isActive,
       });
       res.status(201).json(plan);
     } catch (error) {

@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from "react";
+import { useState, useEffect, lazy, Suspense, Component, type ErrorInfo, type ReactNode } from "react";
 import { Switch, Route, useLocation, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -26,6 +26,53 @@ import { UsernameSetupModal } from "@/components/username-setup-modal";
 import { useAuth } from "@/hooks/use-auth";
 import { hydrateLanguageFromServer } from "@/lib/i18n";
 import { AccountabilityCheckIn } from "@/components/accountability-check-in";
+
+// ── Page-level ErrorBoundary ──────────────────────────────────────────────────
+// Catches rendering exceptions inside any page component and shows a calm
+// recovery screen instead of a blank white crash.
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+class PageErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryState> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    // Non-fatal: log for debugging; avoid exposing stack to the user
+    console.error("[ErrorBoundary] Uncaught render error:", error, info.componentStack);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 text-center gap-4">
+          <p className="text-lg font-semibold text-foreground">Something went wrong</p>
+          <p className="text-sm text-muted-foreground max-w-xs">
+            DW ran into an unexpected issue. Tap below to reload — your data is safe.
+          </p>
+          <button
+            className="mt-2 px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium"
+            onClick={() => {
+              this.setState({ hasError: false, error: null });
+              window.location.href = "/";
+            }}
+          >
+            Return home
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 // ── Lazy-loaded page components ───────────────────────────────────────────────
 // All page-level components are loaded on demand to minimize the initial JS
@@ -521,9 +568,11 @@ function AppContent() {
       <main id="main-content" className="app-content" style={showBottomNav ? { paddingBottom: 'var(--bottom-nav-total-height, 88px)' } : undefined}>
         <FirstRunGuard>
           <InitialRouteHandler>
-            <Suspense fallback={<PageLoadingFallback />}>
-              <Router />
-            </Suspense>
+            <PageErrorBoundary>
+              <Suspense fallback={<PageLoadingFallback />}>
+                <Router />
+              </Suspense>
+            </PageErrorBoundary>
           </InitialRouteHandler>
         </FirstRunGuard>
       </main>
