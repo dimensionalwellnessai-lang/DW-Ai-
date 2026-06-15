@@ -10,8 +10,8 @@
  */
 
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { PageHeader } from "@/components/page-header";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { Card, CardContent } from "@/components/ui/card";
@@ -205,6 +205,7 @@ export default function GuidanceConversationsPage() {
     "Conversations",
     "Your saved learning threads — coaching conversations worth keeping.",
   );
+  const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const { data, isLoading } = useQuery<{ threads: LearningThreadSummary[] }>({
