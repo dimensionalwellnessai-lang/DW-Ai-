@@ -175,6 +175,31 @@ export default function DWHomePage() {
     staleTime: 60000,
   });
 
+  const { data: onboardingData } = useQuery<{ profile: any | null }>({
+    queryKey: ["/api/onboarding/profile"],
+    staleTime: 300_000,
+  });
+
+  const onboardingProfile = onboardingData?.profile ?? null;
+
+  // Progressive onboarding card — persisted dismiss per question key
+  const LS_ONBOARDING_DISMISSED = "dw_onboarding_card_dismissed";
+  const [dismissedCards, setDismissedCards] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem(LS_ONBOARDING_DISMISSED) || "[]");
+    } catch {
+      return [];
+    }
+  });
+
+  const handleDismissOnboardingCard = (key: string) => {
+    const next = [...dismissedCards, key];
+    setDismissedCards(next);
+    try {
+      localStorage.setItem(LS_ONBOARDING_DISMISSED, JSON.stringify(next));
+    } catch {}
+  };
+
   const checkIsFirstTime = () => {
     const intakeComplete = localStorage.getItem("dw_intake_complete");
     const onboardingComplete = localStorage.getItem("dw_onboarding_completed");
@@ -330,10 +355,87 @@ export default function DWHomePage() {
     );
   }
 
+  // ─── Progressive onboarding card logic ──────────────────────────────────────
+  const PROGRESSIVE_CARDS = [
+    {
+      key: "schedule",
+      condition: () => !onboardingProfile?.activeLifeAreas?.includes("routines") && !onboardingProfile?.curiosityTopics?.includes("time management"),
+      prompt: "Tell me more about your schedule",
+      subtext: "Knowing when you have energy and when you're stretched helps DW give better suggestions.",
+      href: "/voice-onboarding",
+    },
+    {
+      key: "throw_off",
+      condition: () => !onboardingProfile?.barrierTags || (onboardingProfile.barrierTags as string[]).length === 0 || (onboardingProfile.uncertaintyFlags as any)?.barriersUnknown,
+      prompt: "What usually throws your day off?",
+      subtext: "Understanding what gets in the way helps DW build systems that actually hold.",
+      href: "/talk-it-out",
+    },
+    {
+      key: "holding_together",
+      condition: () => !onboardingProfile?.currentStateTags || (onboardingProfile.currentStateTags as string[]).length === 0,
+      prompt: "What are you trying to hold together right now?",
+      subtext: "Life has a lot of moving parts. Share what's weighing on you — no need to have it figured out.",
+      href: "/talk-it-out",
+    },
+    {
+      key: "first_system",
+      condition: () => !onboardingProfile?.suggestedStructure || (onboardingProfile.suggestedStructure as any[]).length === 0,
+      prompt: "Want help creating your first system?",
+      subtext: "A system is just a repeatable way to handle something. DW can help you build one in minutes.",
+      href: "/systems",
+    },
+  ];
+
+  const nextOnboardingCard = PROGRESSIVE_CARDS.find(
+    (c) => !dismissedCards.includes(c.key) && c.condition()
+  );
+
   return (
     <div className="dw-premium-bg">
       <PageHeader title="Home" showBack={false} />
         <div className="p-4 pb-24 space-y-6 max-w-lg mx-auto">
+
+        {/* Progressive onboarding card */}
+        {nextOnboardingCard && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            data-testid="progressive-onboarding-card"
+          >
+            <Card className="card-modern border-primary/20 bg-primary/[0.04]">
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                    <MessageCircle className="h-4 w-4 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-foreground">{nextOnboardingCard.prompt}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{nextOnboardingCard.subtext}</p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Link href={nextOnboardingCard.href} className="flex-1">
+                    <Button size="sm" className="w-full text-xs btn-dw-primary" data-testid="button-onboarding-prompt">
+                      <Sparkles className="h-3 w-3 mr-1.5" />
+                      Let's talk about it
+                    </Button>
+                  </Link>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-xs text-muted-foreground"
+                    onClick={() => handleDismissOnboardingCard(nextOnboardingCard.key)}
+                    data-testid="button-dismiss-onboarding-prompt"
+                  >
+                    Later
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}

@@ -11,12 +11,13 @@
  * Route: /my-life
  */
 
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { PageHeader } from "@/components/page-header";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   Target,
@@ -26,6 +27,7 @@ import {
   FolderOpen,
   ChevronRight,
   Sparkles,
+  ArrowRight,
 } from "lucide-react";
 import type { Project } from "@shared/schema";
 
@@ -147,6 +149,7 @@ function SectionCard({ section }: { section: SectionDef }) {
 
 export default function MyLifePage() {
   usePageMeta("My Life", "Your core life system — focus points, paths, systems, plans, and projects.");
+  const [, setLocation] = useLocation();
 
   const { data: goals = [] } = useQuery<{ status?: string }[]>({
     queryKey: ["/api/goals"],
@@ -162,6 +165,17 @@ export default function MyLifePage() {
     queryKey: ["/api/projects"],
     staleTime: 60_000,
   });
+
+  const { data: onboardingData } = useQuery<{ profile: any | null }>({
+    queryKey: ["/api/onboarding/profile"],
+    staleTime: 300_000,
+  });
+
+  const onboardingProfile = onboardingData?.profile ?? null;
+  const pendingSuggestions = (onboardingProfile?.suggestedStructure ?? []) as Array<{
+    id: string; type: string; title: string; status: string;
+  }>;
+  const hasPendingSuggestions = pendingSuggestions.some((s) => s.status === "pending");
 
   const activeGoals = goals.filter((g) => g.status !== "completed").length;
   const activeHabits = habits.filter((h) => h.isActive !== false).length;
@@ -179,6 +193,36 @@ export default function MyLifePage() {
             Your life system — built from your patterns and shaped by your choices.
           </p>
         </div>
+
+        {/* AI suggestions pending banner */}
+        {hasPendingSuggestions && (
+          <Card className="border-primary/25 bg-primary/5" data-testid="onboarding-suggestions-banner">
+            <CardContent className="p-4 space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-lg bg-primary/15 flex items-center justify-center shrink-0 mt-0.5">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-foreground">DW has suggestions for you</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                    Based on your onboarding conversation, DW generated{" "}
+                    {pendingSuggestions.filter((s) => s.status === "pending").length} suggestions for your life system.
+                    Review and accept what fits.
+                  </p>
+                </div>
+              </div>
+              <Button
+                size="sm"
+                className="w-full text-xs"
+                onClick={() => setLocation("/voice-onboarding")}
+                data-testid="button-review-suggestions"
+              >
+                Review suggestions
+                <ArrowRight className="h-3 w-3 ml-1.5" />
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Stat strip */}
         <Card>

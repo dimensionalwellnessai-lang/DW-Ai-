@@ -115,6 +115,22 @@ export const onboardingProfiles = pgTable("onboarding_profiles", {
   longTermGoals: text("long_term_goals"),
   relationshipGoals: text("relationship_goals"),
   conversationData: jsonb("conversation_data"),
+  // ── Structured onboarding outputs (Spec 13 dynamic population) ──────────
+  desiredFeelings: text("desired_feelings").array(),
+  currentStateTags: text("current_state_tags").array(),
+  activeLifeAreas: text("active_life_areas").array(),
+  barrierTags: text("barrier_tags").array(),
+  supportNeeds: text("support_needs").array(),
+  curiosityTopics: text("curiosity_topics").array(),
+  generatedSummary: text("generated_summary"),
+  generatedDirection: text("generated_direction"),
+  currentCapacity: text("current_capacity"),
+  tonePreference: text("tone_preference"),
+  detailPreference: text("detail_preference"),
+  uncertaintyFlags: jsonb("uncertainty_flags"),
+  suggestedStructure: jsonb("suggested_structure"),
+  onboardingVersion: varchar("onboarding_version").default("v1"),
+  completedAt: timestamp("completed_at"),
 });
 
 export const onboardingProfilesRelations = relations(onboardingProfiles, ({ one }) => ({
