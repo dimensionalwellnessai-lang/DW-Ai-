@@ -34,9 +34,9 @@ export function BottomNav() {
 
   const navItems: NavItem[] = [
     { id: "command-center", path: "/command-center", icon: Home, label: "Command Center" },
-    { id: "my-life", path: "/my-life", icon: Map, label: "My Life", aliases: ["/life-blueprint"] },
-    { id: "guidance", path: "/guidance", icon: Compass, label: "Guidance", aliases: ["/browse"] },
-    { id: "tools", path: "/tools", icon: Wrench, label: "Tools", aliases: ["/imports"] },
+    { id: "my-life", path: "/my-life", icon: Map, label: "My Life" },
+    { id: "guidance", path: "/guidance", icon: Compass, label: "Guidance" },
+    { id: "tools", path: "/tools", icon: Wrench, label: "Tools" },
     { id: "profile", path: "/profile", icon: User, label: "Profile" },
   ];
 

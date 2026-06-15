@@ -182,6 +182,10 @@ const LifeSystemDocumentPage = lazy(() => import("@/pages/life-system-document")
 const LifeSystemPillarDetailPage = lazy(() => import("@/pages/life-system-pillar-detail"));
 const LifeSystemProjectDetailPage = lazy(() => import("@/pages/life-system-project-detail"));
 const LifeSystemOnboardingPage = lazy(() => import("@/pages/life-system-onboarding"));
+// Spec 13 primary section hub pages
+const MyLifePage = lazy(() => import("@/pages/my-life"));
+const GuidancePage = lazy(() => import("@/pages/guidance"));
+const ToolsPage = lazy(() => import("@/pages/tools"));
 
 function isReturningUser(): boolean {
   try {
@@ -306,9 +310,10 @@ function Router() {
       <Route path="/dimension/:id" component={DimensionOverviewPage} />
       <Route path="/body"><Redirect to="/habits" /></Route>
       <Route path="/home"><Redirect to="/command-center" /></Route>
-      <Route path="/my-life"><Redirect to="/life-blueprint" /></Route>
-      <Route path="/guidance"><Redirect to="/browse" /></Route>
-      <Route path="/tools"><Redirect to="/imports" /></Route>
+      {/* Spec 13 primary section hub pages */}
+      <Route path="/my-life" component={MyLifePage} />
+      <Route path="/guidance" component={GuidancePage} />
+      <Route path="/tools" component={ToolsPage} />
       <Route path="/profile"><Redirect to="/profile/progress" /></Route>
       <Route path="/command-center" component={HomeCommandCenter} />
       <Route path="/life-system-import" component={LifeSystemImportPage} />
