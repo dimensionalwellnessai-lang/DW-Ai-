@@ -306,6 +306,10 @@ function Router() {
       <Route path="/dimension/:id" component={DimensionOverviewPage} />
       <Route path="/body"><Redirect to="/habits" /></Route>
       <Route path="/home"><Redirect to="/command-center" /></Route>
+      <Route path="/my-life"><Redirect to="/life-blueprint" /></Route>
+      <Route path="/guidance"><Redirect to="/browse" /></Route>
+      <Route path="/tools"><Redirect to="/imports" /></Route>
+      <Route path="/profile"><Redirect to="/profile/progress" /></Route>
       <Route path="/command-center" component={HomeCommandCenter} />
       <Route path="/life-system-import" component={LifeSystemImportPage} />
       {/* /life-blueprint is now the Life System overview (Core / Expression /
