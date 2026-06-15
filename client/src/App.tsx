@@ -90,6 +90,7 @@ const AccountDeletePage = lazy(() => import("@/pages/account-delete"));
 const SubscriptionPage = lazy(() => import("@/pages/subscription"));
 const CheckoutPage = lazy(() => import("@/pages/checkout"));
 const EnhancedOnboardingPage = lazy(() => import("@/pages/enhanced-onboarding"));
+const VoiceOnboardingPage = lazy(() => import("@/pages/voice-onboarding"));
 const LifeDashboardPage = lazy(() => import("@/pages/life-dashboard"));
 const LifeDimensionsPage = lazy(() => import("@/pages/life-dimensions"));
 const CalendarPlansPage = lazy(() =>
@@ -127,6 +128,7 @@ const SettingsPage = lazy(() =>
 const AppTourPage = lazy(() => import("@/pages/app-tour"));
 import { TasksPage } from "@/pages/tasks";
 import PlansPage from "@/pages/plans";
+import ProjectsPage from "@/pages/projects";
 import PlanDetailPage from "@/pages/plan-detail";
 import PlanBuilderPage from "@/pages/plan-builder";
 import ElevationPlanPage from "@/pages/elevation-plan";
@@ -182,6 +184,10 @@ const LifeSystemDocumentPage = lazy(() => import("@/pages/life-system-document")
 const LifeSystemPillarDetailPage = lazy(() => import("@/pages/life-system-pillar-detail"));
 const LifeSystemProjectDetailPage = lazy(() => import("@/pages/life-system-project-detail"));
 const LifeSystemOnboardingPage = lazy(() => import("@/pages/life-system-onboarding"));
+// Spec 13 primary section hub pages
+const MyLifePage = lazy(() => import("@/pages/my-life"));
+const GuidancePage = lazy(() => import("@/pages/guidance"));
+const ToolsPage = lazy(() => import("@/pages/tools"));
 
 function isReturningUser(): boolean {
   try {
@@ -229,16 +235,16 @@ function FirstRunGuard({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
   
-  // The new six-act Life System onboarding lives at /onboarding; the legacy
-  // /enhanced-onboarding remains available as a fallback for in-progress users.
-  const onboardingRoutes = ["/onboarding", "/enhanced-onboarding"];
+  // Spec 13: conversational onboarding is the primary flow at /voice-onboarding.
+  // /onboarding (life-system wizard) is kept as an alternative; /enhanced-onboarding now redirects to /voice-onboarding.
+  const onboardingRoutes = ["/onboarding", "/enhanced-onboarding", "/voice-onboarding"];
   const isOnOnboardingRoute = onboardingRoutes.includes(location);
 
   if (!setupComplete && !isOnOnboardingRoute) {
-    return <Redirect to="/onboarding" />;
+    return <Redirect to="/voice-onboarding" />;
   }
 
-  // Setup complete, on either onboarding page -> go to /command-center
+  // Setup complete, on any onboarding page -> go to /command-center
   if (setupComplete && isOnOnboardingRoute) {
     return <Redirect to="/command-center" />;
   }
@@ -265,7 +271,7 @@ function getLastRoute(): string | null {
 }
 
 function HomeRedirect() {
-  if (!isOnboardingComplete()) return <Redirect to="/enhanced-onboarding" />;
+  if (!isOnboardingComplete()) return <Redirect to="/voice-onboarding" />;
   const last = getLastRoute();
   return <Redirect to={last ?? "/command-center"} />;
 }
@@ -282,13 +288,14 @@ function Router() {
       <Route path="/login" component={LoginPage} />
       <Route path="/reset-password" component={ResetPasswordPage} />
       <Route path="/account/delete" component={AccountDeletePage} />
-      <Route path="/welcome"><Redirect to="/enhanced-onboarding" /></Route>
-      <Route path="/voice-onboarding"><Redirect to="/enhanced-onboarding" /></Route>
+      <Route path="/welcome"><Redirect to="/voice-onboarding" /></Route>
+      <Route path="/voice-onboarding" component={VoiceOnboardingPage} />
       <Route path="/paywall" component={PaywallPage} />
       <Route path="/upgrade" component={PaywallPage} />
       <Route path="/subscription" component={SubscriptionPage} />
       <Route path="/checkout" component={CheckoutPage} />
-      <Route path="/enhanced-onboarding" component={EnhancedOnboardingPage} />
+      {/* Keep /enhanced-onboarding for back-compat; primary onboarding is now conversational */}
+      <Route path="/enhanced-onboarding"><Redirect to="/voice-onboarding" /></Route>
       <Route path="/onboarding" component={LifeSystemOnboardingPage} />
       <Route path="/life-system/document" component={LifeSystemDocumentPage} />
       <Route path="/life-system/pillar/:id" component={LifeSystemPillarDetailPage} />
@@ -306,6 +313,11 @@ function Router() {
       <Route path="/dimension/:id" component={DimensionOverviewPage} />
       <Route path="/body"><Redirect to="/habits" /></Route>
       <Route path="/home"><Redirect to="/command-center" /></Route>
+      {/* Spec 13 primary section hub pages */}
+      <Route path="/my-life" component={MyLifePage} />
+      <Route path="/guidance" component={GuidancePage} />
+      <Route path="/tools" component={ToolsPage} />
+      <Route path="/profile"><Redirect to="/profile/progress" /></Route>
       <Route path="/command-center" component={HomeCommandCenter} />
       <Route path="/life-system-import" component={LifeSystemImportPage} />
       {/* /life-blueprint is now the Life System overview (Core / Expression /
@@ -374,6 +386,7 @@ function Router() {
       
       {isRouteEnabled("/plans") && <Route path="/plans" component={PlansPage} />}
       {isRouteEnabled("/plans") && <Route path="/plans/:planId" component={PlanDetailPage} />}
+      <Route path="/projects" component={ProjectsPage} />
       {isRouteEnabled("/plan-builder") && <Route path="/plan-builder" component={PlanBuilderPage} />}
       {isRouteEnabled("/elevation-plan") && <Route path="/elevation-plan" component={ElevationPlanPage} />}
       {isRouteEnabled("/plan-history") && <Route path="/plan-history" component={PlanHistoryPage} />}

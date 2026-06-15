@@ -1,21 +1,24 @@
 import { useLocation } from "wouter";
-import { Home, CalendarDays, MessageCircle, Search, BookOpen } from "lucide-react";
+import { Home, Compass, Wrench, User, Map } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 
 interface NavItem {
+  id: string;
   path: string;
-  icon: typeof MessageCircle;
+  icon: typeof Home;
   label: string;
   showDot?: boolean;
+  /** Destination paths reached after router redirects from `path` */
+  aliases?: string[];
 }
 
 const tourDataMap: Record<string, string> = {
   "/command-center": "home",
-  "/calendar": "calendar",
-  "/talk": "chat",
-  "/browse": "browse",
-  "/journal": "journal",
+  "/my-life": "life",
+  "/guidance": "guidance",
+  "/tools": "tools",
+  "/profile": "profile",
 };
 
 export function BottomNav() {
@@ -30,11 +33,11 @@ export function BottomNav() {
     habits.some((h: any) => h.isActive !== false && !h.completedToday);
 
   const navItems: NavItem[] = [
-    { path: "/calendar", icon: CalendarDays, label: "Calendar" },
-    { path: "/browse", icon: Search, label: "Browse" },
-    { path: "/command-center", icon: Home, label: "Home" },
-    { path: "/talk", icon: MessageCircle, label: "DW" },
-    { path: "/journal", icon: BookOpen, label: "Journal" },
+    { id: "command-center", path: "/command-center", icon: Home, label: "Command Center" },
+    { id: "my-life", path: "/my-life", icon: Map, label: "My Life" },
+    { id: "guidance", path: "/guidance", icon: Compass, label: "Guidance" },
+    { id: "tools", path: "/tools", icon: Wrench, label: "Tools" },
+    { id: "profile", path: "/profile", icon: User, label: "Profile" },
   ];
 
   return (
@@ -53,8 +56,10 @@ export function BottomNav() {
     >
       <div className="flex items-center justify-around h-12 w-full max-w-xl mx-auto px-2">
         {navItems.map((item) => {
-          const isActive = item.path && (location === item.path ||
-            (item.path !== "/" && location.startsWith(item.path)));
+          const allPaths = [item.path, ...(item.aliases ?? [])];
+          const isActive = allPaths.some(
+            (p) => p && (location === p || (p !== "/" && location.startsWith(p + "/")))
+          );
           const tourAttr = item.path ? tourDataMap[item.path] : undefined;
           const showAttentionDot = item.path === "/command-center" && hasUnfinishedHabits && !isActive;
 
@@ -69,7 +74,7 @@ export function BottomNav() {
                   : "text-muted-foreground hover:text-foreground",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               )}
-              data-testid={`nav-${item.label.toLowerCase()}`}
+              data-testid={`nav-${item.id}`}
               aria-label={item.label}
               aria-current={isActive ? "page" : undefined}
               {...(tourAttr && { "data-tour": tourAttr })}

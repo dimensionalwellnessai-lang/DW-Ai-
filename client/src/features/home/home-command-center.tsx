@@ -30,12 +30,35 @@ import {
   Check,
   X,
   LifeBuoy,
+  MessageCircle,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { TriggerProtocolSheet } from "@/components/triggers/trigger-protocol-sheet";
 import type { TriggerEventListResponse } from "@/lib/triggers";
 import { JournalPromptSheet } from "@/components/mood/journal-prompt-sheet";
 import { useToast } from "@/hooks/use-toast";
+
+// localStorage keys shared with voice-onboarding.tsx
+const LS_VOICE_ONBOARDING_COMPLETED = "dw_voice_onboarding_completed";
+const LS_VOICE_ONBOARDING_SKIPPED = "dw_voice_onboarding_skipped";
+
+/** Returns true when the user has fully completed the Spec 13 conversational onboarding session. */
+function isConversationalOnboardingDone(): boolean {
+  try {
+    return localStorage.getItem(LS_VOICE_ONBOARDING_COMPLETED) === "true";
+  } catch {
+    return false;
+  }
+}
+
+/** Returns true when the user explicitly skipped the conversational session (so we don't keep nudging). */
+function isConversationalOnboardingSkipped(): boolean {
+  try {
+    return localStorage.getItem(LS_VOICE_ONBOARDING_SKIPPED) === "true";
+  } catch {
+    return false;
+  }
+}
 
 // Map a quick "how I feel right now" chip to a mood-log payload. The shape
 // matches POST /api/mood (energy/mood/clarity 1-10) so the chip taps feed
@@ -117,6 +140,9 @@ export default function HomeCommandCenter() {
     queryKey: ["/api/trigger-events"],
   });
   const weekStats = triggersQ.data?.week;
+
+  // Show the conversational onboarding card when the Spec 13 first-session hasn't been completed or skipped
+  const showOnboardingCard = !isConversationalOnboardingDone() && !isConversationalOnboardingSkipped() && !isE2ETestMode();
 
   const moodChipMutation = useMutation({
     mutationFn: async (label: keyof typeof FEELING_CHIPS) => {
@@ -325,6 +351,28 @@ export default function HomeCommandCenter() {
         <div className="shrink-0 px-4 pb-4 pt-0 w-full max-w-lg mx-auto" data-testid="section-cards">
           <Carousel opts={{ align: "start", dragFree: true }}>
             <CarouselContent className="-ml-2 items-stretch">
+              {/* Spec 13 progressive onboarding card — shown until the first session is completed */}
+              {showOnboardingCard && (
+                <CarouselItem className="pl-2 basis-[85%] h-full">
+                  <button
+                    onClick={() => navigate("/voice-onboarding")}
+                    data-testid="card-start-first-session"
+                    className="w-full h-full text-left rounded-2xl border border-primary/40 bg-gradient-to-br from-primary/8 to-primary/15 px-4 py-3.5 flex items-center gap-3 hover:border-primary/60 transition-colors"
+                  >
+                    <div className="h-9 w-9 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                      <MessageCircle className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold leading-snug">Start your first session</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        A short life coaching conversation shapes your life system
+                      </p>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                  </button>
+                </CarouselItem>
+              )}
+
               {isFeatureEnabled("DW_READING_CARD") && (
                 <CarouselItem className="pl-2 basis-[85%] h-full">
                   <DWReadingCard energyLevel={summary.energyLevel} className="h-full" />

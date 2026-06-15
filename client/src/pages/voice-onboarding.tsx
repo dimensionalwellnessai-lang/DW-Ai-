@@ -70,6 +70,28 @@ const LS_VOICE_ONBOARDING_SKIPPED = "dw_voice_onboarding_skipped";
 const LS_VOICE_ONBOARDING_COMPLETED = "dw_voice_onboarding_completed";
 const LS_INPUT_MODE = "dw_voice_onboarding_input_mode";
 
+// Spec 13 — the 10 conversational onboarding stages surfaced to the user
+// as a minimal progress strip at the top of the thread.
+const ONBOARDING_STEPS = [
+  "Connection",
+  "Life story",
+  "Direction",
+  "Life areas",
+  "Patterns",
+  "Curiosity",
+  "Pacing",
+  "Summary",
+  "Suggestions",
+  "Launch",
+] as const;
+
+// Infer the approximate current step (0-based) from the number of assistant turns.
+// assistantTurnCount 0 → step 0 "Connection"; 9+ → step 9 "Launch".
+// The StepProgressBar displays this as "1 of 10" through "10 of 10".
+function inferStep(assistantTurnCount: number): number {
+  return Math.min(assistantTurnCount, ONBOARDING_STEPS.length - 1);
+}
+
 // ─── Avatar component ─────────────────────────────────────────────────────────
 
 function AvatarOrb({ voiceState, phase }: { voiceState: VoiceState; phase: OnboardingPhase }) {
@@ -105,6 +127,39 @@ function AvatarOrb({ voiceState, phase }: { voiceState: VoiceState; phase: Onboa
         )}
       </motion.div>
     </div>
+  );
+}
+
+// ─── Step progress bar ────────────────────────────────────────────────────────
+
+function StepProgressBar({ currentStep }: { currentStep: number }) {
+  const total = ONBOARDING_STEPS.length;
+  const stepLabel = ONBOARDING_STEPS[Math.min(currentStep, total - 1)];
+  const pct = Math.round(((currentStep + 1) / total) * 100);
+
+  return (
+    <section
+      role="region"
+      aria-label="Onboarding progress"
+      className="px-4 py-2 border-b bg-background/80"
+    >
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
+          {stepLabel}
+        </span>
+        <span className="text-[10px] text-muted-foreground" aria-live="polite">
+          {currentStep + 1} / {total}
+        </span>
+      </div>
+      <div className="h-1 rounded-full bg-muted overflow-hidden" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={`Step ${currentStep + 1} of ${total}: ${stepLabel}`}>
+        <motion.div
+          className="h-full bg-primary rounded-full"
+          initial={{ width: 0 }}
+          animate={{ width: `${pct}%` }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
+        />
+      </div>
+    </section>
   );
 }
 
@@ -584,6 +639,9 @@ export default function VoiceOnboardingPage() {
   // ─────────────────────────────────────────────────────────────────────────
   // Render: Thread phase — chat thread + input
   // ─────────────────────────────────────────────────────────────────────────
+  const assistantTurnCount = thread.filter((m) => m.role === "assistant").length;
+  const currentStep = inferStep(assistantTurnCount);
+
   return (
     <div className="flex flex-col h-screen bg-background" data-testid="voice-onboarding-thread">
       {/* Header */}
@@ -592,7 +650,7 @@ export default function VoiceOnboardingPage() {
           <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
             <Mic className="w-4 h-4 text-primary" />
           </div>
-          <span className="font-medium text-sm">DW Onboarding</span>
+          <span className="font-medium text-sm">First session</span>
         </div>
         <Button
           variant="ghost"
@@ -605,6 +663,8 @@ export default function VoiceOnboardingPage() {
         </Button>
       </header>
 
+      {/* Step progress */}
+      <StepProgressBar currentStep={currentStep} />
       {/* Thread */}
       <div className="flex-1 overflow-auto">
         <div className="max-w-2xl mx-auto py-6 px-4 space-y-6">
