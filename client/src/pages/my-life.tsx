@@ -79,7 +79,7 @@ const SECTIONS: SectionDef[] = [
     description: "Bounded initiatives with a defined outcome and finish state.",
     icon: FolderOpen,
     iconColor: "text-amber-500",
-    href: "/life-blueprint",
+    href: "/projects",
   },
 ];
 
@@ -152,19 +152,19 @@ export default function MyLifePage() {
     staleTime: 60_000,
   });
 
-  const { data: plans = [] } = useQuery<{ completedAt?: string | null }[]>({
-    queryKey: ["/api/plans"],
-    staleTime: 60_000,
-  });
-
   const { data: habits = [] } = useQuery<{ isActive?: boolean }[]>({
     queryKey: ["/api/habits"],
     staleTime: 60_000,
   });
 
+  const { data: projects = [] } = useQuery<{ status?: string }[]>({
+    queryKey: ["/api/projects"],
+    staleTime: 60_000,
+  });
+
   const activeGoals = goals.filter((g) => g.status !== "completed").length;
-  const activePlans = plans.filter((p) => !p.completedAt).length;
   const activeHabits = habits.filter((h) => h.isActive !== false).length;
+  const activeProjects = projects.filter((p) => p.status === "active").length;
 
   return (
     <div className="pb-28">
@@ -185,7 +185,7 @@ export default function MyLifePage() {
             <div className="flex items-center justify-around">
               <StatPill label="Focus" value={activeGoals} />
               <div className="w-px h-8 bg-border" />
-              <StatPill label="Plans" value={activePlans} />
+              <StatPill label="Projects" value={activeProjects} />
               <div className="w-px h-8 bg-border" />
               <StatPill label="Habits" value={activeHabits} />
             </div>
