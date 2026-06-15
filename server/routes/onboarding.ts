@@ -299,8 +299,7 @@ Return only valid JSON. Do not guess at things not mentioned. Keep suggestions r
 
       const accepted = suggestions.filter((s) => s.status === "accepted" || s.status === "edited");
       const finalTitle = (s: typeof accepted[0]) => {
-        const raw = (s.status === "edited" && s.editedTitle?.trim()) ? s.editedTitle.trim() : s.title.trim();
-        return raw;
+        return (s.status === "edited" && s.editedTitle?.trim()) ? s.editedTitle.trim() : s.title.trim();
       };
       const validAccepted = accepted.filter((s) => finalTitle(s).length > 0);
 
@@ -355,7 +354,7 @@ Return only valid JSON. Do not guess at things not mentioned. Keep suggestions r
       const profile = await storage.getOnboardingProfile(userId);
       if (profile) {
         const stored = (profile.suggestedStructure as OnboardingSuggestion[] | null) ?? [];
-        const incomingMap: Record<string, { status: string; editedTitle?: string }> = {};
+        const incomingMap: Record<string, { status: OnboardingSuggestion["status"]; editedTitle?: string }> = {};
         for (const s of suggestions) {
           incomingMap[s.id] = { status: s.status, editedTitle: s.editedTitle };
         }
@@ -364,7 +363,7 @@ Return only valid JSON. Do not guess at things not mentioned. Keep suggestions r
           if (!incoming) return item;
           return {
             ...item,
-            status: (incoming.status as OnboardingSuggestion["status"]) ?? item.status,
+            status: incoming.status ?? item.status,
             ...(incoming.editedTitle?.trim() ? { editedTitle: incoming.editedTitle.trim() } : {}),
           };
         });
