@@ -9,6 +9,8 @@ interface NavItem {
   icon: typeof Home;
   label: string;
   showDot?: boolean;
+  /** Destination paths reached after router redirects from `path` */
+  aliases?: string[];
 }
 
 const tourDataMap: Record<string, string> = {
@@ -32,9 +34,9 @@ export function BottomNav() {
 
   const navItems: NavItem[] = [
     { id: "command-center", path: "/command-center", icon: Home, label: "Command Center" },
-    { id: "my-life", path: "/my-life", icon: Map, label: "My Life" },
-    { id: "guidance", path: "/guidance", icon: Compass, label: "Guidance" },
-    { id: "tools", path: "/tools", icon: Wrench, label: "Tools" },
+    { id: "my-life", path: "/my-life", icon: Map, label: "My Life", aliases: ["/life-blueprint"] },
+    { id: "guidance", path: "/guidance", icon: Compass, label: "Guidance", aliases: ["/browse"] },
+    { id: "tools", path: "/tools", icon: Wrench, label: "Tools", aliases: ["/imports"] },
     { id: "profile", path: "/profile", icon: User, label: "Profile" },
   ];
 
@@ -54,8 +56,10 @@ export function BottomNav() {
     >
       <div className="flex items-center justify-around h-12 w-full max-w-xl mx-auto px-2">
         {navItems.map((item) => {
-          const isActive = item.path && (location === item.path ||
-            (item.path !== "/" && location.startsWith(item.path)));
+          const allPaths = [item.path, ...(item.aliases ?? [])];
+          const isActive = allPaths.some(
+            (p) => p && (location === p || (p !== "/" && location.startsWith(p + "/")))
+          );
           const tourAttr = item.path ? tourDataMap[item.path] : undefined;
           const showAttentionDot = item.path === "/command-center" && hasUnfinishedHabits && !isActive;
 
