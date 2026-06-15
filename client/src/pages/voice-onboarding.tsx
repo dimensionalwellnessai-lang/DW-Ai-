@@ -85,10 +85,10 @@ const ONBOARDING_STEPS = [
   "Launch",
 ] as const;
 
-// Infer the approximate current step from the number of assistant turns.
-// Each AI response roughly maps to one conversation stage advance.
+// Infer the approximate current step (0-based) from the number of assistant turns.
+// assistantTurnCount 0 → step 0 "Connection"; 9+ → step 9 "Launch".
+// The StepProgressBar displays this as "1 of 10" through "10 of 10".
 function inferStep(assistantTurnCount: number): number {
-  // Steps 1–10, clamp to 10
   return Math.min(assistantTurnCount, ONBOARDING_STEPS.length - 1);
 }
 
@@ -138,16 +138,20 @@ function StepProgressBar({ currentStep }: { currentStep: number }) {
   const pct = Math.round(((currentStep + 1) / total) * 100);
 
   return (
-    <div className="px-4 py-2 border-b bg-background/80" aria-label={`Onboarding step ${currentStep + 1} of ${total}: ${stepLabel}`}>
+    <section
+      role="region"
+      aria-label="Onboarding progress"
+      className="px-4 py-2 border-b bg-background/80"
+    >
       <div className="flex items-center justify-between mb-1">
         <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
           {stepLabel}
         </span>
-        <span className="text-[10px] text-muted-foreground">
+        <span className="text-[10px] text-muted-foreground" aria-live="polite">
           {currentStep + 1} / {total}
         </span>
       </div>
-      <div className="h-1 rounded-full bg-muted overflow-hidden" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
+      <div className="h-1 rounded-full bg-muted overflow-hidden" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={`Step ${currentStep + 1} of ${total}: ${stepLabel}`}>
         <motion.div
           className="h-full bg-primary rounded-full"
           initial={{ width: 0 }}
@@ -155,7 +159,7 @@ function StepProgressBar({ currentStep }: { currentStep: number }) {
           transition={{ duration: 0.4, ease: "easeOut" }}
         />
       </div>
-    </div>
+    </section>
   );
 }
 

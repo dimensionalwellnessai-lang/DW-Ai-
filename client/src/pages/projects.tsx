@@ -10,15 +10,14 @@
 
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Link } from "wouter";
 import {
   FolderOpen,
   Plus,
   CheckCircle,
   Clock,
   Archive,
-  ChevronRight,
   Sparkles,
+  MoreHorizontal,
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { usePageMeta } from "@/hooks/use-page-meta";
@@ -35,6 +34,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, parseApiError, queryClient } from "@/lib/queryClient";
@@ -81,38 +86,72 @@ function relativeTime(date: Date | string | null | undefined): string {
 
 // ─── Project card ─────────────────────────────────────────────────────────────
 
-function ProjectCard({ project }: { project: Project }) {
+interface ProjectCardProps {
+  project: Project;
+  onStatusChange: (id: string, status: ProjectStatus) => void;
+}
+
+function ProjectCard({ project, onStatusChange }: ProjectCardProps) {
   const status = projectStatus(project);
   const StatusIcon = STATUS_ICON[status];
   return (
-    <Link href={`/plans/${project.id}`}>
-      <Card className="cursor-pointer transition-all duration-200 hover:shadow-md active:scale-[0.98]">
-        <CardContent className="flex items-start gap-3 p-4">
-          <div className="mt-0.5 flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center bg-muted">
-            <FolderOpen className="h-4 w-4 text-amber-500" aria-hidden="true" />
+    <Card data-testid={`project-card-${project.id}`}>
+      <CardContent className="flex items-start gap-3 p-4">
+        <div className="mt-0.5 flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center bg-muted">
+          <FolderOpen className="h-4 w-4 text-amber-500" aria-hidden="true" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-sm font-semibold text-foreground leading-snug">{project.name}</p>
+            <Badge
+              variant="secondary"
+              className={`text-[10px] h-4 px-1.5 flex items-center gap-0.5 ${STATUS_COLOR[status]}`}
+            >
+              <StatusIcon className="h-2.5 w-2.5" aria-hidden="true" />
+              {STATUS_LABEL[status]}
+            </Badge>
           </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <p className="text-sm font-semibold text-foreground leading-snug">{project.name}</p>
-              <Badge
-                variant="secondary"
-                className={`text-[10px] h-4 px-1.5 flex items-center gap-0.5 ${STATUS_COLOR[status]}`}
-              >
-                <StatusIcon className="h-2.5 w-2.5" aria-hidden="true" />
-                {STATUS_LABEL[status]}
-              </Badge>
-            </div>
-            {project.description && (
-              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{project.description}</p>
+          {project.description && (
+            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{project.description}</p>
+          )}
+          <p className="text-[10px] text-muted-foreground/60 mt-1">
+            Updated {relativeTime(project.lastActivityAt)}
+          </p>
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className="flex-shrink-0 p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              aria-label={`Options for ${project.name}`}
+              data-testid={`project-menu-${project.id}`}
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {status !== "active" && (
+              <DropdownMenuItem onClick={() => onStatusChange(project.id, "active")}>
+                <Clock className="h-3.5 w-3.5 mr-2 text-emerald-500" />
+                Mark active
+              </DropdownMenuItem>
             )}
-            <p className="text-[10px] text-muted-foreground/60 mt-1">
-              Updated {relativeTime(project.lastActivityAt)}
-            </p>
-          </div>
-          <ChevronRight className="flex-shrink-0 h-4 w-4 text-muted-foreground mt-0.5" aria-hidden="true" />
-        </CardContent>
-      </Card>
-    </Link>
+            {status !== "parked" && (
+              <DropdownMenuItem onClick={() => onStatusChange(project.id, "parked")}>
+                <Archive className="h-3.5 w-3.5 mr-2" />
+                Park
+              </DropdownMenuItem>
+            )}
+            {status !== "done" && (
+              <DropdownMenuItem onClick={() => onStatusChange(project.id, "done")}>
+                <CheckCircle className="h-3.5 w-3.5 mr-2 text-blue-500" />
+                Mark done
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -148,6 +187,21 @@ export default function ProjectsPage() {
       toast({ title: "Couldn't create project", description: await parseApiError(err), variant: "destructive" });
     },
   });
+
+  const statusMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: ProjectStatus }) =>
+      apiRequest("PATCH", `/api/projects/${id}`, { status }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+    },
+    onError: async (err) => {
+      toast({ title: "Couldn't update project", description: await parseApiError(err), variant: "destructive" });
+    },
+  });
+
+  const handleStatusChange = (id: string, status: ProjectStatus) => {
+    statusMutation.mutate({ id, status });
+  };
 
   const filtered = projects.filter((p) => filter === "all" || projectStatus(p) === filter);
 
@@ -232,7 +286,7 @@ export default function ProjectsPage() {
         ) : (
           <div className="space-y-2.5">
             {filtered.map((project) => (
-              <ProjectCard key={project.id} project={project} />
+              <ProjectCard key={project.id} project={project} onStatusChange={handleStatusChange} />
             ))}
           </div>
         )}

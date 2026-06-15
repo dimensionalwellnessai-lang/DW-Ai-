@@ -27,6 +27,7 @@ import {
   ChevronRight,
   Sparkles,
 } from "lucide-react";
+import type { Project } from "@shared/schema";
 
 // ─── Section definitions ──────────────────────────────────────────────────────
 
@@ -157,7 +158,7 @@ export default function MyLifePage() {
     staleTime: 60_000,
   });
 
-  const { data: projects = [] } = useQuery<{ status?: string }[]>({
+  const { data: projects = [] } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
     staleTime: 60_000,
   });
