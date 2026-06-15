@@ -356,31 +356,52 @@ export default function DWHomePage() {
   }
 
   // ─── Progressive onboarding card logic ──────────────────────────────────────
+  interface OnboardingUncertaintyFlags {
+    barriersUnknown?: boolean;
+    goalsUnclear?: boolean;
+    capacityUnclear?: boolean;
+    everythingConnected?: boolean;
+  }
+
+  const LIFE_AREA_ROUTINES = "routines";
+  const CURIOSITY_TIME_MGMT = "time management";
+
+  const uncertaintyFlags = (onboardingProfile?.uncertaintyFlags ?? {}) as OnboardingUncertaintyFlags;
+
   const PROGRESSIVE_CARDS = [
     {
       key: "schedule",
-      condition: () => !onboardingProfile?.activeLifeAreas?.includes("routines") && !onboardingProfile?.curiosityTopics?.includes("time management"),
+      condition: () =>
+        !onboardingProfile?.activeLifeAreas?.includes(LIFE_AREA_ROUTINES) &&
+        !onboardingProfile?.curiosityTopics?.includes(CURIOSITY_TIME_MGMT),
       prompt: "Tell me more about your schedule",
       subtext: "Knowing when you have energy and when you're stretched helps DW give better suggestions.",
       href: "/voice-onboarding",
     },
     {
       key: "throw_off",
-      condition: () => !onboardingProfile?.barrierTags || (onboardingProfile.barrierTags as string[]).length === 0 || (onboardingProfile.uncertaintyFlags as any)?.barriersUnknown,
+      condition: () =>
+        !onboardingProfile?.barrierTags ||
+        (onboardingProfile.barrierTags as string[]).length === 0 ||
+        uncertaintyFlags.barriersUnknown === true,
       prompt: "What usually throws your day off?",
       subtext: "Understanding what gets in the way helps DW build systems that actually hold.",
       href: "/talk-it-out",
     },
     {
       key: "holding_together",
-      condition: () => !onboardingProfile?.currentStateTags || (onboardingProfile.currentStateTags as string[]).length === 0,
+      condition: () =>
+        !onboardingProfile?.currentStateTags ||
+        (onboardingProfile.currentStateTags as string[]).length === 0,
       prompt: "What are you trying to hold together right now?",
       subtext: "Life has a lot of moving parts. Share what's weighing on you — no need to have it figured out.",
       href: "/talk-it-out",
     },
     {
       key: "first_system",
-      condition: () => !onboardingProfile?.suggestedStructure || (onboardingProfile.suggestedStructure as any[]).length === 0,
+      condition: () =>
+        !onboardingProfile?.suggestedStructure ||
+        (onboardingProfile.suggestedStructure as unknown[]).length === 0,
       prompt: "Want help creating your first system?",
       subtext: "A system is just a repeatable way to handle something. DW can help you build one in minutes.",
       href: "/systems",

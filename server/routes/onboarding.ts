@@ -99,7 +99,7 @@ export function registerOnboardingRoutes(app: Express): void {
       });
 
       await storage.createHabits(
-        recommendations.suggestedHabits.map((habit: any) => ({
+        recommendations.suggestedHabits.map((habit) => ({
           userId,
           title: habit.title,
           description: habit.description,
@@ -109,7 +109,7 @@ export function registerOnboardingRoutes(app: Express): void {
       );
 
       await storage.createGoals(
-        recommendations.suggestedGoals.map((goal: any) => ({
+        recommendations.suggestedGoals.map((goal) => ({
           userId,
           title: goal.title,
           description: goal.description,
