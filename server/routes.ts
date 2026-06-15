@@ -43,6 +43,7 @@ import { seedMeditationLibrary } from "./seeds/meditation-library";
 import { preWarmMeditationAudio } from "./routes/spiritual";
 import { registerPlaidRoutes } from "./routes/plaid";
 import { registerOnboardingRoutes } from "./routes/onboarding";
+import { registerLearningThreadRoutes } from "./routes/learning-threads";
 import { sendPasswordResetEmail, sendFeedbackEmail, sendAccountDeletionEmail, sendSupportReportEmail, sendWelcomeEmail } from "./email";
 import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, detectIntentAndRespondStreaming, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument, generateInteractionInsights, generateContextualSearch, generateIngredientSubstitutes, processConversationIntoInsights, generateElevationPlanStructure, openai, getAiConfigStatus, generateDiscoverRandomContent, enforceOneQuestion, type SearchCategory } from "./openai";
 import { generateProactiveNudges, generateMorningBriefing } from "./proactive";
@@ -561,6 +562,9 @@ export async function registerRoutes(
 
   // Voice-onboarding structured extraction, profile, and suggestion acceptance
   registerOnboardingRoutes(app);
+
+  // Learning Threads — Spec 13 PR C: save coaching conversations as reusable learning threads
+  registerLearningThreadRoutes(app);
 
   // Spiritual workspace: meditation library/sessions, prayer journal, cosmic feed
   registerSpiritualRoutes(app);

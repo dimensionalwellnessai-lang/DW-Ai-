@@ -60,10 +60,10 @@ const SECTIONS: GuidanceSectionDef[] = [
   {
     id: "conversations",
     label: "Conversations",
-    description: "Talk through what's on your mind with your DW coach.",
+    description: "Saved learning threads and coaching conversations worth keeping.",
     icon: MessageCircle,
     iconColor: "text-emerald-500",
-    href: "/talk",
+    href: "/guidance/conversations",
   },
   {
     id: "zodiac-guidance",

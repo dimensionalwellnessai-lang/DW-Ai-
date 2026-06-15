@@ -326,6 +326,9 @@ import {
   type InsertSavingsGoalRule,
   type PlaidItem,
   type InsertPlaidItem,
+  learningThreads,
+  type LearningThread,
+  type InsertLearningThread,
 } from "@shared/schema";
 import {
   dwRolePicks,
@@ -385,6 +388,13 @@ export interface IStorage {
   // Life System Documents (snapshots of the generated artifact)
   getLatestLifeSystemDocument(userId: string): Promise<LifeSystemDocument | undefined>;
   createLifeSystemDocument(doc: InsertLifeSystemDocument): Promise<LifeSystemDocument>;
+
+  // Learning Threads (Spec 13 — Guidance: Conversations)
+  getLearningThreads(userId: string): Promise<LearningThread[]>;
+  getLearningThread(id: string, userId: string): Promise<LearningThread | undefined>;
+  createLearningThread(thread: InsertLearningThread): Promise<LearningThread>;
+  updateLearningThread(id: string, userId: string, data: Partial<InsertLearningThread>): Promise<LearningThread | undefined>;
+  deleteLearningThread(id: string, userId: string): Promise<boolean>;
 
   getGoals(userId: string): Promise<Goal[]>;
   getGoal(id: string): Promise<Goal | undefined>;
@@ -4284,6 +4294,45 @@ export class DatabaseStorage implements IStorage {
   async createLifeSystemDocument(doc: InsertLifeSystemDocument): Promise<LifeSystemDocument> {
     const [created] = await db.insert(lifeSystemDocuments).values(doc).returning();
     return created;
+  }
+
+  // ── Learning Threads (Spec 13 — Guidance: Conversations) ──────────────────
+  async getLearningThreads(userId: string): Promise<LearningThread[]> {
+    return db
+      .select()
+      .from(learningThreads)
+      .where(eq(learningThreads.userId, userId))
+      .orderBy(desc(learningThreads.createdAt));
+  }
+
+  async getLearningThread(id: string, userId: string): Promise<LearningThread | undefined> {
+    const [row] = await db
+      .select()
+      .from(learningThreads)
+      .where(and(eq(learningThreads.id, id), eq(learningThreads.userId, userId)));
+    return row;
+  }
+
+  async createLearningThread(thread: InsertLearningThread): Promise<LearningThread> {
+    const [created] = await db.insert(learningThreads).values(thread).returning();
+    return created;
+  }
+
+  async updateLearningThread(id: string, userId: string, data: Partial<InsertLearningThread>): Promise<LearningThread | undefined> {
+    const [row] = await db
+      .update(learningThreads)
+      .set({ ...data, updatedAt: new Date() })
+      .where(and(eq(learningThreads.id, id), eq(learningThreads.userId, userId)))
+      .returning();
+    return row;
+  }
+
+  async deleteLearningThread(id: string, userId: string): Promise<boolean> {
+    const result = await db
+      .delete(learningThreads)
+      .where(and(eq(learningThreads.id, id), eq(learningThreads.userId, userId)))
+      .returning({ id: learningThreads.id });
+    return result.length > 0;
   }
 
   // ── Finances ──────────────────────────────────────────────────────────

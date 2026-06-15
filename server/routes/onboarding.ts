@@ -344,6 +344,8 @@ Return only valid JSON. Do not guess at things not mentioned. Keep suggestions r
             name: finalTitle(s),
             description: `${s.description}\n\n${s.sourceReason}`,
             status: "active",
+            dataSource: "onboarding",
+            explainWhy: s.sourceReason,
           });
         } catch (projErr) {
           console.error("Failed to create project from onboarding suggestion:", projErr);
@@ -376,6 +378,145 @@ Return only valid JSON. Do not guess at things not mentioned. Keep suggestions r
     } catch (error) {
       console.error("Accept suggestions error:", error);
       res.status(500).json({ error: "Failed to accept suggestions" });
+    }
+  });
+
+  // ── Progressive onboarding follow-ups ───────────────────────────────────────
+  // After the first conversational session, the Command Center surfaces one
+  // follow-up card at a time to fill gaps in the onboarding profile.
+
+  /** Catalogue of progressive follow-up prompts, keyed by a stable ID. */
+  const PROGRESSIVE_PROMPTS: Array<{
+    id: string;
+    /** Condition that makes this prompt relevant — returns true when it should be shown. */
+    shouldShow: (profile: OnboardingProfile) => boolean;
+    prompt: string;
+    context: string;
+  }> = [
+    {
+      id: "schedule",
+      shouldShow: (p) => !p.currentCapacity || p.uncertaintyFlags?.capacityUnclear === true,
+      prompt: "Tell me a bit more about your schedule — what does a typical week look like for you?",
+      context: "We want to understand your available bandwidth so suggestions actually fit your life.",
+    },
+    {
+      id: "barriers",
+      shouldShow: (p) =>
+        !p.barrierTags?.length || p.uncertaintyFlags?.barriersUnknown === true,
+      prompt: "What usually throws your day off? Even small things count.",
+      context: "Knowing your friction points helps DW build systems around them instead of ignoring them.",
+    },
+    {
+      id: "hold_together",
+      shouldShow: (p) =>
+        !p.currentStateTags?.length || p.uncertaintyFlags?.everythingConnected === true,
+      prompt: "What are you trying to hold together right now?",
+      context: "This helps us understand where you're spending the most energy.",
+    },
+    {
+      id: "first_system",
+      shouldShow: (p) => {
+        const suggestions = (p.suggestedStructure as OnboardingSuggestion[] | null) ?? [];
+        return suggestions.filter((s) => s.type === "system" && (s.status === "accepted" || s.status === "edited")).length === 0;
+      },
+      prompt: "Want help creating your first system — something repeatable that makes a real area of your life easier?",
+      context: "Systems are the backbone of a sustainable life setup. One good one changes everything.",
+    },
+    {
+      id: "curiosity",
+      shouldShow: (p) => !p.curiosityTopics?.length,
+      prompt: "Is there something you've been wanting to learn more about lately — even if it feels unrelated to your goals?",
+      context: "Curiosity is data. DW can weave your interests into the learning layer.",
+    },
+    {
+      id: "direction",
+      shouldShow: (p) => !p.generatedDirection && p.uncertaintyFlags?.goalsUnclear === true,
+      prompt: "If things could be different in six months, what's the first thing you'd want to see change?",
+      context: "You don't need a plan — just a direction. We'll build from there.",
+    },
+  ];
+
+  /**
+   * GET /api/onboarding/next-prompt
+   * Returns the next progressive follow-up prompt for the user, or null if all
+   * prompts have been dismissed or no relevant gaps exist.
+   */
+  app.get("/api/onboarding/next-prompt", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const profile = await storage.getOnboardingProfile(userId);
+
+      if (!profile || !profile.completedAt) {
+        // Onboarding hasn't been completed yet — no follow-up needed
+        return res.json({ prompt: null });
+      }
+
+      const dismissed = new Set<string>(profile.dismissedProgressivePrompts ?? []);
+
+      const next = PROGRESSIVE_PROMPTS.find(
+        (p) => !dismissed.has(p.id) && p.shouldShow(profile),
+      );
+
+      if (!next) {
+        return res.json({ prompt: null });
+      }
+
+      res.json({
+        prompt: {
+          id: next.id,
+          prompt: next.prompt,
+          context: next.context,
+        },
+      });
+    } catch (err) {
+      console.error("GET /api/onboarding/next-prompt error:", err);
+      res.status(500).json({ error: "Failed to get next prompt" });
+    }
+  });
+
+  /**
+   * POST /api/onboarding/dismiss-prompt
+   * Marks a progressive prompt as dismissed (skipped or answered) so it won't
+   * show again. When `answer` is provided, it is appended to the profile for
+   * context in future AI interactions.
+   */
+  app.post("/api/onboarding/dismiss-prompt", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const { promptId, answer } = req.body as { promptId?: string; answer?: string };
+
+      if (!promptId || typeof promptId !== "string") {
+        return res.status(400).json({ error: "promptId is required" });
+      }
+
+      const profile = await storage.getOnboardingProfile(userId);
+      if (!profile) {
+        return res.status(404).json({ error: "Onboarding profile not found" });
+      }
+
+      const existing = profile.dismissedProgressivePrompts ?? [];
+      if (!existing.includes(promptId)) {
+        const patch: Partial<OnboardingProfile> = {
+          dismissedProgressivePrompts: [...existing, promptId],
+        };
+
+        // If an answer was provided, incorporate it into the relevant profile fields
+        if (answer && typeof answer === "string" && answer.trim().length > 0) {
+          const trimmedAnswer = answer.trim().slice(0, 500);
+          // Append the answer to shortTermGoals as a plain-text addendum
+          const existing_goals = profile.shortTermGoals ?? "";
+          patch.shortTermGoals = existing_goals
+            ? `${existing_goals}\n\n[Follow-up: ${trimmedAnswer}]`
+            : `[Follow-up: ${trimmedAnswer}]`;
+        }
+
+        await storage.updateOnboardingProfile(profile.id, patch);
+      }
+
+      res.json({ success: true });
+    } catch (err) {
+      console.error("POST /api/onboarding/dismiss-prompt error:", err);
+      res.status(500).json({ error: "Failed to dismiss prompt" });
     }
   });
 
