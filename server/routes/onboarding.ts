@@ -504,9 +504,9 @@ Return only valid JSON. Do not guess at things not mentioned. Keep suggestions r
         if (answer && typeof answer === "string" && answer.trim().length > 0) {
           const trimmedAnswer = answer.trim().slice(0, 500);
           // Append the answer to shortTermGoals as a plain-text addendum
-          const existing_goals = profile.shortTermGoals ?? "";
-          patch.shortTermGoals = existing_goals
-            ? `${existing_goals}\n\n[Follow-up: ${trimmedAnswer}]`
+          const existingGoals = profile.shortTermGoals ?? "";
+          patch.shortTermGoals = existingGoals
+            ? `${existingGoals}\n\n[Follow-up: ${trimmedAnswer}]`
             : `[Follow-up: ${trimmedAnswer}]`;
         }
 
