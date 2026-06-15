@@ -339,6 +339,8 @@ import { db } from "./db";
 import { eq, and, gte, lte, lt, desc, sql, or, inArray, ne, count, isNull } from "drizzle-orm";
 import { createHash } from "crypto";
 
+type LearningThreadListItem = Omit<LearningThread, "messages">;
+
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
@@ -390,7 +392,7 @@ export interface IStorage {
   createLifeSystemDocument(doc: InsertLifeSystemDocument): Promise<LifeSystemDocument>;
 
   // Learning Threads (Spec 13 — Guidance: Conversations)
-  getLearningThreads(userId: string): Promise<LearningThread[]>;
+  getLearningThreads(userId: string): Promise<LearningThreadListItem[]>;
   getLearningThread(id: string, userId: string): Promise<LearningThread | undefined>;
   createLearningThread(thread: InsertLearningThread): Promise<LearningThread>;
   updateLearningThread(id: string, userId: string, data: Partial<InsertLearningThread>): Promise<LearningThread | undefined>;
@@ -4297,9 +4299,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   // ── Learning Threads (Spec 13 — Guidance: Conversations) ──────────────────
-  async getLearningThreads(userId: string): Promise<LearningThread[]> {
+  async getLearningThreads(userId: string): Promise<LearningThreadListItem[]> {
     return db
-      .select()
+      .select({
+        id: learningThreads.id,
+        userId: learningThreads.userId,
+        title: learningThreads.title,
+        summary: learningThreads.summary,
+        tags: learningThreads.tags,
+        linkedToType: learningThreads.linkedToType,
+        linkedToId: learningThreads.linkedToId,
+        createdAt: learningThreads.createdAt,
+        updatedAt: learningThreads.updatedAt,
+      })
       .from(learningThreads)
       .where(eq(learningThreads.userId, userId))
       .orderBy(desc(learningThreads.createdAt));

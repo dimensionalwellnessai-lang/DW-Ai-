@@ -49,10 +49,8 @@ export function registerLearningThreadRoutes(app: Express): void {
     try {
       const userId = req.session.userId!;
       const threads = await storage.getLearningThreads(userId);
-      // Omit the full message array from the list response to reduce payload;
-      // clients load the full thread on demand via the PATCH or by opening the talk page.
-      const dto = threads.map(({ messages: _messages, ...rest }) => rest);
-      res.json({ threads: dto });
+      // Full thread messages are fetched on demand via GET /api/learning-threads/:id.
+      res.json({ threads });
     } catch (err) {
       console.error("GET /api/learning-threads error:", err);
       res.status(500).json({ error: "Failed to load learning threads" });

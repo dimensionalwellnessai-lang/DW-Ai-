@@ -153,7 +153,8 @@ export default function HomeCommandCenter() {
     enabled: isConversationalOnboardingDone() && !isE2ETestMode(),
     staleTime: 5 * 60 * 1000,
   });
-  const nextPrompt = dismissedPromptId ? null : (progressivePromptQ.data?.prompt ?? null);
+  const fetchedPrompt = progressivePromptQ.data?.prompt ?? null;
+  const nextPrompt = fetchedPrompt && dismissedPromptId === fetchedPrompt.id ? null : fetchedPrompt;
 
   const dismissProgressivePromptMutation = useMutation({
     mutationFn: (promptId: string) =>

@@ -2,7 +2,7 @@
 -- Adds:
 --   1. projects.data_source, projects.explain_why  (PR A — source metadata on projects)
 --   2. onboarding_profiles.dismissed_progressive_prompts  (PR B — track dismissed follow-ups)
---   3. life_system_projects.linked_path_tag, linked_plan_title, data_source, explain_why  (PR D)
+--   3. life_system_projects.linked_path_tag, linked_plan_title, data_source, explain_why  (Spec 13 relationship + source metadata)
 --   4. learning_threads table  (PR C — Guidance Conversations)
 
 -- 1. Source metadata on the projects table
