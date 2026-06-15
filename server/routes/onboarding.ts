@@ -206,7 +206,7 @@ Return only valid JSON. Do not guess at things not mentioned. Keep suggestions r
       try {
         const existingOnboarding = await storage.getOnboardingProfile(userId);
         const profileData: Partial<OnboardingProfile> = {
-          wellnessFocus: extracted.wellnessFocus ? [extracted.wellnessFocus] : (extracted.activeLifeAreas?.slice(0, 3) ?? []),
+          wellnessFocus: extracted.wellnessFocus ? [extracted.wellnessFocus] : [],
           shortTermGoals: extracted.shortTermGoals ?? extracted.generatedDirection ?? "",
           conversationData: messages as unknown as OnboardingProfile["conversationData"],
           // New structured fields
@@ -268,7 +268,9 @@ Return only valid JSON. Do not guess at things not mentioned. Keep suggestions r
       if (!profile) {
         return res.json({ profile: null });
       }
-      res.json({ profile });
+      // Omit conversationData — it can be large and is not needed by polling clients
+      const { conversationData: _cd, ...profileDto } = profile;
+      res.json({ profile: profileDto });
     } catch (error) {
       console.error("Get onboarding profile error:", error);
       res.status(500).json({ error: "Failed to get onboarding profile" });
@@ -296,10 +298,14 @@ Return only valid JSON. Do not guess at things not mentioned. Keep suggestions r
       }
 
       const accepted = suggestions.filter((s) => s.status === "accepted" || s.status === "edited");
-      const finalTitle = (s: typeof accepted[0]) => (s.status === "edited" && s.editedTitle?.trim()) ? s.editedTitle.trim() : s.title;
+      const finalTitle = (s: typeof accepted[0]) => {
+        const raw = (s.status === "edited" && s.editedTitle?.trim()) ? s.editedTitle.trim() : s.title.trim();
+        return raw;
+      };
+      const validAccepted = accepted.filter((s) => finalTitle(s).length > 0);
 
       // Focus Points -> Goals
-      const focusPoints = accepted.filter((s) => s.type === "focus_point");
+      const focusPoints = validAccepted.filter((s) => s.type === "focus_point");
       if (focusPoints.length > 0) {
         await storage.createGoals(
           focusPoints.map((s) => ({
@@ -315,7 +321,7 @@ Return only valid JSON. Do not guess at things not mentioned. Keep suggestions r
       }
 
       // Systems and Paths -> Habits (as repeatable structures)
-      const systems = accepted.filter((s) => s.type === "system" || s.type === "path");
+      const systems = validAccepted.filter((s) => s.type === "system" || s.type === "path");
       if (systems.length > 0) {
         await storage.createHabits(
           systems.map((s) => ({
@@ -331,7 +337,7 @@ Return only valid JSON. Do not guess at things not mentioned. Keep suggestions r
       }
 
       // Projects/Plans -> Projects
-      const projectSuggestions = accepted.filter((s) => s.type === "project" || s.type === "plan");
+      const projectSuggestions = validAccepted.filter((s) => s.type === "project" || s.type === "plan");
       for (const s of projectSuggestions) {
         try {
           await storage.createProject({
@@ -345,22 +351,29 @@ Return only valid JSON. Do not guess at things not mentioned. Keep suggestions r
         }
       }
 
-      // Update the stored suggestions with their final statuses
+      // Update the stored suggestions with their final statuses and editedTitle
       const profile = await storage.getOnboardingProfile(userId);
       if (profile) {
         const stored = (profile.suggestedStructure as OnboardingSuggestion[] | null) ?? [];
-        const statusMap: Record<string, string> = {};
-        for (const s of suggestions) statusMap[s.id] = s.status;
-        const updated = stored.map((item) => ({
-          ...item,
-          status: (statusMap[item.id] as OnboardingSuggestion["status"]) ?? item.status,
-        }));
+        const incomingMap: Record<string, { status: string; editedTitle?: string }> = {};
+        for (const s of suggestions) {
+          incomingMap[s.id] = { status: s.status, editedTitle: s.editedTitle };
+        }
+        const updated = stored.map((item) => {
+          const incoming = incomingMap[item.id];
+          if (!incoming) return item;
+          return {
+            ...item,
+            status: (incoming.status as OnboardingSuggestion["status"]) ?? item.status,
+            ...(incoming.editedTitle?.trim() ? { editedTitle: incoming.editedTitle.trim() } : {}),
+          };
+        });
         await storage.updateOnboardingProfile(profile.id, {
           suggestedStructure: updated as unknown as OnboardingProfile["suggestedStructure"],
         });
       }
 
-      res.json({ success: true, created: accepted.length });
+      res.json({ success: true, created: validAccepted.length });
     } catch (error) {
       console.error("Accept suggestions error:", error);
       res.status(500).json({ error: "Failed to accept suggestions" });

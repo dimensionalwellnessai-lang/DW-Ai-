@@ -4,7 +4,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mic, MicOff, Send, Keyboard, Loader2, ArrowRight, Pencil, Check, X, Sparkles, ChevronDown, Info } from "lucide-react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -539,6 +539,27 @@ export default function VoiceOnboardingPage() {
     }
   }, []);
 
+  // ── Hydrate summary phase from persisted profile ──
+  // Allows returning to /voice-onboarding after closing and seeing pending suggestions.
+  const { data: profileData } = useQuery<{ profile: { suggestedStructure?: OnboardingSuggestion[]; generatedSummary?: string | null; generatedDirection?: string | null } | null }>({
+    queryKey: ["/api/onboarding/profile"],
+    retry: false,
+  });
+  useEffect(() => {
+    if (phase !== "intro" && phase !== "thread") return;
+    const profile = profileData?.profile;
+    if (!profile) return;
+    const pending = (profile.suggestedStructure ?? []).filter(
+      (s) => s.status === "pending" || s.status === "accepted",
+    );
+    if (pending.length > 0 && suggestions.length === 0) {
+      setSummaryText(profile.generatedSummary ?? null);
+      setDirectionText(profile.generatedDirection ?? null);
+      setSuggestions(profile.suggestedStructure ?? []);
+      setPhase("summary");
+    }
+  }, [profileData, phase, suggestions.length]);
+
   // ── Check voice support ──
   useEffect(() => {
     const API = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -836,12 +857,25 @@ export default function VoiceOnboardingPage() {
     setSuggestions((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
   }, []);
 
+  // ── Defer all suggestions and persist to server ──
+  const handleDeferAll = useCallback(async () => {
+    const deferred = suggestions.map((s) => ({ ...s, status: "deferred" as const }));
+    setSuggestions(deferred);
+    setIsSubmittingSuggestions(true);
+    try {
+      await apiRequest("POST", "/api/onboarding/accept-suggestions", { suggestions: deferred });
+    } catch {
+      // Non-fatal — navigate home even if persist fails
+    }
+    setIsSubmittingSuggestions(false);
+    setLocation("/");
+  }, [suggestions, setLocation]);
+
   // ─────────────────────────────────────────────────────────────────────────
   // Render: Summary phase — "What I'm hearing" + editable AI suggestions
   // ─────────────────────────────────────────────────────────────────────────
   if (phase === "summary") {
     const pendingCount = suggestions.filter((s) => s.status === "pending" || s.status === "accepted").length;
-    const deferredAll = () => setSuggestions((prev) => prev.map((s) => ({ ...s, status: "deferred" as const })));
 
     return (
       <div className="flex flex-col min-h-screen bg-background" data-testid="voice-onboarding-summary">
@@ -929,7 +963,7 @@ export default function VoiceOnboardingPage() {
               <Button
                 variant="ghost"
                 className="w-full text-muted-foreground"
-                onClick={deferredAll}
+                onClick={handleDeferAll}
                 disabled={isSubmittingSuggestions}
                 data-testid="button-defer-all"
               >
