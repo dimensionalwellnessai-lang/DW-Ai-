@@ -3,8 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mic, MicOff, Send, Keyboard, Loader2, ArrowRight, Pencil, Check, X } from "lucide-react";
-import { useMutation } from "@tanstack/react-query";
+import { Mic, MicOff, Send, Keyboard, Loader2, ArrowRight, Pencil, Check, X, Sparkles, ChevronDown, Info } from "lucide-react";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -17,13 +17,39 @@ import { usePageMeta } from "@/hooks/use-page-meta";
 
 type InputMode = "voice" | "text";
 type VoiceState = "idle" | "listening" | "processing" | "error";
-type OnboardingPhase = "value-preview" | "intro" | "thread";
+type OnboardingPhase = "value-preview" | "intro" | "thread" | "summary";
 
 interface ThreadMessage {
   id: string;
   role: "assistant" | "user";
   content: string;
 }
+
+interface OnboardingSuggestion {
+  id: string;
+  type: "focus_point" | "path" | "system" | "plan" | "project";
+  title: string;
+  description: string;
+  sourceReason: string;
+  status: "pending" | "accepted" | "edited" | "deferred" | "removed";
+  editedTitle?: string;
+}
+
+const SUGGESTION_TYPE_LABELS: Record<OnboardingSuggestion["type"], string> = {
+  focus_point: "Focus Point",
+  path: "Path",
+  system: "System",
+  plan: "Plan",
+  project: "Project",
+};
+
+const SUGGESTION_TYPE_COLORS: Record<OnboardingSuggestion["type"], string> = {
+  focus_point: "text-rose-500 bg-rose-500/10",
+  path: "text-emerald-500 bg-emerald-500/10",
+  system: "text-blue-500 bg-blue-500/10",
+  plan: "text-violet-500 bg-violet-500/10",
+  project: "text-amber-500 bg-amber-500/10",
+};
 
 // ─── Speech recognition shims ────────────────────────────────────────────────
 
@@ -250,6 +276,223 @@ function EditableUserMessage({ message, onRegenerate, disabled }: EditableUserMe
   );
 }
 
+// ─── Suggestion card ─────────────────────────────────────────────────────────
+
+interface SuggestionCardProps {
+  suggestion: OnboardingSuggestion;
+  index: number;
+  onUpdate: (id: string, patch: Partial<OnboardingSuggestion>) => void;
+  disabled?: boolean;
+}
+
+function SuggestionCard({ suggestion: s, index, onUpdate, disabled }: SuggestionCardProps) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(s.editedTitle ?? s.title);
+  const [showReason, setShowReason] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editing) inputRef.current?.focus();
+  }, [editing]);
+
+  const isRemoved = s.status === "removed";
+  const isDeferred = s.status === "deferred";
+  const isAccepted = s.status === "accepted" || s.status === "edited";
+
+  const colorClass = SUGGESTION_TYPE_COLORS[s.type];
+  const typeLabel = SUGGESTION_TYPE_LABELS[s.type];
+
+  const handleAccept = () => onUpdate(s.id, { status: "accepted" });
+  const handleDefer = () => onUpdate(s.id, { status: "deferred" });
+  const handleRemove = () => onUpdate(s.id, { status: "removed" });
+  const handleRestore = () => onUpdate(s.id, { status: "pending" });
+
+  const handleSaveEdit = () => {
+    const trimmed = draft.trim();
+    if (trimmed) {
+      onUpdate(s.id, { status: "edited", editedTitle: trimmed });
+    }
+    setEditing(false);
+  };
+
+  const displayTitle = s.status === "edited" && s.editedTitle ? s.editedTitle : s.title;
+
+  if (isRemoved) {
+    return (
+      <motion.div
+        initial={{ opacity: 1 }}
+        animate={{ opacity: 0.4 }}
+        className="flex items-center justify-between px-4 py-3 rounded-xl border border-dashed border-border text-muted-foreground text-sm"
+        data-testid={`suggestion-card-${s.id}`}
+      >
+        <span className="line-through">{displayTitle}</span>
+        <button onClick={handleRestore} className="text-xs text-primary underline ml-2" disabled={disabled}>
+          restore
+        </button>
+      </motion.div>
+    );
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: isDeferred ? 0.55 : 1, y: 0 }}
+      transition={{ delay: index * 0.05 }}
+      className={cn(
+        "rounded-2xl border p-4 space-y-3 transition-all",
+        isAccepted ? "border-primary/30 bg-primary/5" : "border-border bg-card",
+        isDeferred && "border-dashed",
+      )}
+      data-testid={`suggestion-card-${s.id}`}
+    >
+      {/* Header row */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-start gap-2 flex-1 min-w-0">
+          <span className={cn("text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0 mt-0.5", colorClass)}>
+            {typeLabel}
+          </span>
+          <div className="flex-1 min-w-0">
+            {editing ? (
+              <div className="flex gap-1">
+                <input
+                  ref={inputRef}
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleSaveEdit();
+                    if (e.key === "Escape") { setDraft(s.editedTitle ?? s.title); setEditing(false); }
+                  }}
+                  className="flex-1 text-sm font-medium bg-transparent border-b border-primary outline-none pb-0.5"
+                  disabled={disabled}
+                  data-testid={`input-suggestion-title-${s.id}`}
+                />
+                <button onClick={handleSaveEdit} className="text-primary" disabled={disabled} aria-label="Save">
+                  <Check className="w-3.5 h-3.5" />
+                </button>
+                <button onClick={() => { setDraft(s.editedTitle ?? s.title); setEditing(false); }} className="text-muted-foreground" aria-label="Cancel">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <p className={cn("text-sm font-medium leading-snug", isDeferred && "text-muted-foreground")}>
+                {displayTitle}
+                {s.status === "edited" && <span className="ml-1 text-[9px] text-primary uppercase tracking-wide">edited</span>}
+              </p>
+            )}
+            <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{s.description}</p>
+          </div>
+        </div>
+
+        {/* Status indicator */}
+        {isAccepted && (
+          <div className="shrink-0 w-5 h-5 rounded-full bg-primary flex items-center justify-center mt-0.5">
+            <Check className="w-3 h-3 text-primary-foreground" />
+          </div>
+        )}
+      </div>
+
+      {/* Source reason (collapsible) */}
+      <button
+        className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+        onClick={() => setShowReason((v) => !v)}
+        aria-expanded={showReason}
+        data-testid={`button-show-reason-${s.id}`}
+      >
+        <Info className="w-3 h-3" />
+        Why suggested?
+        <ChevronDown className={cn("w-3 h-3 transition-transform", showReason && "rotate-180")} />
+      </button>
+      {showReason && (
+        <motion.p
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          className="text-[11px] text-muted-foreground italic leading-relaxed"
+          data-testid={`reason-${s.id}`}
+        >
+          {s.sourceReason}
+        </motion.p>
+      )}
+
+      {/* Action row */}
+      <div className="flex gap-1.5 flex-wrap">
+        {!isAccepted && !isDeferred && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs px-2.5 border-primary/40 text-primary hover:bg-primary/5"
+            onClick={handleAccept}
+            disabled={disabled}
+            data-testid={`button-accept-${s.id}`}
+          >
+            <Check className="w-3 h-3 mr-1" />
+            Accept
+          </Button>
+        )}
+        {isAccepted && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs px-2.5"
+            onClick={() => onUpdate(s.id, { status: "pending" })}
+            disabled={disabled}
+            data-testid={`button-undo-accept-${s.id}`}
+          >
+            Undo
+          </Button>
+        )}
+        {!editing && (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 text-xs px-2.5 text-muted-foreground"
+            onClick={() => { setDraft(s.editedTitle ?? s.title); setEditing(true); }}
+            disabled={disabled}
+            data-testid={`button-rename-${s.id}`}
+          >
+            <Pencil className="w-3 h-3 mr-1" />
+            Rename
+          </Button>
+        )}
+        {!isDeferred && (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 text-xs px-2.5 text-muted-foreground"
+            onClick={handleDefer}
+            disabled={disabled}
+            data-testid={`button-defer-${s.id}`}
+          >
+            Not now
+          </Button>
+        )}
+        {isDeferred && (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 text-xs px-2.5 text-muted-foreground"
+            onClick={handleRestore}
+            disabled={disabled}
+            data-testid={`button-restore-${s.id}`}
+          >
+            Restore
+          </Button>
+        )}
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-7 text-xs px-2.5 text-muted-foreground hover:text-destructive"
+          onClick={handleRemove}
+          disabled={disabled}
+          data-testid={`button-remove-${s.id}`}
+        >
+          <X className="w-3 h-3 mr-1" />
+          Remove
+        </Button>
+      </div>
+    </motion.div>
+  );
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function VoiceOnboardingPage() {
@@ -269,6 +512,10 @@ export default function VoiceOnboardingPage() {
   const [isReplying, setIsReplying] = useState(false);
   const [voiceSupported, setVoiceSupported] = useState(true);
   const [micPermissionDenied, setMicPermissionDenied] = useState(false);
+  const [summaryText, setSummaryText] = useState<string | null>(null);
+  const [directionText, setDirectionText] = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<OnboardingSuggestion[]>([]);
+  const [isSubmittingSuggestions, setIsSubmittingSuggestions] = useState(false);
 
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -291,6 +538,27 @@ export default function VoiceOnboardingPage() {
       // Ignore storage errors
     }
   }, []);
+
+  // ── Hydrate summary phase from persisted profile ──
+  // Allows returning to /voice-onboarding after closing and seeing pending suggestions.
+  const { data: profileData } = useQuery<{ profile: { suggestedStructure?: OnboardingSuggestion[]; generatedSummary?: string | null; generatedDirection?: string | null } | null }>({
+    queryKey: ["/api/onboarding/profile"],
+    retry: false,
+  });
+  useEffect(() => {
+    if (phase !== "intro" && phase !== "thread") return;
+    const profile = profileData?.profile;
+    if (!profile) return;
+    const pending = (profile.suggestedStructure ?? []).filter(
+      (s) => s.status === "pending" || s.status === "accepted",
+    );
+    if (pending.length > 0 && suggestions.length === 0) {
+      setSummaryText(profile.generatedSummary ?? null);
+      setDirectionText(profile.generatedDirection ?? null);
+      setSuggestions(profile.suggestedStructure ?? []);
+      setPhase("summary");
+    }
+  }, [profileData, phase, suggestions.length]);
 
   // ── Check voice support ──
   useEffect(() => {
@@ -542,22 +810,171 @@ export default function VoiceOnboardingPage() {
     setLocation("/");
   };
 
-  // ── Done: extract profile from conversation, then mark completed ──
+  // ── Done: extract profile from conversation, then show summary ──
   const handleDone = useCallback(async () => {
+    setIsReplying(true);
     try {
-      localStorage.setItem(LS_VOICE_ONBOARDING_COMPLETED, "true");
-    } catch {
-      // Ignore storage errors to avoid blocking navigation
-    }
-    try {
-      await apiRequest("POST", "/api/onboarding/voice-complete", {
+      const response = await apiRequest("POST", "/api/onboarding/voice-complete", {
         messages: thread.map((m) => ({ role: m.role, content: m.content })),
       });
+      const data = await response.json();
+      try {
+        localStorage.setItem(LS_VOICE_ONBOARDING_COMPLETED, "true");
+      } catch {
+        // Ignore storage errors
+      }
+      if (data.suggestions && data.suggestions.length > 0) {
+        setSummaryText(data.summary ?? null);
+        setDirectionText(data.direction ?? null);
+        setSuggestions(data.suggestions);
+        setIsReplying(false);
+        setPhase("summary");
+      } else {
+        setIsReplying(false);
+        setLocation("/");
+      }
     } catch {
       // Non-fatal — navigate home even if save fails
+      setIsReplying(false);
+      setLocation("/");
     }
-    setLocation("/");
   }, [thread, setLocation]);
+
+  // ── Accept/defer suggestions and populate My Life ──
+  const handleAcceptSuggestions = useCallback(async () => {
+    setIsSubmittingSuggestions(true);
+    try {
+      await apiRequest("POST", "/api/onboarding/accept-suggestions", { suggestions });
+    } catch {
+      // Non-fatal
+    }
+    setIsSubmittingSuggestions(false);
+    setLocation("/my-life");
+  }, [suggestions, setLocation]);
+
+  // ── Update a single suggestion status ──
+  const updateSuggestion = useCallback((id: string, patch: Partial<OnboardingSuggestion>) => {
+    setSuggestions((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
+  }, []);
+
+  // ── Defer all suggestions and persist to server ──
+  const handleDeferAll = useCallback(async () => {
+    const deferred = suggestions.map((s) => ({ ...s, status: "deferred" as const }));
+    setSuggestions(deferred);
+    setIsSubmittingSuggestions(true);
+    try {
+      await apiRequest("POST", "/api/onboarding/accept-suggestions", { suggestions: deferred });
+    } catch {
+      // Non-fatal — navigate home even if persist fails
+    }
+    setIsSubmittingSuggestions(false);
+    setLocation("/");
+  }, [suggestions, setLocation]);
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Render: Summary phase — "What I'm hearing" + editable AI suggestions
+  // ─────────────────────────────────────────────────────────────────────────
+  if (phase === "summary") {
+    const pendingCount = suggestions.filter((s) => s.status === "pending" || s.status === "accepted").length;
+
+    return (
+      <div className="flex flex-col min-h-screen bg-background" data-testid="voice-onboarding-summary">
+        <header className="flex items-center justify-between px-4 py-3 border-b bg-background/95 backdrop-blur-sm">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+              <Sparkles className="w-4 h-4 text-primary" />
+            </div>
+            <span className="font-medium text-sm">What I'm hearing</span>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setLocation("/")}
+            className="text-muted-foreground text-xs"
+            data-testid="button-skip-summary"
+          >
+            Skip for now
+          </Button>
+        </header>
+
+        <div className="flex-1 overflow-auto">
+          <div className="max-w-2xl mx-auto py-6 px-4 space-y-6">
+            {/* Warm coach summary */}
+            {summaryText && (
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="rounded-2xl bg-primary/5 border border-primary/15 p-5 space-y-2"
+              >
+                <p className="text-xs font-semibold uppercase tracking-wider text-primary">What I noticed</p>
+                <p className="text-base leading-relaxed text-foreground">{summaryText}</p>
+                {directionText && (
+                  <p className="text-sm text-muted-foreground italic mt-2">{directionText}</p>
+                )}
+              </motion.div>
+            )}
+
+            {/* Suggestions header */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.15 }}
+              className="space-y-1"
+            >
+              <h2 className="text-sm font-semibold text-foreground">Based on our conversation, I'd like to suggest a starting structure for your life.</h2>
+              <p className="text-xs text-muted-foreground">Accept, rename, or set aside anything that doesn't feel right. This is yours to shape.</p>
+            </motion.div>
+
+            {/* Suggestion cards */}
+            <div className="space-y-3">
+              {suggestions.map((s, i) => (
+                <SuggestionCard
+                  key={s.id}
+                  suggestion={s}
+                  index={i}
+                  onUpdate={updateSuggestion}
+                  disabled={isSubmittingSuggestions}
+                />
+              ))}
+            </div>
+
+            {/* Actions */}
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="space-y-3 pb-8"
+            >
+              <Button
+                className="w-full"
+                size="lg"
+                onClick={handleAcceptSuggestions}
+                disabled={isSubmittingSuggestions}
+                data-testid="button-accept-suggestions"
+              >
+                {isSubmittingSuggestions ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Check className="w-4 h-4 mr-2" />
+                )}
+                Build my life system
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+              <Button
+                variant="ghost"
+                className="w-full text-muted-foreground"
+                onClick={handleDeferAll}
+                disabled={isSubmittingSuggestions}
+                data-testid="button-defer-all"
+              >
+                Set all aside for now
+              </Button>
+            </motion.div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // ─────────────────────────────────────────────────────────────────────────
   // Render: Value preview phase — show DW capability cards
@@ -656,10 +1073,11 @@ export default function VoiceOnboardingPage() {
           variant="ghost"
           size="sm"
           onClick={handleDone}
+          disabled={isReplying}
           className="text-muted-foreground text-xs"
           data-testid="button-finish-onboarding"
         >
-          Done
+          {isReplying ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Done"}
         </Button>
       </header>
 

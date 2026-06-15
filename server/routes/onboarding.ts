@@ -8,6 +8,41 @@ import { generateLifeSystemRecommendations, openai } from "../openai";
 
 import { type OnboardingProfile } from "@shared/schema";
 
+// ─── Onboarding suggestion types ─────────────────────────────────────────────
+
+export interface OnboardingSuggestion {
+  id: string;
+  type: "focus_point" | "path" | "system" | "plan" | "project";
+  title: string;
+  description: string;
+  sourceReason: string;
+  status: "pending" | "accepted" | "edited" | "deferred" | "removed";
+  editedTitle?: string;
+}
+
+export interface StructuredOnboardingExtraction {
+  firstName?: string | null;
+  desiredFeelings?: string[] | null;
+  currentStateTags?: string[] | null;
+  activeLifeAreas?: string[] | null;
+  barrierTags?: string[] | null;
+  supportNeeds?: string[] | null;
+  curiosityTopics?: string[] | null;
+  generatedSummary?: string | null;
+  generatedDirection?: string | null;
+  currentCapacity?: string | null;
+  tonePreference?: string | null;
+  uncertaintyFlags?: {
+    barriersUnknown?: boolean;
+    goalsUnclear?: boolean;
+    capacityUnclear?: boolean;
+    everythingConnected?: boolean;
+  } | null;
+  suggestions?: OnboardingSuggestion[] | null;
+  wellnessFocus?: string | null;
+  shortTermGoals?: string | null;
+}
+
 export function registerOnboardingRoutes(app: Express): void {
   app.post("/api/onboarding/complete", requireAuth, async (req, res) => {
     try {
@@ -100,7 +135,7 @@ export function registerOnboardingRoutes(app: Express): void {
 
       if (!messages || !Array.isArray(messages) || messages.length === 0) {
         await storage.updateUser(userId, { onboardingCompleted: true });
-        return res.json({ success: true });
+        return res.json({ success: true, suggestions: [] });
       }
 
       const transcript = messages
@@ -108,12 +143,7 @@ export function registerOnboardingRoutes(app: Express): void {
         .map((m) => `${m.role === "user" ? "User" : "DW"}: ${m.content}`)
         .join("\n");
 
-      let extracted: {
-        firstName?: string;
-        wellnessFocus?: string;
-        shortTermGoals?: string;
-        energyLevel?: string;
-      } = {};
+      let extracted: StructuredOnboardingExtraction = {};
 
       try {
         const completion = await openai.chat.completions.create({
@@ -121,13 +151,38 @@ export function registerOnboardingRoutes(app: Express): void {
           messages: [
             {
               role: "system",
-              content: `Extract key profile information from this onboarding conversation. Return a JSON object with these optional fields:
-- firstName: the user's first name if they mentioned it (string or null)
-- wellnessFocus: the primary wellness dimension they care about, one of: physical, emotional, mental, financial, spiritual, occupational, social, environmental (string or null)
-- shortTermGoals: a short plain-text summary of their immediate goals or what brought them here (string, max 200 chars, or null)
-- energyLevel: their self-described energy level: low, medium, or high (string or null)
+              content: `You are an expert life coach analyst. Extract structured profile information from this onboarding conversation.
 
-Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
+Return a JSON object with these fields (all optional, use null if not clearly mentioned):
+
+PROFILE FIELDS:
+- firstName: user's first name (string or null)
+- desiredFeelings: array of feelings the user wants (e.g. ["organized","calmer","more stable"]) — strings only, no null
+- currentStateTags: array of tags describing their current state (e.g. ["overwhelmed","inconsistent","motivated but scattered"])
+- activeLifeAreas: array of life areas they mentioned (e.g. ["school","fitness","finances","routines","relationships"])
+- barrierTags: array of barriers they mentioned (e.g. ["procrastination","low energy","lack of time","I don't know"])
+- supportNeeds: array of support types they need (e.g. ["making a plan","staying on track","understanding what's going on"])
+- curiosityTopics: array of things they want to learn about (e.g. ["budgeting","studying","time management","consistency"])
+- generatedSummary: 2-4 sentence warm, empathetic summary of what DW heard — like a life coach reflecting back (string or null)
+- generatedDirection: 1-2 sentence statement of the direction the user wants to go (string or null)
+- currentCapacity: one of "only small steps", "a few focused changes", "more structure", or "unclear" (string or null)
+- tonePreference: one of "gentle", "balanced", "direct" — inferred from how they communicate (string or null)
+- uncertaintyFlags: object with boolean fields: barriersUnknown, goalsUnclear, capacityUnclear, everythingConnected
+- wellnessFocus: primary wellness dimension: physical, emotional, mental, financial, spiritual, occupational, social, environmental (string or null)
+- shortTermGoals: plain-text summary of immediate goals (max 200 chars, string or null)
+
+SUGGESTIONS (generate based on what you heard, each with a sourceReason):
+- suggestions: array of objects, each with:
+  - id: unique string like "fp-1", "path-1", "sys-1", "plan-1", "proj-1"
+  - type: one of "focus_point", "path", "system", "plan", "project"
+  - title: short, actionable name (e.g. "Build a Study Routine", "Money Awareness", "Morning Reset")
+  - description: 1 sentence description
+  - sourceReason: warm, coach-like reason starting with "Suggested because" (e.g. "Suggested because you mentioned school and feeling behind on assignments.")
+  - status: "pending"
+
+Generate 3-7 suggestions total covering different types. Prioritize focus_point and system. Only add project if something specific and bounded was mentioned.
+
+Return only valid JSON. Do not guess at things not mentioned. Keep suggestions realistic and grounded in what the user actually said.`,
             },
             {
               role: "user",
@@ -135,7 +190,7 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
             },
           ],
           response_format: { type: "json_object" },
-          max_tokens: 300,
+          max_tokens: 1200,
         });
         const raw = completion.choices[0]?.message?.content;
         if (raw) {
@@ -147,36 +202,180 @@ Return only valid JSON. Use null for fields not mentioned. Do not guess.`,
 
       await storage.updateUser(userId, { onboardingCompleted: true, ...(extracted.firstName && typeof extracted.firstName === "string" ? { firstName: extracted.firstName.trim().slice(0, 50) } : {}) });
 
-      if (extracted.wellnessFocus || extracted.shortTermGoals) {
-        try {
-          const existingOnboarding = await storage.getOnboardingProfile(userId);
-          if (existingOnboarding) {
-            const onboardingUpdates: Partial<OnboardingProfile> = {};
-            if (extracted.wellnessFocus) onboardingUpdates.wellnessFocus = [extracted.wellnessFocus];
-            if (extracted.shortTermGoals) onboardingUpdates.shortTermGoals = extracted.shortTermGoals;
-            await storage.updateOnboardingProfile(existingOnboarding.id, onboardingUpdates);
-          } else {
-            await storage.createOnboardingProfile({
-              userId,
-              responsibilities: [],
-              priorities: [],
-              wellnessFocus: extracted.wellnessFocus ? [extracted.wellnessFocus] : [],
-              shortTermGoals: extracted.shortTermGoals || "",
-              longTermGoals: "",
-              relationshipGoals: "",
-              lifeAreaDetails: {},
-              conversationData: null,
-            });
-          }
-        } catch (profileErr) {
-          console.error("Voice onboarding profile save error (non-fatal):", profileErr);
+      // Persist the full structured profile
+      try {
+        const existingOnboarding = await storage.getOnboardingProfile(userId);
+        const profileData: Partial<OnboardingProfile> = {
+          wellnessFocus: extracted.wellnessFocus ? [extracted.wellnessFocus] : [],
+          shortTermGoals: extracted.shortTermGoals ?? extracted.generatedDirection ?? "",
+          conversationData: messages as unknown as OnboardingProfile["conversationData"],
+          // New structured fields
+          desiredFeelings: extracted.desiredFeelings ?? [],
+          currentStateTags: extracted.currentStateTags ?? [],
+          activeLifeAreas: extracted.activeLifeAreas ?? [],
+          barrierTags: extracted.barrierTags ?? [],
+          supportNeeds: extracted.supportNeeds ?? [],
+          curiosityTopics: extracted.curiosityTopics ?? [],
+          generatedSummary: extracted.generatedSummary ?? null,
+          generatedDirection: extracted.generatedDirection ?? null,
+          currentCapacity: extracted.currentCapacity ?? null,
+          tonePreference: extracted.tonePreference ?? null,
+          uncertaintyFlags: extracted.uncertaintyFlags ?? null,
+          suggestedStructure: (extracted.suggestions ?? []) as unknown as OnboardingProfile["suggestedStructure"],
+          onboardingVersion: "v2",
+          completedAt: new Date(),
+        };
+
+        if (existingOnboarding) {
+          await storage.updateOnboardingProfile(existingOnboarding.id, profileData);
+        } else {
+          await storage.createOnboardingProfile({
+            userId,
+            responsibilities: [],
+            priorities: [],
+            longTermGoals: "",
+            relationshipGoals: "",
+            lifeAreaDetails: {},
+            ...profileData,
+          });
         }
+      } catch (profileErr) {
+        console.error("Voice onboarding profile save error (non-fatal):", profileErr);
       }
 
-      res.json({ success: true, extracted });
+      res.json({
+        success: true,
+        extracted: {
+          firstName: extracted.firstName,
+          wellnessFocus: extracted.wellnessFocus,
+          shortTermGoals: extracted.shortTermGoals,
+        },
+        summary: extracted.generatedSummary,
+        direction: extracted.generatedDirection,
+        suggestions: extracted.suggestions ?? [],
+      });
     } catch (error) {
       console.error("Voice onboarding complete error:", error);
       res.status(500).json({ error: "Failed to complete voice onboarding" });
+    }
+  });
+
+  // Get the user's structured onboarding profile (for My Life and Command Center)
+  app.get("/api/onboarding/profile", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const profile = await storage.getOnboardingProfile(userId);
+      if (!profile) {
+        return res.json({ profile: null });
+      }
+      // Omit conversationData — it can be large and is not needed by polling clients
+      const { conversationData: _cd, ...profileDto } = profile;
+      res.json({ profile: profileDto });
+    } catch (error) {
+      console.error("Get onboarding profile error:", error);
+      res.status(500).json({ error: "Failed to get onboarding profile" });
+    }
+  });
+
+  // Accept suggestions from onboarding and populate My Life
+  app.post("/api/onboarding/accept-suggestions", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const { suggestions } = req.body as {
+        suggestions: Array<{
+          id: string;
+          type: "focus_point" | "path" | "system" | "plan" | "project";
+          title: string;
+          description: string;
+          sourceReason: string;
+          status: "accepted" | "edited" | "deferred" | "removed";
+          editedTitle?: string;
+        }>;
+      };
+
+      if (!Array.isArray(suggestions)) {
+        return res.status(400).json({ error: "suggestions must be an array" });
+      }
+
+      const accepted = suggestions.filter((s) => s.status === "accepted" || s.status === "edited");
+      const finalTitle = (s: typeof accepted[0]) => {
+        return (s.status === "edited" && s.editedTitle?.trim()) ? s.editedTitle.trim() : s.title.trim();
+      };
+      const validAccepted = accepted.filter((s) => finalTitle(s).length > 0);
+
+      // Focus Points -> Goals
+      const focusPoints = validAccepted.filter((s) => s.type === "focus_point");
+      if (focusPoints.length > 0) {
+        await storage.createGoals(
+          focusPoints.map((s) => ({
+            userId,
+            title: finalTitle(s),
+            description: `${s.description}\n\n${s.sourceReason}`,
+            wellnessDimension: "general",
+            isActive: true,
+            dataSource: "onboarding",
+            explainWhy: s.sourceReason,
+          }))
+        );
+      }
+
+      // Systems and Paths -> Habits (as repeatable structures)
+      const systems = validAccepted.filter((s) => s.type === "system" || s.type === "path");
+      if (systems.length > 0) {
+        await storage.createHabits(
+          systems.map((s) => ({
+            userId,
+            title: finalTitle(s),
+            description: `${s.description}\n\n${s.sourceReason}`,
+            frequency: "daily",
+            isActive: true,
+            dataSource: "onboarding",
+            explainWhy: s.sourceReason,
+          }))
+        );
+      }
+
+      // Projects/Plans -> Projects
+      const projectSuggestions = validAccepted.filter((s) => s.type === "project" || s.type === "plan");
+      for (const s of projectSuggestions) {
+        try {
+          await storage.createProject({
+            userId,
+            name: finalTitle(s),
+            description: `${s.description}\n\n${s.sourceReason}`,
+            status: "active",
+          });
+        } catch (projErr) {
+          console.error("Failed to create project from onboarding suggestion:", projErr);
+        }
+      }
+
+      // Update the stored suggestions with their final statuses and editedTitle
+      const profile = await storage.getOnboardingProfile(userId);
+      if (profile) {
+        const stored = (profile.suggestedStructure as OnboardingSuggestion[] | null) ?? [];
+        const incomingMap: Record<string, { status: OnboardingSuggestion["status"]; editedTitle?: string }> = {};
+        for (const s of suggestions) {
+          incomingMap[s.id] = { status: s.status, editedTitle: s.editedTitle };
+        }
+        const updated = stored.map((item) => {
+          const incoming = incomingMap[item.id];
+          if (!incoming) return item;
+          return {
+            ...item,
+            status: incoming.status ?? item.status,
+            ...(incoming.editedTitle?.trim() ? { editedTitle: incoming.editedTitle.trim() } : {}),
+          };
+        });
+        await storage.updateOnboardingProfile(profile.id, {
+          suggestedStructure: updated as unknown as OnboardingProfile["suggestedStructure"],
+        });
+      }
+
+      res.json({ success: true, created: validAccepted.length });
+    } catch (error) {
+      console.error("Accept suggestions error:", error);
+      res.status(500).json({ error: "Failed to accept suggestions" });
     }
   });
 
