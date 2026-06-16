@@ -76,7 +76,7 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
     return null
   }
 
-  const safeCssKey = (key: string) => key.replace(/[^a-zA-Z0-9-_]/g, "")
+  const safeCssKey = (key: string) => key.replace(/[^a-zA-Z0-9_]/g, "")
 
   return (
     <style

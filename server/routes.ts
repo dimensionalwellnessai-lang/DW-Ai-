@@ -550,7 +550,7 @@ export async function registerRoutes(
   // CSRF double-submit cookie protection for all mutating API routes.
   // The /api/csrf-token endpoint lets the frontend fetch its token on boot.
   const { generateCsrfToken, doubleCsrfProtection } = doubleCsrf({
-    getSecret: () => process.env.SESSION_SECRET!,
+    getSecret: () => sessionSecret,
     getSessionIdentifier: (req) => req.sessionID ?? "",
     cookieName: "fts.csrf",
     cookieOptions: {

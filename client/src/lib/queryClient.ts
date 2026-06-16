@@ -64,6 +64,12 @@ export async function apiRequest(
     credentials: "include",
   });
 
+  // If the server rejects our CSRF token, invalidate the cache so the next
+  // mutating request will fetch a fresh one.
+  if (res.status === 403 && isMutating) {
+    csrfToken = null;
+  }
+
   await throwIfResNotOk(res);
   return res;
 }

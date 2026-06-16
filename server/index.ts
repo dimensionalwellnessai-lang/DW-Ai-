@@ -19,7 +19,7 @@ app.use(
         scriptSrc: ["'self'", "'unsafe-inline'"],
         styleSrc: ["'self'", "'unsafe-inline'"],
         imgSrc: ["'self'", "data:", "blob:"],
-        connectSrc: ["'self'", "https://api.openai.com", "https://api.stripe.com"],
+        connectSrc: ["'self'", "https://api.openai.com", "https://api.stripe.com", "https://cdn.plaid.com", "https://production.plaid.com", "https://sandbox.plaid.com"],
         fontSrc: ["'self'"],
         objectSrc: ["'none'"],
         frameAncestors: ["'none'"],
