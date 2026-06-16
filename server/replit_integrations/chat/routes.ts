@@ -1,5 +1,6 @@
 import type { Express, Request, Response } from "express";
 import { aiStream, getAIEngineStatus } from "../../ai-engine";
+import { applyScaffold } from "../../personality/scaffold";
 import { chatStorage } from "./storage";
 
 export function registerChatRoutes(app: Express): void {
@@ -75,9 +76,13 @@ export function registerChatRoutes(app: Express): void {
         content: m.content,
       }));
 
+      // Apply the versioned personality scaffold (single source of truth) so
+      // the assistant persona stays consistent across providers and sessions.
+      const scaffoldedMessages = applyScaffold(chatMessages);
+
       // Stream via resilient engine (OpenAI → Perplexity → graceful fallback)
       const fullResponse = await aiStream(
-        chatMessages,
+        scaffoldedMessages,
         (chunk) => {
           res.write(`data: ${JSON.stringify({ content: chunk })}\n\n`);
         },
