@@ -49,10 +49,20 @@ describe("personality scaffold", () => {
     expect(result[0].content).toContain("Existing context.");
   });
 
+  it("does not duplicate scaffold content when applied multiple times", () => {
+    const messages = [{ role: "user" as const, content: "hi" }];
+    const once = applyScaffold(messages);
+    const twice = applyScaffold(once);
+
+    expect(twice).toEqual(once);
+    expect(twice[0].content.match(/scaffold /g)).toHaveLength(1);
+  });
+
   it("detects banned language case-insensitively", () => {
     expect(findScaffoldViolations("You should just fix this")).toEqual(
       expect.arrayContaining(["you should", "fix"]),
     );
+    expect(findScaffoldViolations("This is a prefix check")).toEqual([]);
     expect(
       findScaffoldViolations("Let's pause and notice the pattern."),
     ).toHaveLength(0);

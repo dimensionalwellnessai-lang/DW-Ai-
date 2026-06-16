@@ -115,9 +115,13 @@ export function applyScaffold<T extends ScaffoldMessage>(
   scaffold: PersonalityScaffold = DW_SCAFFOLD,
 ): ScaffoldMessage[] {
   const systemPrompt = buildScaffoldSystemPrompt(scaffold);
+  const scaffoldMarker = `scaffold ${scaffold.id} v${scaffold.version}`;
 
   if (messages[0]?.role === "system") {
     const [first, ...rest] = messages;
+    if (first.content.includes(scaffoldMarker)) {
+      return messages;
+    }
     return [
       { role: "system", content: `${systemPrompt}\n\n${first.content}` },
       ...rest,
@@ -135,8 +139,9 @@ export function findScaffoldViolations(
   text: string,
   scaffold: PersonalityScaffold = DW_SCAFFOLD,
 ): string[] {
-  const lower = text.toLowerCase();
-  return scaffold.forbiddenResponses.filter((phrase) =>
-    lower.includes(phrase.toLowerCase()),
-  );
+  return scaffold.forbiddenResponses.filter((phrase) => {
+    const escaped = phrase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const pattern = new RegExp(`\\b${escaped}\\b`, "i");
+    return pattern.test(text);
+  });
 }
