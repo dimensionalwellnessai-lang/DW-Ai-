@@ -83,6 +83,7 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "connect-pg-simple": "^10.0.0",
+    "csrf-csrf": "^4.0.3",
     "date-fns": "^3.6.0",
     "drizzle-orm": "^0.45.2",
     "drizzle-zod": "^0.7.1",
@@ -93,6 +94,7 @@
     "flatted": "^3.4.2",
     "framer-motion": "^11.13.1",
     "google-auth-library": "^10.6.2",
+    "helmet": "^8.2.0",
     "input-otp": "^1.4.2",
     "jose": "^6.2.2",
     "jspdf": "^4.2.1",
@@ -111,7 +113,6 @@
     "passport-facebook": "^3.0.0",
     "passport-google-oauth20": "^2.0.0",
     "passport-local": "^1.0.0",
-    "path-to-regexp": "^0.1.13",
     "pdf-parse": "^2.4.5",
     "pdf-to-img": "^5.0.0",
     "pg": "^8.16.3",
@@ -183,5 +184,8 @@
   },
   "optionalDependencies": {
     "bufferutil": "^4.0.8"
+  },
+  "overrides": {
+    "path-to-regexp": "^8.2.0"
   }
 }

@@ -76,6 +76,8 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
     return null
   }
 
+  const safeCssKey = (key: string) => key.replace(/[^a-zA-Z0-9-_]/g, "")
+
   return (
     <style
       dangerouslySetInnerHTML={{
@@ -88,7 +90,7 @@ ${colorConfig
     const color =
       itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ||
       itemConfig.color
-    return color ? `  --color-${key}: ${color};` : null
+    return color ? `  --color-${safeCssKey(key)}: ${color};` : null
   })
   .join("\n")}
 }

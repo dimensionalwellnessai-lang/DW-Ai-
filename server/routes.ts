@@ -14,6 +14,7 @@ import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { Strategy as FacebookStrategy } from "passport-facebook";
 import rateLimit from "express-rate-limit";
+import { doubleCsrf } from "csrf-csrf";
 import { patchRateLimiter, validatePatchPayloadSize, sanitizePatchBody } from "./middleware/guardrails";
 import { storage } from "./storage";
 import { pool } from "./db";
@@ -545,6 +546,28 @@ export async function registerRoutes(
   passport.serializeUser((user, done) => done(null, user));
   passport.deserializeUser((user, done) => done(null, user as Express.User));
   app.use(passport.initialize());
+
+  // CSRF double-submit cookie protection for all mutating API routes.
+  // The /api/csrf-token endpoint lets the frontend fetch its token on boot.
+  const { generateCsrfToken, doubleCsrfProtection } = doubleCsrf({
+    getSecret: () => process.env.SESSION_SECRET!,
+    getSessionIdentifier: (req) => req.sessionID ?? "",
+    cookieName: "fts.csrf",
+    cookieOptions: {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: isProduction,
+      path: "/",
+    },
+    size: 64,
+    ignoredMethods: ["GET", "HEAD", "OPTIONS"],
+  });
+
+  app.get("/api/csrf-token", (req, res) => {
+    res.json({ token: generateCsrfToken(req, res) });
+  });
+
+  app.use("/api", doubleCsrfProtection);
 
   // Relationships / Social Environment routes (people, interactions, aliveness)
   registerRelationshipsRoutes(app);

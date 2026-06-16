@@ -31,14 +31,35 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
+/** Cached CSRF token — fetched once on first mutating request. */
+let csrfToken: string | null = null;
+
+async function getCsrfToken(): Promise<string> {
+  if (csrfToken) return csrfToken;
+  const res = await fetch("/api/csrf-token", { credentials: "include" });
+  if (!res.ok) throw new Error("Failed to fetch CSRF token");
+  const data = (await res.json()) as { token: string };
+  csrfToken = data.token;
+  return csrfToken;
+}
+
 export async function apiRequest(
   method: string,
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
+  const isMutating = !["GET", "HEAD", "OPTIONS"].includes(method.toUpperCase());
+  const headers: Record<string, string> = data
+    ? { "Content-Type": "application/json" }
+    : {};
+
+  if (isMutating) {
+    headers["x-csrf-token"] = await getCsrfToken();
+  }
+
   const res = await fetch(url, {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
+    headers,
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
   });
