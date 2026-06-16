@@ -20,7 +20,7 @@ describe("onboarding completion helpers", () => {
     expect(isOnboardingComplete()).toBe(true);
   });
 
-  it("recognises a completed guest profile setup", () => {
+  it("recognizes a completed guest profile setup", () => {
     localStorage.setItem(
       "dw_guest_data",
       JSON.stringify({ profileSetup: { completedAt: Date.now() } }),
