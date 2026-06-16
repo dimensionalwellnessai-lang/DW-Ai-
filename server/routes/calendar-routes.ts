@@ -38,9 +38,9 @@ export function registerCalendarRoutes(app: Express): void {
   }
 
   function verifyIcalToken(token: string): string | null {
+    const secret = process.env.SESSION_SECRET;
+    if (!secret) throw new Error("SESSION_SECRET is required for iCal token verification");
     try {
-      const secret = process.env.SESSION_SECRET;
-      if (!secret) throw new Error("SESSION_SECRET is required for iCal token verification");
       const [payload, sig] = token.split(".");
       if (!payload || !sig) return null;
       const expected = crypto

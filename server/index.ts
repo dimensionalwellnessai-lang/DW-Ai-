@@ -16,10 +16,10 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.plaid.com"],
         styleSrc: ["'self'", "'unsafe-inline'"],
         imgSrc: ["'self'", "data:", "blob:"],
-        connectSrc: ["'self'", "https://api.openai.com", "https://api.stripe.com", "https://cdn.plaid.com", "https://production.plaid.com", "https://sandbox.plaid.com"],
+        connectSrc: ["'self'", "https://api.openai.com", "https://api.stripe.com", "https://cdn.plaid.com", "https://production.plaid.com", "https://sandbox.plaid.com", "https://development.plaid.com"],
         fontSrc: ["'self'"],
         objectSrc: ["'none'"],
         frameAncestors: ["'none'"],
