@@ -30,6 +30,20 @@ export function isOnboardingComplete(): boolean {
   return isProfileSetupComplete();
 }
 
+/**
+ * Marks onboarding as complete so routing guards (FirstRunGuard / HomeRedirect)
+ * stop redirecting back to the onboarding flow. Call this from every exit path
+ * of an onboarding screen (skip, finish, accept/defer suggestions) before
+ * navigating into the app, otherwise the user is bounced straight back.
+ */
+export function markOnboardingComplete(): void {
+  try {
+    localStorage.setItem("dw_onboarding_completed", "1");
+  } catch {
+    // Ignore storage errors to avoid blocking navigation
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Auth / onboarding route prefixes
 // ---------------------------------------------------------------------------

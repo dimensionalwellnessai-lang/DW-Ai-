@@ -308,7 +308,9 @@ function Router() {
 
       {isRouteEnabled("/life-dashboard") && <Route path="/life-dashboard" component={LifeDashboardPage} />}
       <Route path="/life-dimensions" component={LifeDimensionsPage} />
-      {isRouteEnabled("/switchboard") && <Route path="/switchboard" component={LifeSwitchboardPage} />}
+      {/* `/switchboard` stays registered even when hidden from menus so that
+          back-navigation from /switch/:id and /switchboard/intake doesn't 404. */}
+      <Route path="/switchboard" component={LifeSwitchboardPage} />
       <Route path="/switch/:id" component={SwitchTrainingPage} />
       <Route path="/switchboard/intake" component={SwitchboardIntakePage} />
       <Route path="/dimension/:id" component={DimensionOverviewPage} />
