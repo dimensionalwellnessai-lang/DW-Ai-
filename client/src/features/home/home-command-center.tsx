@@ -37,6 +37,7 @@ import { TriggerProtocolSheet } from "@/components/triggers/trigger-protocol-she
 import type { TriggerEventListResponse } from "@/lib/triggers";
 import { JournalPromptSheet } from "@/components/mood/journal-prompt-sheet";
 import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
 
 // localStorage keys shared with voice-onboarding.tsx
 const LS_VOICE_ONBOARDING_COMPLETED = "dw_voice_onboarding_completed";
@@ -143,6 +144,30 @@ export default function HomeCommandCenter() {
 
   // Show the conversational onboarding card when the Spec 13 first-session hasn't been completed or skipped
   const showOnboardingCard = !isConversationalOnboardingDone() && !isConversationalOnboardingSkipped() && !isE2ETestMode();
+
+  // Progressive onboarding follow-up card — shown after first session is complete
+  interface ProgressivePrompt { id: string; prompt: string; context: string; }
+  const [dismissedPromptId, setDismissedPromptId] = useState<string | null>(null);
+  const progressivePromptQ = useQuery<{ prompt: ProgressivePrompt | null }>({
+    queryKey: ["/api/onboarding/next-prompt"],
+    enabled: isConversationalOnboardingDone() && !isE2ETestMode(),
+    staleTime: 5 * 60 * 1000,
+  });
+  const fetchedPrompt = progressivePromptQ.data?.prompt ?? null;
+  const nextPrompt = fetchedPrompt && dismissedPromptId === fetchedPrompt.id ? null : fetchedPrompt;
+
+  const dismissProgressivePromptMutation = useMutation({
+    mutationFn: (promptId: string) =>
+      apiRequest("POST", "/api/onboarding/dismiss-prompt", { promptId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/onboarding/next-prompt"] });
+    },
+  });
+
+  const handleDismissProgressivePrompt = (promptId: string) => {
+    setDismissedPromptId(promptId);
+    dismissProgressivePromptMutation.mutate(promptId);
+  };
 
   const moodChipMutation = useMutation({
     mutationFn: async (label: keyof typeof FEELING_CHIPS) => {
@@ -370,6 +395,48 @@ export default function HomeCommandCenter() {
                     </div>
                     <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
                   </button>
+                </CarouselItem>
+              )}
+
+              {/* Spec 13 PR B — Progressive follow-up card (after first session) */}
+              {nextPrompt && (
+                <CarouselItem className="pl-2 basis-[85%] h-full">
+                  <div
+                    data-testid="card-progressive-prompt"
+                    className="w-full h-full rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/5 to-primary/10 px-4 py-3.5 flex flex-col gap-2"
+                  >
+                    <div className="flex items-start gap-2">
+                      <div className="h-7 w-7 rounded-full bg-primary/15 flex items-center justify-center shrink-0 mt-0.5">
+                        <Sparkles className="h-3.5 w-3.5 text-primary" />
+                      </div>
+                      <p className="text-sm font-medium leading-snug flex-1">
+                        {nextPrompt.prompt}
+                      </p>
+                    </div>
+                    <p className="text-xs text-muted-foreground leading-relaxed pl-9">
+                      {nextPrompt.context}
+                    </p>
+                    <div className="flex gap-2 pl-9 mt-1">
+                      <Button
+                        size="sm"
+                        className="h-7 text-xs px-3"
+                        onClick={() => navigate(`/talk?prefill=${encodeURIComponent(nextPrompt.prompt)}`)}
+                        data-testid="btn-answer-progressive-prompt"
+                      >
+                        Answer
+                        <ChevronRight className="h-3 w-3 ml-1" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 text-xs px-3 text-muted-foreground"
+                        onClick={() => handleDismissProgressivePrompt(nextPrompt.id)}
+                        data-testid="btn-skip-progressive-prompt"
+                      >
+                        Not now
+                      </Button>
+                    </div>
+                  </div>
                 </CarouselItem>
               )}
 

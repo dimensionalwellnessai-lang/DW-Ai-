@@ -30,12 +30,13 @@ import { DW_MODES, type DWMode } from "@shared/dw-persona";
 import { MessageActions } from "@/components/message-actions";
 import { TriggerProtocolSheet } from "@/components/triggers/trigger-protocol-sheet";
 import { Heart } from "lucide-react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest, parseApiError } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { Input } from "@/components/ui/input";
 
 interface ChatMessage {
   role: "assistant" | "user" | "insight";
@@ -204,6 +205,7 @@ export function TalkItOutPage() {
   const [, navigate] = useLocation();
   const { user } = useAuth();
   const isLoggedIn = !!user;
+  const queryClient = useQueryClient();
   const { captureInsight, insights } = useInsights();
   const [input, setInput] = useState("");
   const [chatMode, setChatMode] = useState<DWMode>("companion");
@@ -215,6 +217,9 @@ export function TalkItOutPage() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [history, setHistory] = useState<SavedSession[]>(() => loadHistory());
   const sessionIdRef = useRef<string>(generateSessionId());
+  // Save as Learning Thread (Spec 13 PR C)
+  const [saveThreadOpen, setSaveThreadOpen] = useState(false);
+  const [threadTitleDraft, setThreadTitleDraft] = useState("");
   const [systemOverrideOverride, setSystemOverrideOverride] = useState<string | null>(() => {
     try {
       const params = new URLSearchParams(window.location.search);
@@ -427,6 +432,44 @@ export function TalkItOutPage() {
       }
     },
   });
+
+  // Save as Learning Thread mutation (Spec 13 PR C)
+  const saveThreadMutation = useMutation({
+    mutationFn: async (title: string) => {
+      const realMessages = messages
+        .filter((m) => m.role === "user" || m.role === "assistant")
+        .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
+      const res = await apiRequest("POST", "/api/learning-threads", {
+        title: title.trim(),
+        messages: realMessages,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/learning-threads"] });
+      toast({
+        title: "Saved as Learning Thread",
+        description: "Find it in Guidance → Conversations.",
+      });
+      setSaveThreadOpen(false);
+      setThreadTitleDraft("");
+    },
+    onError: () => {
+      toast({
+        title: "Couldn't save thread",
+        description: "Try again in a moment.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSaveAsThread = () => {
+    // Pre-fill the title with the session topic if AI generated one
+    const sessionInHistory = loadHistory().find((s) => s.id === sessionIdRef.current);
+    const suggested = sessionInHistory?.topicTitle ?? "";
+    setThreadTitleDraft(suggested);
+    setSaveThreadOpen(true);
+  };
 
   // Auto-save session to history whenever conversation grows past 3 messages
   useEffect(() => {
@@ -1374,14 +1417,28 @@ export function TalkItOutPage() {
                 </span>
               )}
             </div>
-            <button
-              onClick={() => setVoiceConvOpen(true)}
-              className="flex items-center gap-1.5 text-xs text-primary font-medium hover:opacity-80 transition-opacity shrink-0"
-              data-testid="button-open-voice-conversation"
-            >
-              <Headphones className="w-3.5 h-3.5" />
-              Speak with DW
-            </button>
+            <div className="flex items-center gap-2 shrink-0">
+              {isLoggedIn && messages.filter((m) => m.role === "user" || m.role === "assistant").length >= 4 && (
+                <button
+                  type="button"
+                  onClick={handleSaveAsThread}
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium hover:text-foreground transition-colors shrink-0"
+                  data-testid="button-save-as-thread"
+                  title="Save this conversation as a Learning Thread"
+                >
+                  <BookmarkPlus className="w-3.5 h-3.5" />
+                  Save thread
+                </button>
+              )}
+              <button
+                onClick={() => setVoiceConvOpen(true)}
+                className="flex items-center gap-1.5 text-xs text-primary font-medium hover:opacity-80 transition-opacity shrink-0"
+                data-testid="button-open-voice-conversation"
+              >
+                <Headphones className="w-3.5 h-3.5" />
+                Speak with DW
+              </button>
+            </div>
           </div>
           <div className="flex gap-2 items-end">
             <Textarea
@@ -1550,6 +1607,46 @@ export function TalkItOutPage() {
         initialFeeling={triggerSheetSeed.feeling}
         initialAssumption={triggerSheetSeed.assumption}
       />
+
+      {/* Save as Learning Thread dialog */}
+      <Dialog open={saveThreadOpen} onOpenChange={setSaveThreadOpen}>
+        <DialogContent className="w-[calc(100%-2rem)] rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <BookmarkPlus className="h-4 w-4 text-primary" />
+              Save as Learning Thread
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            This conversation will be saved to Guidance → Conversations so you can revisit it any time.
+          </p>
+          <div className="space-y-3 pt-1">
+            <Input
+              value={threadTitleDraft}
+              onChange={(e) => setThreadTitleDraft(e.target.value)}
+              placeholder="Give this thread a title…"
+              className="text-sm"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && threadTitleDraft.trim()) {
+                  saveThreadMutation.mutate(threadTitleDraft);
+                }
+              }}
+            />
+            <div className="flex gap-2 justify-end">
+              <Button variant="ghost" size="sm" onClick={() => setSaveThreadOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                disabled={!threadTitleDraft.trim() || saveThreadMutation.isPending}
+                onClick={() => saveThreadMutation.mutate(threadTitleDraft)}
+              >
+                {saveThreadMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save thread"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

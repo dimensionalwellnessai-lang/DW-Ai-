@@ -131,6 +131,8 @@ export const onboardingProfiles = pgTable("onboarding_profiles", {
   suggestedStructure: jsonb("suggested_structure"),
   onboardingVersion: varchar("onboarding_version").default("v1"),
   completedAt: timestamp("completed_at"),
+  /** Progressive follow-up prompt IDs already dismissed by the user. */
+  dismissedProgressivePrompts: text("dismissed_progressive_prompts").array(),
 });
 
 export const onboardingProfilesRelations = relations(onboardingProfiles, ({ one }) => ({
@@ -526,6 +528,10 @@ export const projects = pgTable("projects", {
   lastActivityAt: timestamp("last_activity_at").defaultNow(),
   /** Short DW-generated one-liner ("where you are") shown on plan cards. */
   summary: text("summary"),
+  /** Origin of this project: "user" (hand-entered) or "onboarding" (AI-suggested + accepted). */
+  dataSource: text("data_source").default("user"),
+  /** Why DW suggested this project — shown as transparent source metadata. */
+  explainWhy: text("explain_why"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -3573,6 +3579,14 @@ export const lifeSystemProjects = pgTable("life_system_projects", {
   nextAction: text("next_action"),
   status: text("status").default("active").$type<LifeSystemProjectStatus>(),
   sortOrder: integer("sort_order").default(0),
+  /** Tag linking this project to a Path (e.g. "health reset", "financial stability"). */
+  linkedPathTag: text("linked_path_tag"),
+  /** Optional Plan title this project is executing against. */
+  linkedPlanTitle: text("linked_plan_title"),
+  /** Origin of this item: "user" (hand-entered) or "onboarding" (AI-suggested). */
+  dataSource: text("data_source").default("user"),
+  /** Why DW added this — shown as transparent source metadata. */
+  explainWhy: text("explain_why"),
   updatedAt: timestamp("updated_at").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -4277,3 +4291,42 @@ export const reminderUpdateSchema = insertReminderSchema
   .omit({ userId: true })
   .partial()
   .strict();
+
+// ── Learning Threads (Spec 13 — Guidance: Conversations) ─────────────────────
+// A Learning Thread is a saved AI coaching conversation from the Talk page that
+// the user has marked as worth keeping. Threads can be titled, tagged, and
+// optionally linked to a My Life object (path / project / system).
+export const learningThreads = pgTable("learning_threads", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  /** User-provided or AI-generated title for the thread. */
+  title: text("title").notNull(),
+  /** Short AI-generated summary of what was discussed. */
+  summary: text("summary"),
+  /** Full message array stored as JSONB — [{role, content}, ...] */
+  messages: jsonb("messages").notNull(),
+  /** Freeform topic tags (e.g. ["motivation", "routines", "identity"]). */
+  tags: text("tags").array(),
+  /** Optional link to a My Life item type. */
+  linkedToType: text("linked_to_type"),
+  /** Optional ID of the linked My Life item. */
+  linkedToId: varchar("linked_to_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const learningThreadsRelations = relations(learningThreads, ({ one }) => ({
+  user: one(users, {
+    fields: [learningThreads.userId],
+    references: [users.id],
+  }),
+}));
+
+export const insertLearningThreadSchema = createInsertSchema(learningThreads).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type LearningThread = typeof learningThreads.$inferSelect;
+export type InsertLearningThread = z.infer<typeof insertLearningThreadSchema>;

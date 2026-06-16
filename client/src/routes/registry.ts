@@ -851,6 +851,16 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
     enabled: true,
   },
   {
+    id: "guidance-conversations",
+    path: "/guidance/conversations",
+    label: "Learning Threads",
+    icon: "bookmark",
+    type: "page",
+    description: "Saved chat-based learning threads from Talk It Out conversations",
+    showInMenu: false,
+    enabled: true,
+  },
+  {
     id: "not-found",
     path: "/404",
     label: "Not Found",

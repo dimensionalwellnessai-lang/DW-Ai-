@@ -187,6 +187,7 @@ const LifeSystemOnboardingPage = lazy(() => import("@/pages/life-system-onboardi
 // Spec 13 primary section hub pages
 const MyLifePage = lazy(() => import("@/pages/my-life"));
 const GuidancePage = lazy(() => import("@/pages/guidance"));
+const GuidanceConversationsPage = lazy(() => import("@/pages/guidance-conversations"));
 const ToolsPage = lazy(() => import("@/pages/tools"));
 
 function isReturningUser(): boolean {
@@ -316,6 +317,7 @@ function Router() {
       {/* Spec 13 primary section hub pages */}
       <Route path="/my-life" component={MyLifePage} />
       <Route path="/guidance" component={GuidancePage} />
+      <Route path="/guidance/conversations" component={GuidanceConversationsPage} />
       <Route path="/tools" component={ToolsPage} />
       <Route path="/profile"><Redirect to="/profile/progress" /></Route>
       <Route path="/command-center" component={HomeCommandCenter} />
