@@ -16,11 +16,12 @@ import { useHomeSummary } from "./useHomeSummary";
 import { isE2ETestMode } from "@/lib/e2e-mode";
 import { isFeatureEnabled } from "@/config/featureFlags";
 import { CommandCenterOrbit } from "@/components/home/command-center-orbit";
-import { TodayBriefCard } from "./components/TodayBriefCard";
+import type { HomeSummary } from "./types";
 import {
   Carousel,
   CarouselContent,
   CarouselItem,
+  type CarouselApi,
 } from "@/components/ui/carousel";
 import {
   ChevronRight,
@@ -31,6 +32,9 @@ import {
   X,
   LifeBuoy,
   MessageCircle,
+  RefreshCw,
+  Clock,
+  Compass,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { TriggerProtocolSheet } from "@/components/triggers/trigger-protocol-sheet";
@@ -120,6 +124,37 @@ function getGreeting(): string {
   return "Good evening";
 }
 
+function formatClock(value: string | Date): string {
+  const d = typeof value === "string" ? new Date(value) : value;
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+
+/** Pick the schedule item happening now, else the next upcoming one today, for the "Now" card. */
+function getNowOrNext(
+  summary: HomeSummary,
+): { kind: "now" | "next"; time: string; title: string } | null {
+  const now = Date.now();
+  const events = summary.todayEvents ?? [];
+  for (const e of events) {
+    const start = new Date(e.startTime).getTime();
+    if (Number.isNaN(start)) continue;
+    const end = e.endTime ? new Date(e.endTime).getTime() : start + 60 * 60 * 1000;
+    if (now >= start && now <= end) {
+      return { kind: "now", time: formatClock(e.startTime), title: e.title };
+    }
+  }
+  const upcoming = events
+    .map(e => ({ e, t: new Date(e.startTime).getTime() }))
+    .filter(x => !Number.isNaN(x.t) && x.t > now)
+    .sort((a, b) => a.t - b.t)[0];
+  if (upcoming) return { kind: "next", time: formatClock(upcoming.e.startTime), title: upcoming.e.title };
+  if (summary.nextEvent?.startTime) {
+    return { kind: "next", time: formatClock(summary.nextEvent.startTime), title: summary.nextEvent.title };
+  }
+  return null;
+}
+
 export default function HomeCommandCenter() {
   usePageMeta(
     "Home",
@@ -141,6 +176,51 @@ export default function HomeCommandCenter() {
     queryKey: ["/api/trigger-events"],
   });
   const weekStats = triggersQ.data?.week;
+
+  const [carouselApi, setCarouselApi] = useState<CarouselApi>();
+  const [selectedSnap, setSelectedSnap] = useState(0);
+  const [snapCount, setSnapCount] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    if (!carouselApi) return;
+    const update = () => {
+      setSnapCount(carouselApi.scrollSnapList().length);
+      setSelectedSnap(carouselApi.selectedScrollSnap());
+    };
+    update();
+    carouselApi.on("select", update);
+    carouselApi.on("reInit", update);
+    return () => {
+      carouselApi.off("select", update);
+      carouselApi.off("reInit", update);
+    };
+  }, [carouselApi]);
+
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+  }, []);
+
+  const handleRefreshDeck = () => {
+    setRefreshing(true);
+    for (const key of [
+      "/api/trigger-events",
+      "/api/onboarding/next-prompt",
+      "/api/schedule",
+      "/api/calendar",
+      "/api/today",
+      "/api/dw/followups",
+      "/api/dw/latestJournal",
+      "/api/mood/today",
+    ]) {
+      queryClient.invalidateQueries({ queryKey: [key] });
+    }
+    if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+    refreshTimerRef.current = setTimeout(() => setRefreshing(false), 700);
+  };
+
+  const nowItem = getNowOrNext(summary);
 
   // Show the conversational onboarding card when the Spec 13 first-session hasn't been completed or skipped
   const showOnboardingCard = !isConversationalOnboardingDone() && !isConversationalOnboardingSkipped() && !isE2ETestMode();
@@ -328,13 +408,24 @@ export default function HomeCommandCenter() {
       </header>
 
       <div className="flex-1 flex flex-col overflow-y-auto">
-        {/* ── Unified daily brief, pinned to the top ──────────────────── */}
-        <div className="px-4 pt-1 pb-2 max-w-lg mx-auto w-full" data-testid="section-today-brief">
-          <TodayBriefCard />
+        {/* ── Hero: calm command-center orb ─────────────────────────────── */}
+        <div
+          className="flex flex-col items-center justify-center px-4 pt-4 pb-4 shrink-0"
+          data-testid="section-orbit-hero"
+        >
+          <div className="relative flex items-center justify-center">
+            <div className="absolute rounded-full bg-primary/5 blur-3xl" style={{ width: 240, height: 240 }} aria-hidden="true" />
+            <div className="absolute rounded-full bg-primary/10 blur-2xl" style={{ width: 120, height: 120 }} aria-hidden="true" />
+            <CommandCenterOrbit size={280} className="relative z-10" />
+          </div>
+          <p className="text-[11px] text-muted-foreground tracking-wide mt-2" data-testid="text-protocol-hint">
+            Pause · Name · Flip · Choose
+          </p>
         </div>
 
-        {/* ── Quick "How are you feeling?" chip row ─────────────────────── */}
-        <div className="px-4 pt-1 pb-2 max-w-lg mx-auto w-full" data-testid="section-feeling-chips">
+        {/* ── Gentle feeling check ──────────────────────────────────────── */}
+        <div className="px-4 pt-1 pb-3 max-w-lg mx-auto w-full" data-testid="section-feeling-chips">
+          <p className="text-[11px] text-muted-foreground/70 text-center mb-2">How are you feeling right now?</p>
           <div className="flex items-center justify-center gap-2 flex-wrap">
             {(Object.keys(FEELING_CHIPS) as Array<keyof typeof FEELING_CHIPS>).map(label => (
               <button
@@ -360,22 +451,64 @@ export default function HomeCommandCenter() {
           </div>
         </div>
 
-        {/* ── Hero: command center module orbit ─────────────────────────── */}
-        <div
-          className="flex flex-col items-center justify-center px-4 pt-2 pb-10 shrink-0"
-          data-testid="section-orbit-hero"
-        >
-          <div className="relative flex items-center justify-center">
-            <div className="absolute rounded-full bg-primary/5 blur-3xl" style={{ width: 240, height: 240 }} aria-hidden="true" />
-            <div className="absolute rounded-full bg-primary/10 blur-2xl" style={{ width: 120, height: 120 }} aria-hidden="true" />
-            <CommandCenterOrbit size={280} className="relative z-10" />
-          </div>
-        </div>
-
-        {/* ── Existing command-center widgets, unchanged ────────────────── */}
+        {/* ── Curated card deck ─────────────────────────────────────────── */}
         <div className="shrink-0 px-4 pb-4 pt-0 w-full max-w-lg mx-auto" data-testid="section-cards">
-          <Carousel opts={{ align: "start", dragFree: true }}>
+          <div className="flex items-center justify-between px-1 mb-2">
+            <div className="flex items-baseline gap-1.5">
+              <p className="text-sm font-semibold font-display" data-testid="text-deck-title">For you</p>
+              <span className="text-[11px] text-muted-foreground/70">· curated by DW</span>
+            </div>
+            <button
+              type="button"
+              onClick={handleRefreshDeck}
+              className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground border border-border rounded-full px-2.5 py-1 transition-colors"
+              data-testid="btn-refresh-deck"
+            >
+              <RefreshCw className={`h-3 w-3 ${refreshing ? "animate-spin" : ""}`} />
+              Refresh
+            </button>
+          </div>
+          <Carousel setApi={setCarouselApi} opts={{ align: "start", dragFree: true }}>
             <CarouselContent className="-ml-2 items-stretch">
+              {/* ── "Now" schedule card ─────────────────────────────── */}
+              <CarouselItem className="pl-2 basis-[85%] h-full">
+                <div className="w-full h-full rounded-2xl border border-border bg-card px-4 py-3.5 flex flex-col" data-testid="card-now-schedule">
+                  <button
+                    type="button"
+                    onClick={() => navigate("/calendar?view=day")}
+                    className="text-left flex items-start gap-3"
+                  >
+                    <div className="h-9 w-9 rounded-full bg-emerald-500/15 flex items-center justify-center shrink-0">
+                      <Clock className="h-4 w-4 text-emerald-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-400" data-testid="text-now-label">
+                        {nowItem ? (nowItem.kind === "now" ? `Now · ${nowItem.time}` : `Next · ${nowItem.time}`) : "Today"}
+                      </p>
+                      <p className="text-sm font-semibold leading-snug mt-0.5 truncate" data-testid="text-now-title">
+                        {nowItem ? nowItem.title : "Your day is open"}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {nowItem ? "On your schedule. Tap to open." : "Tap to plan something gentle."}
+                      </p>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                  </button>
+                  <div className="flex items-center gap-2 mt-3 pl-12">
+                    {(["day", "week", "month"] as const).map(v => (
+                      <button
+                        key={v}
+                        type="button"
+                        onClick={() => navigate(`/calendar?view=${v}`)}
+                        className="text-[11px] capitalize px-2.5 py-1 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
+                        data-testid={`btn-now-${v}`}
+                      >
+                        {v}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </CarouselItem>
               {/* Spec 13 progressive onboarding card — shown until the first session is completed */}
               {showOnboardingCard && (
                 <CarouselItem className="pl-2 basis-[85%] h-full">
@@ -508,8 +641,40 @@ export default function HomeCommandCenter() {
                   <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
                 </button>
               </CarouselItem>
+
+              {/* ── Explore / topics curated from DW chats ──────────── */}
+              <CarouselItem className="pl-2 basis-[85%] h-full">
+                <button
+                  type="button"
+                  onClick={() => navigate("/browse")}
+                  data-testid="card-explore"
+                  className="w-full h-full text-left rounded-2xl border border-border bg-card px-4 py-3.5 flex items-center gap-3 hover:border-primary/40 transition-colors"
+                >
+                  <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <Compass className="h-4 w-4 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-primary">Explore</p>
+                    <p className="text-sm font-semibold leading-snug mt-0.5 truncate">
+                      {summary.lastConversationTopic ? `More on ${summary.lastConversationTopic}` : "Something new for you"}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Articles, videos &amp; ideas DW picked for you</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                </button>
+              </CarouselItem>
             </CarouselContent>
           </Carousel>
+          {snapCount > 1 && (
+            <div className="flex items-center justify-center gap-1.5 mt-3" data-testid="carousel-dots">
+              {Array.from({ length: snapCount }).map((_, i) => (
+                <div
+                  key={i}
+                  className={`h-1.5 rounded-full transition-all ${i === selectedSnap ? "w-4 bg-primary" : "w-1.5 bg-border"}`}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

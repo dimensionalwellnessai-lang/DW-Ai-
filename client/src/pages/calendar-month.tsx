@@ -378,12 +378,13 @@ export default function CalendarMonthPage() {
     enabled: subscribeOpen,
   });
 
-  // Auto-switch to day view if ?view=day is in the URL (e.g. from Today card "More")
+  // Honor ?view=day|week|month in the URL (e.g. from the Home "Now" card pills)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("view") === "day") {
-      setView("day");
-      setCurrentDate(new Date());
+    const v = params.get("view");
+    if (v === "day" || v === "week" || v === "month") {
+      setView(v);
+      if (v === "day") setCurrentDate(new Date());
     }
   }, []);
 
