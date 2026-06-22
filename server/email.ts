@@ -420,14 +420,14 @@ export async function sendPartnerInviteEmail(
   inviteToken: string
 ): Promise<boolean> {
   try {
-    const { client, fromEmail } = await getResendClient();
+    const { client, resolvedFrom } = await getResendClient();
 
     const baseUrl = getBaseUrl();
     const inviteUrl = `${baseUrl}/accountability/accept-invite/${inviteToken}`;
     const safeRequesterEmail = escapeHtml(requesterEmail);
 
     const { data, error } = await client.emails.send({
-      from: fromEmail || 'DW.ai <no-reply@send.dimensionalwellnessai.com>',
+      from: resolvedFrom,
       to: toEmail,
       subject: `${requesterEmail} invited you to be their accountability partner on DW.ai`,
       html: `
@@ -469,7 +469,16 @@ export async function sendPartnerInviteEmail(
     });
 
     if (error) {
-      console.error('[email] Resend API error for partner invite to:', toEmail, '-', error.message);
+      if (isDomainVerificationError(error)) {
+        console.error(
+          '[email] Resend rejected the partner invite email — the sending domain is not verified. ' +
+          'Go to https://resend.com/domains, verify your sending domain, then set ' +
+          'RESEND_FROM_EMAIL=no-reply@<your-verified-domain> in your environment. ' +
+          'Error detail:', error.message
+        );
+      } else {
+        console.error('[email] Resend API error for partner invite to:', toEmail, '-', error.message);
+      }
       return false;
     }
 

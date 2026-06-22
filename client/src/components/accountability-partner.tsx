@@ -76,15 +76,21 @@ export function AccountabilityPartner() {
       });
       return res.json();
     },
-    onSuccess: (_data, inviteEmail) => {
+    onSuccess: (data, inviteEmail) => {
       invalidate();
       setEmail("");
       setShowInviteForm(false);
-      toast({
-        title: "Invite sent!",
-        description: `An invite link was created for ${inviteEmail}. Share the link below with your partner.`,
-      });
-      // If invite link should be shown, it's surfaced via the pending list refetch
+      if (data?.emailSent) {
+        toast({
+          title: "Invite sent!",
+          description: `We emailed an invite to ${inviteEmail}. The link is also shown below.`,
+        });
+      } else {
+        toast({
+          title: "Invite link created",
+          description: `We couldn't email ${inviteEmail} right now, so share the invite link below with them directly.`,
+        });
+      }
     },
     onError: (err: Error) => {
       toast({

@@ -474,7 +474,10 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
     } else if (m4) {
       result = `${m4[3]}-${m4[1].padStart(2, "0")}-${m4[2].padStart(2, "0")}`;
     }
-    if (result) setData((d) => ({ ...d, birthDate: result }));
+    if (result) {
+      setData((d) => ({ ...d, birthDate: result }));
+      scheduleAutoAdvance();
+    }
   };
 
   // Parse "3:30 PM", "7 AM", "quarter past 2" → HH:MM (24h for input type="time")
@@ -489,10 +492,12 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
     if (meridiem === "am" && hour === 12) hour = 0;
     const timeStr = `${hour.toString().padStart(2, "0")}:${min.toString().padStart(2, "0")}`;
     setData((d) => ({ ...d, birthTime: timeStr }));
+    scheduleAutoAdvance();
   };
 
   const handleLocationVoice = (transcript: string) => {
     setData((d) => ({ ...d, birthLocation: transcript }));
+    scheduleAutoAdvance();
   };
 
   // Match spoken words to dimension snapshot options (step 6)

@@ -189,14 +189,23 @@ export function registerAccountabilityRoutes(app: Express): void {
       const invite = await accountability.invitePartner(req.session.userId!, trimmedEmail);
 
       // Send invitation email — requesterEmail is already available from invitePartner()
+      // Await the send so we can honestly tell the client whether the email actually
+      // went out (vs. the invite link merely being created).
+      let emailSent = false;
       if (invite.requesterEmail) {
-        sendPartnerInviteEmail(trimmedEmail, invite.requesterEmail, invite.inviteToken).catch((err) => {
+        emailSent = await sendPartnerInviteEmail(
+          trimmedEmail,
+          invite.requesterEmail,
+          invite.inviteToken,
+        ).catch((err) => {
           console.error("Failed to send partner invite email:", err);
+          return false;
         });
       }
 
-      // Return the invite token so the client can construct a deep-link if desired
-      res.json({ invite });
+      // Return the invite token so the client can construct a deep-link if desired,
+      // plus whether the email was actually delivered.
+      res.json({ invite, emailSent });
     } catch (error) {
       const message = error instanceof Error ? error.message : null;
       if (
