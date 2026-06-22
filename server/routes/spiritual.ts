@@ -294,6 +294,60 @@ function buildPersonalReading(
   );
 }
 
+// Per-user daily cache for the AI-written personal reading. Keyed by
+// `${userId}:${date}` so each user gets one fresh generation per day; falls
+// back to the deterministic template above whenever the AI call fails so the
+// card always renders something real.
+const PERSONAL_READING_CACHE = new Map<string, { value: string; date: string }>();
+
+async function generatePersonalReading(
+  userId: string,
+  snapshot: ReturnType<typeof computeTodaySnapshot>,
+  placements: NatalPlacement[] | null,
+): Promise<string> {
+  const cacheKey = `${userId}:${snapshot.date}`;
+  const cached = PERSONAL_READING_CACHE.get(cacheKey);
+  if (cached && cached.date === snapshot.date) return cached.value;
+
+  const sun = placements?.find((p) => p.planet === "Sun")?.sign ?? null;
+  const moon = placements?.find((p) => p.planet === "Moon")?.sign ?? null;
+  const asc = placements?.find((p) => p.planet === "Ascendant")?.sign ?? null;
+  const chartBits = [sun && `${sun} Sun`, moon && `${moon} Moon`, asc && `${asc} Rising`]
+    .filter(Boolean)
+    .join(", ");
+
+  const prompt =
+    `Write a calm, faith-neutral, personal "what today means for you" reading in 2–3 sentences for ${snapshot.date}. ` +
+    `Today's sky: ${snapshot.moonPhase} in ${snapshot.moonSign}, Sun in ${snapshot.sunSign}, energy word "${snapshot.energyWord}". ` +
+    (chartBits
+      ? `The person's natal chart: ${chartBits}. Speak directly to them ("you") and connect today's transits to their placements. `
+      : `The person has not shared birth details, so keep it gently universal and invite them to add birth details for a more personal reading. `) +
+    `Avoid deterministic prediction and any medical claims. No emoji. Plain prose only.`;
+
+  try {
+    const text = await aiCall(
+      [
+        { role: "system", content: "You are a poetic but grounded astrology writer who speaks warmly and personally." },
+        { role: "user", content: prompt },
+      ],
+      { maxTokens: 220 },
+    );
+    const cleaned = text.trim().replace(/\s+/g, " ");
+    const looksLikeFallback = /reconnect|pick right up|interrupted my thinking|brief delay|send that again|i'll respond|i'll pick right up/i.test(cleaned);
+    if (!cleaned || cleaned.length < 40 || looksLikeFallback) throw new Error("empty");
+    // Light pruning: drop stale-date entries before growing the map.
+    if (PERSONAL_READING_CACHE.size > 1000) {
+      for (const [k, v] of Array.from(PERSONAL_READING_CACHE.entries())) {
+        if (v.date !== snapshot.date) PERSONAL_READING_CACHE.delete(k);
+      }
+    }
+    PERSONAL_READING_CACHE.set(cacheKey, { value: cleaned, date: snapshot.date });
+    return cleaned;
+  } catch {
+    return buildPersonalReading(snapshot, placements);
+  }
+}
+
 async function loadUserPlacements(userId: string): Promise<NatalPlacement[] | null> {
   const [chart] = await db
     .select()
@@ -573,7 +627,7 @@ export function registerSpiritualRoutes(app: Express): void {
         retrograde: t.retrograde,
       }));
 
-      const personal = buildPersonalReading(snapshot, placements);
+      const personal = await generatePersonalReading(userId, snapshot, placements);
 
       res.json({
         hasChart: !!placements && placements.length > 0,
@@ -623,7 +677,7 @@ export function registerSpiritualRoutes(app: Express): void {
           );
           if (placements && hasAnchor) {
             hasChart = true;
-            personalReading = buildPersonalReading(snapshot, placements);
+            personalReading = await generatePersonalReading(userId, snapshot, placements);
           }
         } catch (err) {
           // Personalisation failure must not break the public snapshot.

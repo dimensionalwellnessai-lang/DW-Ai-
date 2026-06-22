@@ -198,6 +198,14 @@ export interface UserContextSnapshot {
     moodFactors: Array<{ key: string; label: string; impact: number; detail: string }>;
     moodSampleSize: number;
   };
+  /** Documents/preferences the user imported via DW Smart Import. */
+  imports: Array<{
+    title: string;
+    category?: string;
+    summary?: string;
+    status?: string;
+    createdAt?: string | Date | null;
+  }>;
 }
 
 export type SnapshotDetail = "brief" | "full";
@@ -301,6 +309,7 @@ export async function getUserContextSnapshot(
     yesterdayMetrics,
     birthChart,
     astrologyPredictions,
+    importedDocs,
   ] = await Promise.all([
     safe(storage.getUser(userId)),
     safe(storage.getUserProfile(userId)),
@@ -357,6 +366,7 @@ export async function getUserContextSnapshot(
       ),
       isFull,
     ),
+    maybe(storage.getImportedDocuments(userId), isFull),
   ]);
 
   // ── Identity ──
@@ -685,6 +695,18 @@ export async function getUserContextSnapshot(
     moodSampleSize: moodFactorsResult?.sampleSize ?? (moodInsights?.length ?? 0),
   };
 
+  // ── Imports ──
+  const importsList: UserContextSnapshot["imports"] = (importedDocs ?? [])
+    .filter((d) => d.status !== "error" && Boolean(d.documentTitle || d.fileName))
+    .slice(0, 5)
+    .map((d) => ({
+      title: (d.documentTitle || d.fileName) as string,
+      category: d.primaryCategory ?? undefined,
+      summary: d.summary ?? undefined,
+      status: d.status ?? undefined,
+      createdAt: d.createdAt ?? null,
+    }));
+
   const nowDate = new Date();
   const hour = nowDate.getHours();
   const timeOfDay: UserContextSnapshot["today"]["timeOfDay"] =
@@ -724,6 +746,7 @@ export async function getUserContextSnapshot(
     plans,
     triggers,
     insights,
+    imports: importsList,
   };
 
   cache.set(key, { snap, expiresAt: now + CACHE_TTL_MS });
@@ -1003,6 +1026,20 @@ export function toPromptString(snap: UserContextSnapshot): string {
       );
     }
     lines.push(`INSIGHTS: ${iBits.join("; ")}.`);
+  }
+
+  // Imports — documents/preferences the user brought in; reference when relevant.
+  if (snap.imports.length) {
+    lines.push(
+      `IMPORTS (user-provided documents & preferences — use these to personalize): ${snap.imports
+        .map(
+          (d) =>
+            `${d.title}${d.category ? ` [${d.category}]` : ""}${
+              d.summary ? `: ${d.summary.slice(0, 120)}` : ""
+            }`,
+        )
+        .join(" | ")}.`,
+    );
   }
 
   return lines.join("\n");

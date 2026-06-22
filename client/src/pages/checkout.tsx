@@ -1,11 +1,30 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Check, Loader2, ShieldCheck, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { simulateUpgrade } from "@/lib/billing";
+import { apiRequest, parseApiError } from "@/lib/queryClient";
 import type { BillingPlan } from "@/lib/billing";
 import { usePageMeta } from "@/hooks/use-page-meta";
+
+interface BillingStatus {
+  tier: "free" | "plus";
+  billingConfigured: boolean;
+}
+
+/**
+ * Map a checkout page plan key to the recurring plan the billing backend
+ * actually sells. The server only offers monthly and annual subscriptions
+ * (STRIPE_PRICE_ID_MONTHLY / STRIPE_PRICE_ID_ANNUAL); the one-time "lifetime"
+ * plan has no real price, so it maps to null and is treated as unavailable
+ * rather than silently charging a subscription.
+ */
+function planToBackend(planKey: string): "monthly" | "annual" | null {
+  if (planKey === "plus-yearly") return "annual";
+  if (planKey === "lifetime") return null;
+  return "monthly";
+}
 
 /** Inline spinner label used on the confirm button during processing. */
 function ProcessingLabel() {
@@ -103,47 +122,66 @@ export default function CheckoutPage() {
   usePageMeta("Checkout", "Complete your DW.ai premium subscription to unlock all features.");
   const [, setLocation] = useLocation();
   const [processing, setProcessing] = useState(false);
-  const [success, setSuccess] = useState(false);
   const { toast } = useToast();
+
+  const { data: status } = useQuery<BillingStatus>({
+    queryKey: ["/api/billing/status"],
+    staleTime: 30 * 1000,
+  });
+  const billingConfigured = status?.billingConfigured !== false;
 
   const searchParams = new URLSearchParams(
     typeof window !== "undefined" ? window.location.search : "",
   );
-  const planKey = searchParams.get("plan") ?? "plus-yearly";
-  const ctx = searchParams.get("ctx") as
-    | "message_limit"
-    | "session_limit"
-    | "paywall"
-    | null;
+  // Resolve the requested plan to a known key FIRST so the displayed plan and
+  // the plan we actually charge always come from the same source of truth.
+  // An unknown/invalid key falls back to "plus-yearly" for both.
+  const requestedKey = searchParams.get("plan") ?? "plus-yearly";
+  const planKey = PLAN_DETAILS[requestedKey] ? requestedKey : "plus-yearly";
   // Sanitize `from` to a known in-app path only.
   const rawFrom = searchParams.get("from") ?? "";
   const from = ALLOWED_BACK_PATHS.has(rawFrom) ? rawFrom : "/paywall";
 
-  const upgradeContext =
-    ctx === "message_limit" || ctx === "session_limit" ? ctx : "paywall";
-
-  const plan = PLAN_DETAILS[planKey] ?? PLAN_DETAILS["plus-yearly"];
+  const plan = PLAN_DETAILS[planKey];
   const isLifetime = plan.billingPlan === "lifetime";
 
+  const backendPlan = planToBackend(planKey);
+
   const handleConfirm = async () => {
-    setProcessing(true);
-    try {
-      await simulateUpgrade(plan.billingPlan, upgradeContext);
-      setSuccess(true);
+    // Honest guards: never fake a charge or grant entitlement locally.
+    if (!billingConfigured) {
       toast({
-        title: "Payment confirmed!",
-        description: isLifetime
-          ? `${plan.label} is now active. You have lifetime access!`
-          : `${plan.label} is now active. Enjoy unlimited access!`,
+        title: "Payments aren't available yet",
+        description: "Subscriptions aren't switched on for this app yet. Hang tight — you won't be charged.",
       });
-      setTimeout(() => setLocation("/"), 1500);
-    } catch {
+      return;
+    }
+    if (!backendPlan) {
       toast({
-        title: "Payment failed",
-        description: "Could not complete your purchase. Please try again.",
+        title: "This plan isn't available yet",
+        description: "Lifetime access isn't offered right now. Please choose the monthly or yearly plan.",
         variant: "destructive",
       });
-    } finally {
+      return;
+    }
+
+    setProcessing(true);
+    try {
+      const res = await apiRequest("POST", "/api/billing/checkout", { plan: backendPlan });
+      const body = (await res.json()) as { url?: string };
+      if (body.url) {
+        // Hand off to Stripe's hosted checkout. Stripe redirects back to
+        // /upgrade?status=success on completion.
+        window.location.assign(body.url);
+        return;
+      }
+      throw new Error("No checkout URL returned");
+    } catch (err) {
+      toast({
+        title: "Checkout failed",
+        description: parseApiError(err),
+        variant: "destructive",
+      });
       setProcessing(false);
     }
   };
@@ -164,36 +202,24 @@ export default function CheckoutPage() {
           onClick={handleBack}
           className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
           aria-label="Go back"
-          disabled={processing || success}
+          disabled={processing}
           data-testid="button-checkout-back"
         >
           <ArrowLeft className="w-4 h-4" />
           Back
         </button>
 
-        {success ? (
-          /* ── Success state ───────────────────────────────────────────── */
-          <div className="text-center space-y-4 py-8">
-            <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-              <Check className="h-8 w-8 text-primary" />
-            </div>
-            <h2 className="text-xl font-semibold text-foreground">
-              You're all set!
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              Taking you to the app…
-            </p>
-          </div>
-        ) : (
-          /* ── Checkout form ───────────────────────────────────────────── */
-          <>
-            {/* Demo notice */}
-            <div className="flex items-start gap-2 rounded-lg border border-blue-500/20 bg-blue-500/5 px-3 py-2.5">
-              <Info className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" aria-hidden="true" />
-              <p className="text-xs text-blue-600 dark:text-blue-400 leading-snug">
-                Payments aren't live yet — no charge will be made. Confirming will activate your plan in demo mode.
-              </p>
-            </div>
+        {/* ── Checkout form ───────────────────────────────────────────── */}
+        <>
+            {/* Honest billing notice when Stripe isn't configured yet */}
+            {!billingConfigured && (
+              <div className="flex items-start gap-2 rounded-lg border border-blue-500/20 bg-blue-500/5 px-3 py-2.5">
+                <Info className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" aria-hidden="true" />
+                <p className="text-xs text-blue-600 dark:text-blue-400 leading-snug">
+                  Payments aren't switched on yet, so no charge will be made. We'll let you know the moment subscriptions go live.
+                </p>
+              </div>
+            )}
 
             {/* Header */}
             <div className="text-center space-y-1">
@@ -258,8 +284,7 @@ export default function CheckoutPage() {
                   : "Subscribe now"
               )}
             </Button>
-          </>
-        )}
+        </>
       </div>
     </div>
   );
