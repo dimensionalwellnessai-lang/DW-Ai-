@@ -1,0 +1,1 @@
+- [Mockup-sandbox port blocker](mockup-sandbox-port-blocker.md) — preview server can fail DIDNT_OPEN_A_PORT despite vite "ready"; fall back to static HTML in client/public + screenshots as canvas image shapes.
