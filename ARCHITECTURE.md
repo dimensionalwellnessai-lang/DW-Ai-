@@ -307,4 +307,129 @@ These are honest weak points / tech-debt areas worth a second opinion:
 
 ---
 
+## 15. DWAI-Specific Improvement Roadmap
+
+This section captures product-architecture improvements that are specific to DWAI as a wellness operating system (as opposed to generic refactoring work). The unifying goal: **make every feature feel like it's powered by one intelligent companion**, not a collection of wellness tools.
+
+### 15.1 Strengthen the "Pause → Name → Flip → Choose" system
+
+The four-step loop is DWAI's unique philosophy and should be a visible architectural primitive, not just marketing language. Every major user-facing feature should map back to one of the four steps so the user feels the same rhythm everywhere.
+
+- **Pause** — mood check-ins, energy reads, breath cues, the moment-of-arrival on the Command Center.
+- **Name** — identifying stressors, naming triggers, surfacing patterns in `user_patterns` / `stress_signals`.
+- **Flip** — reframes, perspective shifts, AI-led cognitive flips, suggestions powered by `dw_insights` / `ai_suggestions`.
+- **Choose** — concrete actions written to `calendar_events`, `reminders`, `goals`, `habits`, `stabilizing_actions`.
+
+Implementation surface:
+- Add a `flipStep: 'pause' | 'name' | 'flip' | 'choose'` annotation to AI suggestion / insight records so the client can label the step in the UI.
+- Add a shared client primitive (e.g., `<FlipStep step="flip" />`) used across pages so the loop is visually consistent.
+- Encode the loop in the persona scaffold (`server/personality/scaffold.ts`) so AI replies stay on-step.
+
+### 15.2 Make the DW Orb the brain of the app, not a chat launcher
+
+The Command Center already revolves around the Orb. Today it primarily opens chat. Expand it into the user's "what now?" hub so it carries:
+
+- **Today's focus** (sourced from `daily_briefs`)
+- **Energy reading** (computed from latest `mood_logs` + wearable signals)
+- **Top priority** (from `goals` / `tasks` ranked by the AI)
+- **One-tap actions** (start workout, log mood, quick journal, breath reset)
+- **Quick check-ins** (5-second pulse — energy/mood/focus)
+
+Implementation surface:
+- New endpoint `GET /api/orb/state` that returns a single `OrbState` object aggregating the above.
+- Client `<OrbHud />` reads `OrbState` and renders a rotating, calm summary; long-press still opens Talk.
+- Backed by a thin `server/lib/orb-state.ts` aggregator that calls the existing storage methods (no new tables required initially).
+
+### 15.3 Simplify onboarding
+
+Today onboarding touches `onboarding_profiles`, `life_systems`, `dimension_blueprints`, `goals`, `habits`, plus voice-onboarding flows — that's a lot for a new user.
+
+Target: a new user sees **one** screen ("Hi, I'm DW. Mind if I ask a few questions?"). DW interviews them via Talk and writes everything else behind the scenes.
+
+Implementation surface:
+- A single `voice-onboarding` flow becomes the canonical entry; the multi-step wizard (`onboarding-wizard.tsx`) becomes an optional advanced path.
+- Server-side `onboarding-orchestrator` translates a free-form interview transcript into rows across `onboarding_profiles`, `life_systems`, `goals`, `habits`, `dimension_blueprints` — using existing storage methods, no schema change.
+- Continue to gate routing on `isOnboardingComplete()` (see `client/src/lib/onboarding.ts:28-48`); the orchestrator must call `markOnboardingComplete()` exactly once at the end.
+
+### 15.4 Improve the Daily Brief
+
+`daily_briefs`, `daily_brief_taps`, and `daily_brief_preferences` exist. The Daily Brief should be the morning hook — the single reason a user opens DWAI before coffee. It should tell the user:
+
+- **How they're doing** (rolling 7-day trend across dimensions)
+- **What needs attention** (highest-signal alert from cross-dimensional insights — see 15.5)
+- **What is improving** (one positive trend, to keep the tone non-shaming)
+- **What one thing matters most today** (a single recommended action, not a list)
+
+Implementation surface:
+- Promote `daily_briefs` from "data row" to "first-class screen" — dedicated `/today` view that lazy-loads on app open.
+- Server: extend the existing brief generator in `server/lib/today-brief.ts` to emit the four sections above with a stable schema.
+- The "one thing" is a `Choose` step (see 15.1), and tapping it writes to `calendar_events` / `tasks`.
+
+### 15.5 Build stronger cross-dimensional insights
+
+This is DWAI's defensible product moat. The data is already there across `mood_logs`, `wearable_data`, `meal_logs`, `workout_sessions`, `tracking_logs`, and Plaid transactions — but cross-domain correlation isn't surfaced.
+
+Example output:
+- "Your stress increased on days you slept under 6 hours."
+- "Your mood improves when you exercise before noon."
+- "Your finances tend to worsen during high-stress weeks."
+
+Implementation surface:
+- New `server/insights/correlations.ts` module that runs scheduled correlation passes (Pearson / point-biserial / lag-correlation) across pre-defined cross-domain pairs.
+- Persist findings to a new `cross_dimensional_insights` table (or extend `ai_pattern_snapshots`) with `dimensionA`, `dimensionB`, `correlation`, `confidence`, `humanText`, `validFrom`, `validTo`.
+- Surface in Daily Brief (15.4) and on the Insights page.
+- Run as one of the in-process schedulers (lease-coordinated via `scheduler_leases`).
+
+### 15.6 Reduce hidden complexity in the user-facing nav
+
+Internally the app has ~140 tables and many domains. Users should experience **five surfaces** only:
+
+1. **Today** (Daily Brief + Orb)
+2. **DW** (Talk / AI companion)
+3. **Life Areas** (Life System collapsed into dimension cards)
+4. **Calendar**
+5. **Insights**
+
+Everything else — Goals, Habits, Workouts, Finances, Spiritual, Browse, Cosmic, etc. — should be reachable but **not in the top nav**. They live behind the relevant Life Area or are launched contextually by DW.
+
+Implementation surface:
+- Audit and rewrite the top-nav config (likely in `client/src/components/` or `client/src/config/`) to enforce the five-surface rule.
+- Hide secondary pages from primary navigation; keep their routes accessible via deep link, search, and DW's tool calls.
+- This is **navigation simplification, not deletion** — existing pages keep working.
+
+### 15.7 Improve accountability
+
+`accountability_partners`, `task_accountability`, and `accountability_stats` exist. Today DWAI tracks data; it should also gently challenge.
+
+DW should know:
+- **What you said you wanted** (`goals`, stated intentions from chat)
+- **What you've actually done** (`activity_completions`, `habit_logs`, `tasks`)
+- **What's blocking you** (extracted from journal entries, mood logs, AI conversations)
+
+Then it can ask, on its own initiative: *"Two weeks ago you said you wanted to walk daily. I see three walks since. Want to talk about what's in the way?"*
+
+Implementation surface:
+- New `server/lib/accountability-engine.ts` that joins stated intent → measured action → blockers, and emits structured "gentle challenge" prompts.
+- A `proactive` scheduler (already a concept in `server/proactive.ts`) consumes these and queues them through the existing notification + DW chat surfaces.
+- Tone constraints encoded in the persona scaffold — never shaming, always optional, always tied to the user's own stated goals.
+
+### 15.8 Make Energy the primary metric
+
+Most wellness apps optimize for tasks completed. DWAI's premise is **energy awareness**. Promote Energy Score to the centerpiece.
+
+Instead of "What tasks did you finish today?" the default question is **"How is your energy?"** — and every recommendation adapts to the answer.
+
+Implementation surface:
+- Define an `EnergyScore` model: a 0–100 (or low/steady/high) value computed from recent `mood_logs`, `wearable_data` (HRV, sleep), and self-reported pulse check-ins.
+- New endpoint `GET /api/energy/current` returning the live score + contributing factors.
+- The score gates AI recommendations: low-energy days bias toward recovery / spiritual / journal; steady days toward goals / habits; high-energy days toward stretch tasks / workouts.
+- Display the score prominently on the Orb (15.2) and on Today (15.4).
+- Add an `energyContext` field to the AI prompt assembly (`server/lib/user-context.ts`) so every reply is energy-aware.
+
+### Theme
+
+These eight improvements share a single thesis: **DWAI is one intelligent companion, not a collection of wellness tools.** Each one tightens the loop between the user's energy state, DW's awareness of it, and a single best-next action — expressed through the Pause → Name → Flip → Choose rhythm.
+
+---
+
 *End of architecture document.*
