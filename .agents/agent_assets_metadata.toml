@@ -12,3 +12,15 @@ id = "WKOZQillVtpOvnvczboR4"
 uri = "file://test-results/wearable-trends-Body-dashb-c5b2c-d-links-to-wearable-manager-chromium/test-failed-1.png"
 type = "image"
 title = "Empty test failure screenshot"
+
+[[outputs]]
+id = "0yUoOPYdWzRZ4Vtke2QNy"
+uri = "file://ARCHITECTURE.md"
+type = "text"
+title = "App Architecture (Markdown — copy & paste)"
+
+[[outputs]]
+id = "TR38OWp3VpsRbeSPvfNUm"
+uri = "file://ARCHITECTURE.pdf"
+type = "pdf"
+title = "App Architecture (PDF)"
