@@ -33,9 +33,9 @@ export function BottomNav() {
     habits.some((h: any) => h.isActive !== false && !h.completedToday);
 
   const navItems: NavItem[] = [
-    { id: "command-center", path: "/command-center", icon: Home, label: "Command Center" },
     { id: "my-life", path: "/my-life", icon: Map, label: "My Life" },
     { id: "guidance", path: "/guidance", icon: Compass, label: "Guidance" },
+    { id: "command-center", path: "/command-center", icon: Home, label: "Command Center" },
     { id: "tools", path: "/tools", icon: Wrench, label: "Tools" },
     { id: "profile", path: "/profile", icon: User, label: "Profile" },
   ];

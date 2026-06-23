@@ -12,6 +12,7 @@ import { VOICE_SCRIPTS } from "@/config/voiceScripts";
 import { OnboardingValuePreview } from "@/components/onboarding-value-preview";
 import { isFeatureEnabled } from "@/config/featureFlags";
 import { usePageMeta } from "@/hooks/use-page-meta";
+import { markOnboardingComplete } from "@/lib/onboarding";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -807,6 +808,7 @@ export default function VoiceOnboardingPage() {
     } catch {
       // Ignore storage errors to avoid blocking navigation
     }
+    markOnboardingComplete();
     setLocation("/");
   };
 
@@ -831,10 +833,12 @@ export default function VoiceOnboardingPage() {
         setPhase("summary");
       } else {
         setIsReplying(false);
+        markOnboardingComplete();
         setLocation("/");
       }
     } catch {
       // Non-fatal — navigate home even if save fails
+      markOnboardingComplete();
       setIsReplying(false);
       setLocation("/");
     }
@@ -849,6 +853,7 @@ export default function VoiceOnboardingPage() {
       // Non-fatal
     }
     setIsSubmittingSuggestions(false);
+    markOnboardingComplete();
     setLocation("/my-life");
   }, [suggestions, setLocation]);
 
@@ -868,6 +873,7 @@ export default function VoiceOnboardingPage() {
       // Non-fatal — navigate home even if persist fails
     }
     setIsSubmittingSuggestions(false);
+    markOnboardingComplete();
     setLocation("/");
   }, [suggestions, setLocation]);
 
@@ -889,7 +895,7 @@ export default function VoiceOnboardingPage() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setLocation("/")}
+            onClick={() => { markOnboardingComplete(); setLocation("/"); }}
             className="text-muted-foreground text-xs"
             data-testid="button-skip-summary"
           >
