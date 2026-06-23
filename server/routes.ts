@@ -34,7 +34,7 @@ import { registerWearablesRoutes, getMoodCorrelationFactors, safeGetWearablesYes
 import { registerTodayRoutes } from "./routes/today";
 import { registerChatImportRoutes } from "./routes/imports-chat";
 import { registerBillingRoutes } from "./routes/billing";
-import { requirePaidOrQuota } from "./routes/_shared";
+import { requirePaidOrQuota, makeIcalToken, verifyIcalToken } from "./routes/_shared";
 import { registerPlansRoutes } from "./routes/plans";
 import { getUserContextSnapshot, toUserLifeContext } from "./lib/user-context";
 import { resolveAdaptiveDWMode } from "./lib/dw-role-picker";
@@ -4570,34 +4570,6 @@ Return ONLY this exact JSON structure, no other text:
       res.status(500).json({ error: "Failed to load calendar events" });
     }
   });
-
-  // ─── iCal Feed ────────────────────────────────────────────────────────────────
-  // Helpers for signing/verifying tokens so we can give Apple/Google a public URL
-  function makeIcalToken(userId: string): string {
-    const payload = Buffer.from(userId).toString("base64url");
-    const sig = crypto
-      .createHmac("sha256", process.env.SESSION_SECRET || "dw-ical-secret")
-      .update(payload)
-      .digest("base64url")
-      .slice(0, 24);
-    return `${payload}.${sig}`;
-  }
-
-  function verifyIcalToken(token: string): string | null {
-    try {
-      const [payload, sig] = token.split(".");
-      if (!payload || !sig) return null;
-      const expected = crypto
-        .createHmac("sha256", process.env.SESSION_SECRET || "dw-ical-secret")
-        .update(payload)
-        .digest("base64url")
-        .slice(0, 24);
-      if (sig !== expected) return null;
-      return Buffer.from(payload, "base64url").toString("utf8");
-    } catch {
-      return null;
-    }
-  }
 
   function escapeIcal(str: string): string {
     return (str || "").replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n");
