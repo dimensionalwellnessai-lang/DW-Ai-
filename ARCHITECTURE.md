@@ -347,7 +347,7 @@ Today onboarding touches `onboarding_profiles`, `life_systems`, `dimension_bluep
 Target: a new user sees **one** screen ("Hi, I'm DW. Mind if I ask a few questions?"). DW interviews them via Talk and writes everything else behind the scenes.
 
 Implementation surface:
-- A single `voice-onboarding` flow becomes the canonical entry; the multi-step wizard (`onboarding-wizard.tsx`) becomes an optional advanced path.
+- A single `voice-onboarding` flow becomes the canonical entry; the multi-step wizard (`client/src/components/onboarding-wizard.tsx`, surfaced via `client/src/pages/enhanced-onboarding.tsx`) becomes an optional advanced path.
 - Server-side `onboarding-orchestrator` translates a free-form interview transcript into rows across `onboarding_profiles`, `life_systems`, `goals`, `habits`, `dimension_blueprints` — using existing storage methods, no schema change.
 - Continue to gate routing on `isOnboardingComplete()` (see `client/src/lib/onboarding.ts:28-48`); the orchestrator must call `markOnboardingComplete()` exactly once at the end.
 
