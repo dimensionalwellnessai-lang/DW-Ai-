@@ -480,9 +480,11 @@ export const CONTEXT_SYSTEM_OVERRIDES: Record<string, string> = {
 
 import crypto from "crypto";
 export function makeIcalToken(userId: string): string {
+  const secret = process.env.SESSION_SECRET;
+  if (!secret) throw new Error("SESSION_SECRET is required for iCal token signing");
   const payload = Buffer.from(userId).toString("base64url");
   const sig = crypto
-    .createHmac("sha256", process.env.SESSION_SECRET || "dw-ical-secret")
+    .createHmac("sha256", secret)
     .update(payload)
     .digest("base64url")
     .slice(0, 24);
@@ -490,11 +492,13 @@ export function makeIcalToken(userId: string): string {
 }
 
 export function verifyIcalToken(token: string): string | null {
+  const secret = process.env.SESSION_SECRET;
+  if (!secret) throw new Error("SESSION_SECRET is required for iCal token verification");
   try {
     const [payload, sig] = token.split(".");
     if (!payload || !sig) return null;
     const expected = crypto
-      .createHmac("sha256", process.env.SESSION_SECRET || "dw-ical-secret")
+      .createHmac("sha256", secret)
       .update(payload)
       .digest("base64url")
       .slice(0, 24);

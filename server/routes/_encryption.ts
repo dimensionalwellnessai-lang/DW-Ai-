@@ -3,6 +3,12 @@ import crypto from "crypto";
 // AES-256-GCM for secrets at rest (Plaid access tokens, etc.)
 // Key source: PLAID_ENCRYPTION_KEY (preferred) or falls back to SESSION_SECRET.
 // Derived via scrypt so arbitrary-length secrets still produce a 32-byte key.
+if (!process.env.PLAID_ENCRYPTION_KEY) {
+  console.warn(
+    "[security] PLAID_ENCRYPTION_KEY is not set; falling back to SESSION_SECRET for Plaid token encryption. Set a dedicated key in production.",
+  );
+}
+
 function getKey(): Buffer {
   const source = process.env.PLAID_ENCRYPTION_KEY || process.env.SESSION_SECRET;
   if (!source) {

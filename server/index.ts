@@ -1,4 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
+import helmet from "helmet";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
@@ -8,6 +9,25 @@ import { installRouteDuplicateAudit } from "./lib/route-audit";
 
 const app = express();
 app.set("trust proxy", 1);
+
+// Security headers — applied before any route
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.plaid.com"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:", "blob:"],
+        connectSrc: ["'self'", "https://api.openai.com", "https://api.stripe.com", "https://cdn.plaid.com", "https://production.plaid.com", "https://sandbox.plaid.com", "https://development.plaid.com"],
+        fontSrc: ["'self'"],
+        objectSrc: ["'none'"],
+        frameAncestors: ["'none'"],
+      },
+    },
+    crossOriginEmbedderPolicy: false,
+  })
+);
 // Wrap app.get/post/... so any duplicate `${METHOD} ${path}` registration
 // is logged at startup. Express only runs the FIRST handler for a given
 // route, so duplicates become silent dead code (see Task #139 fallout).

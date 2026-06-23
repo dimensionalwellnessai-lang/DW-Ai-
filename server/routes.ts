@@ -14,6 +14,7 @@ import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { Strategy as FacebookStrategy } from "passport-facebook";
 import rateLimit from "express-rate-limit";
+import { doubleCsrf } from "csrf-csrf";
 import { patchRateLimiter, validatePatchPayloadSize, sanitizePatchBody } from "./middleware/guardrails";
 import { storage } from "./storage";
 import { pool } from "./db";
@@ -33,7 +34,7 @@ import { registerWearablesRoutes, getMoodCorrelationFactors, safeGetWearablesYes
 import { registerTodayRoutes } from "./routes/today";
 import { registerChatImportRoutes } from "./routes/imports-chat";
 import { registerBillingRoutes } from "./routes/billing";
-import { requirePaidOrQuota } from "./routes/_shared";
+import { requirePaidOrQuota, makeIcalToken, verifyIcalToken } from "./routes/_shared";
 import { registerPlansRoutes } from "./routes/plans";
 import { getUserContextSnapshot, toUserLifeContext } from "./lib/user-context";
 import { resolveAdaptiveDWMode } from "./lib/dw-role-picker";
@@ -545,6 +546,28 @@ export async function registerRoutes(
   passport.serializeUser((user, done) => done(null, user));
   passport.deserializeUser((user, done) => done(null, user as Express.User));
   app.use(passport.initialize());
+
+  // CSRF double-submit cookie protection for all mutating API routes.
+  // The /api/csrf-token endpoint lets the frontend fetch its token on boot.
+  const { generateCsrfToken, doubleCsrfProtection } = doubleCsrf({
+    getSecret: () => sessionSecret,
+    getSessionIdentifier: (req) => req.sessionID ?? "",
+    cookieName: "fts.csrf",
+    cookieOptions: {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: isProduction,
+      path: "/",
+    },
+    size: 64,
+    ignoredMethods: ["GET", "HEAD", "OPTIONS"],
+  });
+
+  app.get("/api/csrf-token", (req, res) => {
+    res.json({ token: generateCsrfToken(req, res) });
+  });
+
+  app.use("/api", doubleCsrfProtection);
 
   // Relationships / Social Environment routes (people, interactions, aliveness)
   registerRelationshipsRoutes(app);
@@ -4547,34 +4570,6 @@ Return ONLY this exact JSON structure, no other text:
       res.status(500).json({ error: "Failed to load calendar events" });
     }
   });
-
-  // ─── iCal Feed ────────────────────────────────────────────────────────────────
-  // Helpers for signing/verifying tokens so we can give Apple/Google a public URL
-  function makeIcalToken(userId: string): string {
-    const payload = Buffer.from(userId).toString("base64url");
-    const sig = crypto
-      .createHmac("sha256", process.env.SESSION_SECRET || "dw-ical-secret")
-      .update(payload)
-      .digest("base64url")
-      .slice(0, 24);
-    return `${payload}.${sig}`;
-  }
-
-  function verifyIcalToken(token: string): string | null {
-    try {
-      const [payload, sig] = token.split(".");
-      if (!payload || !sig) return null;
-      const expected = crypto
-        .createHmac("sha256", process.env.SESSION_SECRET || "dw-ical-secret")
-        .update(payload)
-        .digest("base64url")
-        .slice(0, 24);
-      if (sig !== expected) return null;
-      return Buffer.from(payload, "base64url").toString("utf8");
-    } catch {
-      return null;
-    }
-  }
 
   function escapeIcal(str: string): string {
     return (str || "").replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\n/g, "\\n");
