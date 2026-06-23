@@ -825,7 +825,6 @@ export default function VoiceOnboardingPage() {
       } catch {
         // Ignore storage errors
       }
-      markOnboardingComplete();
       if (data.suggestions && data.suggestions.length > 0) {
         setSummaryText(data.summary ?? null);
         setDirectionText(data.direction ?? null);
@@ -834,6 +833,7 @@ export default function VoiceOnboardingPage() {
         setPhase("summary");
       } else {
         setIsReplying(false);
+        markOnboardingComplete();
         setLocation("/");
       }
     } catch {
