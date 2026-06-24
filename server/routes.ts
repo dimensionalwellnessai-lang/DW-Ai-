@@ -45,6 +45,8 @@ import { preWarmMeditationAudio } from "./routes/spiritual";
 import { registerPlaidRoutes } from "./routes/plaid";
 import { registerOnboardingRoutes } from "./routes/onboarding";
 import { registerLearningThreadRoutes } from "./routes/learning-threads";
+import { registerEnergyRoutes } from "./routes/energy";
+import { registerOrbRoutes } from "./routes/orb";
 import { sendPasswordResetEmail, sendFeedbackEmail, sendAccountDeletionEmail, sendSupportReportEmail, sendWelcomeEmail } from "./email";
 import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, detectIntentAndRespondStreaming, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument, generateInteractionInsights, generateContextualSearch, generateIngredientSubstitutes, processConversationIntoInsights, generateElevationPlanStructure, openai, getAiConfigStatus, generateDiscoverRandomContent, enforceOneQuestion, type SearchCategory } from "./openai";
 import { generateProactiveNudges, generateMorningBriefing } from "./proactive";
@@ -594,6 +596,12 @@ export async function registerRoutes(
 
   // Wearable + Screen Time Manager (Apple Health + Screen Time end-to-end)
   registerWearablesRoutes(app);
+
+  // Energy score — the primary metric (Roadmap §15.8)
+  registerEnergyRoutes(app);
+
+  // Orb state — brain of the app (Roadmap §15.2)
+  registerOrbRoutes(app);
 
   // Unified daily brief — the "Today" / "Tonight" card on home.
   registerTodayRoutes(app);
