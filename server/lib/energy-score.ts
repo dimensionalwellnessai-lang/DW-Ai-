@@ -116,7 +116,7 @@ export async function computeEnergyScore(userId: string): Promise<EnergyScoreRes
     // ── Activity (steps) ──
     const steps = (wearablesYesterday as any).steps ?? null;
     if (steps != null && steps > 0) {
-      // 8000 steps = good baseline. Cap at 15000.
+      // 10000 steps = full score. Anything above caps at 100.
       const actScore = Math.min(100, (steps / 10000) * 100);
       const weight = 0.1;
       factors.push({

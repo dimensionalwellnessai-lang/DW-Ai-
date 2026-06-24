@@ -20,7 +20,8 @@ import { and, desc, eq, gte } from "drizzle-orm";
 import { storage } from "../storage";
 import { db } from "../db";
 import type { UserLifeContext, EnergyContext } from "../openai";
-import { computeEnergyScore, energyToPromptContext, type EnergyScoreResult } from "./energy-score";
+// Note: Energy score is computed inline in toPromptString() (sync function) to avoid
+// an async call. The full computeEnergyScore() is used by the /api/energy/current route.
 import {
   people,
   peopleInteractions,

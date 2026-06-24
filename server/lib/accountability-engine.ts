@@ -103,10 +103,18 @@ export async function generateAccountabilityChallenges(
     const goalCreated = goal.createdAt ? new Date(goal.createdAt) : null;
     if (!goalCreated || goalCreated > twoWeeksAgo) continue;
 
-    // Check if the goal has related habits with activity
-    const relatedHabits = activeHabits.filter(
-      (h) => h.title.toLowerCase().includes(goal.title.toLowerCase().split(" ")[0]),
-    );
+    // Check if the goal has related habits with activity.
+    // Use significant words (4+ chars, no stop words) to reduce false positives.
+    const stopWords = new Set(["with", "from", "this", "that", "have", "will", "been", "more", "each", "make"]);
+    const goalWords = goal.title
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((w) => w.length >= 4 && !stopWords.has(w));
+
+    const relatedHabits = activeHabits.filter((h) => {
+      const habitTitle = h.title.toLowerCase();
+      return goalWords.some((word) => habitTitle.includes(word));
+    });
     const hasRecentActivity = relatedHabits.some((rh) => habitsWithRecentActivity.has(rh.id));
 
     if (!hasRecentActivity && relatedHabits.length === 0) {
