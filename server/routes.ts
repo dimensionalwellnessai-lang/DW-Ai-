@@ -47,6 +47,7 @@ import { registerOnboardingRoutes } from "./routes/onboarding";
 import { registerLearningThreadRoutes } from "./routes/learning-threads";
 import { registerEnergyRoutes } from "./routes/energy";
 import { registerOrbRoutes } from "./routes/orb";
+import { registerInsightsRoutes } from "./routes/insights";
 import { sendPasswordResetEmail, sendFeedbackEmail, sendAccountDeletionEmail, sendSupportReportEmail, sendWelcomeEmail } from "./email";
 import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, detectIntentAndRespondStreaming, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument, generateInteractionInsights, generateContextualSearch, generateIngredientSubstitutes, processConversationIntoInsights, generateElevationPlanStructure, openai, getAiConfigStatus, generateDiscoverRandomContent, enforceOneQuestion, type SearchCategory } from "./openai";
 import { generateProactiveNudges, generateMorningBriefing } from "./proactive";
@@ -602,6 +603,9 @@ export async function registerRoutes(
 
   // Orb state — brain of the app (Roadmap §15.2)
   registerOrbRoutes(app);
+
+  // Cross-dimensional insights (Roadmap §15.5)
+  registerInsightsRoutes(app);
 
   // Unified daily brief — the "Today" / "Tonight" card on home.
   registerTodayRoutes(app);

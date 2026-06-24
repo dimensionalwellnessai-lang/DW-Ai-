@@ -65,6 +65,20 @@ const KIND_TO_DEFAULT_ROUTE: Record<DailyBriefBulletKind, string> = {
 export interface GeneratedBrief {
   summaryText: string;
   bullets: BriefBullet[];
+  /** Structured 4-section brief (Roadmap §15.4). */
+  sections?: BriefSections;
+}
+
+/** The four structured sections of an enhanced daily brief. */
+export interface BriefSections {
+  /** 7-day rolling trend across dimensions. */
+  howYoureDoing: string | null;
+  /** Highest-signal alert from cross-dimensional data. */
+  needsAttention: string | null;
+  /** One positive trend to maintain non-shaming tone. */
+  whatsImproving: string | null;
+  /** Single recommended action (a "Choose" step). */
+  oneThingToday: { text: string; route: string } | null;
 }
 
 export function pickVariantForHour(hour: number): DailyBriefVariant {
@@ -192,13 +206,17 @@ function buildSystemPrompt(
     "",
     "Output requirements (strict):",
     "- Return ONLY valid JSON, no prose before or after, no markdown fences.",
-    "- Shape: { \"summaryText\": string, \"bullets\": Array<{ kind, text, route, importance }> }",
+    "- Shape: { \"summaryText\": string, \"bullets\": Array<{ kind, text, route, importance }>, \"sections\": { \"howYoureDoing\", \"needsAttention\", \"whatsImproving\", \"oneThingToday\" } }",
     "- summaryText: 2–3 sentences, ≤ 320 chars total, in DW's voice. No greeting (the UI handles greeting). Reference what's actually true from the context.",
     "- bullets: up to 5 specific, actionable items. Skip a domain if there is no real signal.",
     `- bullet.kind MUST be one of: [${allowedList}]. Do not produce bullets of any other kind — the user has turned those off.`,
     "- bullet.text: ≤ 140 chars, concrete (numbers, names, days), DW's voice. Never an empty platitude.",
     "- bullet.route: in-app path like '/mood', '/finances', '/relationships', '/spiritual', '/calendar', '/body', '/life-system/pillar/emotional_regulation'. Never an external URL.",
     "- bullet.importance: 1 (urgent), 2 (notable), 3 (nice-to-know).",
+    "- sections.howYoureDoing: 1–2 sentences about 7-day rolling trend across dimensions. Use actual data. Null if insufficient data.",
+    "- sections.needsAttention: 1 sentence about the highest-signal alert. Null if nothing urgent.",
+    "- sections.whatsImproving: 1 sentence about a positive trend (non-shaming tone). Null if no clear positive.",
+    "- sections.oneThingToday: { \"text\": recommended single action (≤80 chars), \"route\": app path }. Null if unsure.",
     "- If a domain has no data (e.g. no sleep recorded), either omit the bullet or invite the user to connect/log it.",
     "- Never invent data. If the context says nothing about money, do not write a money bullet.",
   ];
@@ -237,6 +255,7 @@ export async function generateBriefForUser(
 
   let summaryText = "";
   let bullets: BriefBullet[] = [];
+  let sections: BriefSections | undefined;
 
   try {
     const completion = await openai.chat.completions.create({
@@ -245,7 +264,7 @@ export async function generateBriefForUser(
         { role: "system", content: buildSystemPrompt(variant, allowedKinds, prefs?.toneNote ?? null) },
         { role: "user", content: userPrompt },
       ],
-      max_tokens: 600,
+      max_tokens: 800,
       temperature: 0.6,
       response_format: { type: "json_object" },
     });
@@ -253,11 +272,34 @@ export async function generateBriefForUser(
     const parsed = JSON.parse(extractJsonBlock(raw)) as {
       summaryText?: unknown;
       bullets?: unknown;
+      sections?: unknown;
     };
     summaryText = typeof parsed.summaryText === "string"
       ? parsed.summaryText.trim().slice(0, 600)
       : "";
     bullets = sanitizeBullets(parsed.bullets).filter((b) => allowedSet.has(b.kind));
+
+    // Parse the structured sections (§15.4)
+    if (parsed.sections && typeof parsed.sections === "object") {
+      const s = parsed.sections as Record<string, unknown>;
+      const oneThingRaw = s.oneThingToday;
+      let oneThingToday: BriefSections["oneThingToday"] = null;
+      if (oneThingRaw && typeof oneThingRaw === "object") {
+        const ot = oneThingRaw as Record<string, unknown>;
+        if (typeof ot.text === "string" && typeof ot.route === "string") {
+          oneThingToday = {
+            text: ot.text.slice(0, 120),
+            route: sanitizeRoute(ot.route, "plan"),
+          };
+        }
+      }
+      sections = {
+        howYoureDoing: typeof s.howYoureDoing === "string" ? s.howYoureDoing.slice(0, 300) : null,
+        needsAttention: typeof s.needsAttention === "string" ? s.needsAttention.slice(0, 200) : null,
+        whatsImproving: typeof s.whatsImproving === "string" ? s.whatsImproving.slice(0, 200) : null,
+        oneThingToday,
+      };
+    }
   } catch (err) {
     console.error("[today-brief] OpenAI call failed:", err);
   }
@@ -286,7 +328,7 @@ export async function generateBriefForUser(
     bullets = [...stalledBullets, ...bullets].slice(0, 6);
   }
 
-  return { summaryText, bullets };
+  return { summaryText, bullets, sections };
 }
 
 /**

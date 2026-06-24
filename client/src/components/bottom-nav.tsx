@@ -1,12 +1,12 @@
 import { useLocation } from "wouter";
-import { Home, Compass, Wrench, User, Map } from "lucide-react";
+import { Sun, MessageCircle, Layers, Calendar, Lightbulb } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 
 interface NavItem {
   id: string;
   path: string;
-  icon: typeof Home;
+  icon: typeof Sun;
   label: string;
   showDot?: boolean;
   /** Destination paths reached after router redirects from `path` */
@@ -14,11 +14,11 @@ interface NavItem {
 }
 
 const tourDataMap: Record<string, string> = {
-  "/command-center": "home",
+  "/command-center": "today",
+  "/guidance": "dw",
   "/my-life": "life",
-  "/guidance": "guidance",
-  "/tools": "tools",
-  "/profile": "profile",
+  "/calendar-schedule": "calendar",
+  "/insights": "insights",
 };
 
 export function BottomNav() {
@@ -32,12 +32,13 @@ export function BottomNav() {
   const hasUnfinishedHabits = Array.isArray(habits) &&
     habits.some((h: any) => h.isActive !== false && !h.completedToday);
 
+  // Roadmap §15.6: Five surfaces only — Today, DW, Life Areas, Calendar, Insights
   const navItems: NavItem[] = [
-    { id: "my-life", path: "/my-life", icon: Map, label: "My Life" },
-    { id: "guidance", path: "/guidance", icon: Compass, label: "Guidance" },
-    { id: "command-center", path: "/command-center", icon: Home, label: "Command Center" },
-    { id: "tools", path: "/tools", icon: Wrench, label: "Tools" },
-    { id: "profile", path: "/profile", icon: User, label: "Profile" },
+    { id: "today", path: "/command-center", icon: Sun, label: "Today", aliases: ["/today"] },
+    { id: "dw", path: "/guidance", icon: MessageCircle, label: "DW" },
+    { id: "life-areas", path: "/my-life", icon: Layers, label: "Life Areas", aliases: ["/life-dimensions", "/life-system"] },
+    { id: "calendar", path: "/calendar-schedule", icon: Calendar, label: "Calendar", aliases: ["/calendar-month", "/daily-schedule"] },
+    { id: "insights", path: "/insights", icon: Lightbulb, label: "Insights" },
   ];
 
   return (
@@ -61,7 +62,7 @@ export function BottomNav() {
             (p) => p && (location === p || (p !== "/" && location.startsWith(p + "/")))
           );
           const tourAttr = item.path ? tourDataMap[item.path] : undefined;
-          const showAttentionDot = item.path === "/command-center" && hasUnfinishedHabits && !isActive;
+          const showAttentionDot = item.id === "today" && hasUnfinishedHabits && !isActive;
 
           return (
             <button
