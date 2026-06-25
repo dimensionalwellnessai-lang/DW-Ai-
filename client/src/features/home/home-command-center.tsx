@@ -8,6 +8,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { HamburgerMenu } from "@/components/hamburger-menu";
 import { AllFeaturesView } from "@/components/all-features-view";
 import { ProactiveCard } from "@/components/proactive-card";
+import { OrbHud } from "@/components/orb-hud";
+import { DailyBriefCard } from "@/components/daily-brief-card";
 import type { ProactiveCardProps } from "@/components/proactive-card";
 import { DWReadingCard } from "@/components/dw-reading-card";
 import { InsightSnapshotCard } from "./components/InsightSnapshotCard";
@@ -421,6 +423,8 @@ export default function HomeCommandCenter() {
           <p className="text-[11px] text-muted-foreground tracking-wide mt-2" data-testid="text-protocol-hint">
             Pause · Name · Flip · Choose
           </p>
+          {/* OrbHud: energy + contextual actions (Roadmap §15.2) */}
+          <OrbHud className="mt-3" />
         </div>
 
         {/* ── Gentle feeling check ──────────────────────────────────────── */}
@@ -508,6 +512,10 @@ export default function HomeCommandCenter() {
                     ))}
                   </div>
                 </div>
+              </CarouselItem>
+              {/* Daily Brief sections card (Roadmap §15.4) */}
+              <CarouselItem className="pl-2 basis-[85%] h-full">
+                <DailyBriefCard className="h-full" />
               </CarouselItem>
               {/* Spec 13 progressive onboarding card — shown until the first session is completed */}
               {showOnboardingCard && (

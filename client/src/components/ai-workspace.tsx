@@ -8,6 +8,8 @@ import { SwipeableDrawer } from "@/components/swipeable-drawer";
 import { ImportDialog } from "@/components/import-dialog";
 import { CrisisSupportDialog } from "@/components/crisis-support-dialog";
 import { ChatFeedbackBar } from "@/components/chat-feedback-bar";
+import { FlipStep } from "@/components/flip-step";
+import { parseFlipStep } from "@/lib/parse-flip-step";
 import { postProcessAssistantMessage } from "@/core/postProcessAssistantMessage";
 import { shouldCaptureInsight, buildInsight, saveInsight, getInsights } from "@/core/conversationInsights";
 import { isFeatureEnabled } from "@/config/featureFlags";
@@ -2316,9 +2318,19 @@ export function AIWorkspace() {
                             setLongPressMenuIndex(index);
                           }}
                         >
-                          <p className="font-body text-sm leading-relaxed text-foreground whitespace-pre-line break-words">
-                            {message.content}
-                          </p>
+                          {(() => {
+                            const parsed = parseFlipStep(message.content);
+                            return (
+                              <>
+                                {parsed.flipStep && (
+                                  <FlipStep step={parsed.flipStep} className="mb-1.5" />
+                                )}
+                                <p className="font-body text-sm leading-relaxed text-foreground whitespace-pre-line break-words">
+                                  {parsed.text}
+                                </p>
+                              </>
+                            );
+                          })()}
                         </div>
                         {message.personSuggestion && (
                           <PersonSuggestionCard

@@ -36,8 +36,13 @@ import {
   Brain,
   ChevronUp,
   ChevronDown,
+  Zap,
+  Link2,
+  AlertTriangle,
 } from "lucide-react";
 import { ReadingCard, type ReadingCardData } from "@/features/home/components/ReadingCard";
+import { EnergyPill } from "@/components/energy-pill";
+import { useEnergyScore } from "@/hooks/use-energy-score";
 import { LIFE_DIMENSIONS, getDimensionById, ASSESSMENT_QUESTIONS, type LifeDimension } from "@/lib/life-dimensions";
 import { format, startOfWeek, endOfWeek } from "date-fns";
 import { useTrackFeature } from "@/hooks/use-ai-learning";
@@ -88,6 +93,28 @@ interface DwInsightItem {
   createdAt: string;
 }
 
+interface CrossDimensionalInsight {
+  id: string;
+  dimensionA: string;
+  dimensionB: string;
+  correlation: "positive" | "negative" | "none";
+  confidence: "low" | "medium" | "high";
+  humanText: string;
+  dataPoints: number;
+  computedAt: string;
+}
+
+interface AccountabilityChallenge {
+  id: string;
+  type: "gap" | "stall" | "pattern";
+  statedIntent: string;
+  measuredAction: string;
+  prompt: string;
+  actionRoute: string;
+  priority: "high" | "medium" | "low";
+  generatedAt: string;
+}
+
 export default function InsightsDashboard() {
   usePageMeta("Insights", "Track your progress and discover patterns across all wellness dimensions.");
   useTrackFeature("insights");
@@ -125,6 +152,27 @@ export default function InsightsDashboard() {
     retry: false,
   });
   const dwInsights = dwInsightsData ?? [];
+
+  // Cross-dimensional insights (Roadmap §15.5)
+  const { data: crossInsightsData } = useQuery<{ insights: CrossDimensionalInsight[] }>({
+    queryKey: ['/api/insights/cross-dimensional'],
+    queryFn: getQueryFn({ on401: "returnNull" }),
+    enabled: isLoggedIn,
+    staleTime: 5 * 60 * 1000,
+  });
+  const crossInsights = crossInsightsData?.insights ?? [];
+
+  // Accountability challenges (Roadmap §15.7)
+  const { data: challengesData } = useQuery<{ challenges: AccountabilityChallenge[] }>({
+    queryKey: ['/api/accountability/challenges'],
+    queryFn: getQueryFn({ on401: "returnNull" }),
+    enabled: isLoggedIn,
+    staleTime: 5 * 60 * 1000,
+  });
+  const challenges = challengesData?.challenges ?? [];
+
+  // Energy score (Roadmap §15.8)
+  const { data: energyData } = useEnergyScore();
 
   // First-insight milestone: show once when insights are first populated
   const firstInsightKey = insightMilestoneKey("first");
@@ -326,6 +374,121 @@ export default function InsightsDashboard() {
             })()}
           </DialogContent>
         </Dialog>
+
+        {/* Energy Score + Cross-Dimensional Insights (Roadmap §15.5, §15.8) */}
+        {isLoggedIn && (energyData || crossInsights.length > 0 || challenges.length > 0) && (
+          <div className="space-y-4">
+            {/* Energy Score card */}
+            {energyData && (
+              <Card>
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <Zap className="h-5 w-5 text-amber-500" />
+                      Energy Score
+                    </CardTitle>
+                    <EnergyPill score={energyData.score} band={energyData.band} variant="full" />
+                  </div>
+                </CardHeader>
+                {energyData.factors.length > 0 && (
+                  <CardContent className="pt-0">
+                    <div className="flex flex-wrap gap-2">
+                      {energyData.factors.map((f) => (
+                        <span
+                          key={f.source}
+                          className="text-[11px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground"
+                        >
+                          {f.label}: {f.value}/100
+                        </span>
+                      ))}
+                    </div>
+                  </CardContent>
+                )}
+              </Card>
+            )}
+
+            {/* Cross-Dimensional Insights */}
+            {crossInsights.length > 0 && (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Link2 className="h-5 w-5 text-violet-500" />
+                    Cross-Dimensional Patterns
+                  </CardTitle>
+                  <CardDescription>Connections DW found between your life dimensions</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {crossInsights.map((insight) => (
+                    <div
+                      key={insight.id}
+                      className="p-3 rounded-lg border border-border/60 space-y-1"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-[10px] capitalize">
+                          {insight.dimensionA} × {insight.dimensionB}
+                        </Badge>
+                        <Badge
+                          variant="outline"
+                          className={`text-[10px] ${
+                            insight.confidence === "high"
+                              ? "border-green-300 text-green-600 dark:text-green-400"
+                              : insight.confidence === "medium"
+                                ? "border-amber-300 text-amber-600 dark:text-amber-400"
+                                : "border-muted text-muted-foreground"
+                          }`}
+                        >
+                          {insight.confidence} confidence
+                        </Badge>
+                      </div>
+                      <p className="text-sm leading-relaxed">{insight.humanText}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        Based on {insight.dataPoints} data points
+                      </p>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Accountability Challenges */}
+            {challenges.length > 0 && (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <AlertTriangle className="h-5 w-5 text-orange-500" />
+                    Gentle Challenges
+                  </CardTitle>
+                  <CardDescription>Things you said matter — check in with yourself</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {challenges.map((challenge) => (
+                    <button
+                      key={challenge.id}
+                      type="button"
+                      onClick={() => navigate(challenge.actionRoute)}
+                      className="w-full text-left p-3 rounded-lg border border-border/60 hover:border-primary/40 transition-colors space-y-1"
+                    >
+                      <p className="text-sm font-medium leading-snug">{challenge.prompt}</p>
+                      <div className="flex items-center gap-2">
+                        <Badge
+                          variant="outline"
+                          className={`text-[10px] capitalize ${
+                            challenge.priority === "high"
+                              ? "border-red-300 text-red-600 dark:text-red-400"
+                              : "border-muted text-muted-foreground"
+                          }`}
+                        >
+                          {challenge.type}
+                        </Badge>
+                        <span className="text-[10px] text-muted-foreground">{challenge.measuredAction}</span>
+                      </div>
+                    </button>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )}
 
         {/* Tabs for detailed views */}
         <Tabs defaultValue={dwInsightJournalEnabled ? "dw-insights" : "goals"} className="w-full">
