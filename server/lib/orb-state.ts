@@ -86,11 +86,10 @@ export async function buildOrbState(userId: string): Promise<OrbState> {
   }
 
   const activeHabits = habits.filter((h) => h.isActive);
-  const incompleteHabits = activeHabits.filter((h) => !(h as any).completedToday);
-  if (incompleteHabits.length > 0) {
+  if (activeHabits.length > 0) {
     actions.push({
       id: "habits",
-      label: `${incompleteHabits.length} habits left`,
+      label: `${activeHabits.length} habit${activeHabits.length === 1 ? "" : "s"} today`,
       route: "/habits",
       icon: "check-circle",
     });

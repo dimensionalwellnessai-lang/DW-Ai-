@@ -897,26 +897,42 @@ export function toPromptString(snap: UserContextSnapshot): string {
   }
   if (bodyBits.length) lines.push(`BODY: ${bodyBits.join("; ")}.`);
 
-  // Energy Score (§15.8) — computed inline from body data
+  // Energy Score (§15.8) — same weighted formula as computeEnergyScore()
   {
     const energyLevel = body.currentMood?.energyLevel ?? 5;
     const moodLevel = body.currentMood?.moodLevel ?? 5;
     const sleepMin = body.yesterday?.sleepMinutes;
     const hrv = body.yesterday?.hrv;
-    // Quick inline score for prompt (full computation via /api/energy/current)
-    const scores: number[] = [];
-    scores.push(((Math.min(10, Math.max(1, energyLevel)) - 1) / 9) * 100);
-    scores.push(((Math.min(10, Math.max(1, moodLevel)) - 1) / 9) * 100);
+
+    let weightedSum = 0;
+    let totalWeight = 0;
+
+    // Self-reported energy (weight 0.4)
+    const energyNorm = ((Math.min(10, Math.max(1, energyLevel)) - 1) / 9) * 100;
+    weightedSum += energyNorm * 0.4;
+    totalWeight += 0.4;
+
+    // Mood level (weight 0.15)
+    const moodNorm = ((Math.min(10, Math.max(1, moodLevel)) - 1) / 9) * 100;
+    weightedSum += moodNorm * 0.15;
+    totalWeight += 0.15;
+
+    // Sleep (weight 0.2)
     if (sleepMin != null && sleepMin > 0) {
       const dev = Math.abs(sleepMin - 450);
-      scores.push(Math.max(0, 100 - (dev / 450) * 100));
+      const sleepScore = Math.max(0, 100 - (dev / 450) * 100);
+      weightedSum += sleepScore * 0.2;
+      totalWeight += 0.2;
     }
+
+    // HRV (weight 0.15)
     if (hrv != null && hrv > 0) {
-      scores.push(((Math.min(100, Math.max(20, hrv)) - 20) / 80) * 100);
+      const hrvScore = ((Math.min(100, Math.max(20, hrv)) - 20) / 80) * 100;
+      weightedSum += hrvScore * 0.15;
+      totalWeight += 0.15;
     }
-    const avgScore = scores.length > 0
-      ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
-      : 50;
+
+    const avgScore = totalWeight > 0 ? Math.round(weightedSum / totalWeight) : 50;
     const band = avgScore <= 33 ? "low" : avgScore <= 66 ? "steady" : "high";
     lines.push(`ENERGY: ${avgScore}/100 (${band}). ${band === "low" ? "Bias toward recovery/spiritual/journal." : band === "high" ? "Open to stretch tasks/workouts." : "Steady — goals/habits appropriate."}`);
   }
