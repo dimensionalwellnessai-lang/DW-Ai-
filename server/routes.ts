@@ -39,6 +39,7 @@ import { registerPlansRoutes } from "./routes/plans";
 import { getUserContextSnapshot, toUserLifeContext } from "./lib/user-context";
 import { resolveAdaptiveDWMode } from "./lib/dw-role-picker";
 import { logDwRolePick } from "./lib/dw-role-pick-log";
+import { buildExploreIntelligenceFeed, type ExploreMixWeights } from "./lib/explore-intelligence";
 import { chatHandler, smartChatHandler } from "./routes/chat-handlers";
 import { seedMeditationLibrary } from "./seeds/meditation-library";
 import { preWarmMeditationAudio } from "./routes/spiritual";
@@ -11559,15 +11560,34 @@ Return ONLY this JSON:
     try {
       const userId = req.session?.userId;
       const page = parseInt(req.query.page as string) || 1;
+      const mixQuery = req.query.mix as string | undefined;
+      const parsedMix = mixQuery
+        ? mixQuery.split(",").map((value) => Number(value.trim()))
+        : [];
+      const configurableWeights: Partial<ExploreMixWeights> =
+        parsedMix.length === 4 && parsedMix.every((value) => Number.isFinite(value))
+          ? {
+              strong: parsedMix[0],
+              adjacent: parsedMix[1],
+              timely: parsedMix[2],
+              discovery: parsedMix[3],
+            }
+          : {};
 
       // Fetch user context for personalization
       let profileCtx = "";
       let firstGoalTitle = "";
+      let userGoals: string[] = [];
+      let userInterests: string[] = [];
       if (userId) {
         try {
           const profile = await storage.getUserProfile(userId);
           const goals = (await storage.getGoals(userId)).filter((g: any) => g.status === "active");
           firstGoalTitle = goals[0]?.title || "";
+          userGoals = goals.map((goal: any) => String(goal.title || "")).filter(Boolean);
+          userInterests = Array.isArray(profile?.interests)
+            ? (profile?.interests as string[]).filter(Boolean)
+            : [];
           const lp = (profile as any)?.lifestylePreferences;
           const parts = [
             profile?.occupation && `Occupation: ${profile.occupation}`,
@@ -11711,9 +11731,81 @@ Return ONLY this JSON:
         cards.push(...slice);
       }
 
-      // Shuffle the three buckets together so they interleave naturally
       const shuffled = cards.sort(() => Math.random() - 0.5);
-      res.json({ cards: shuffled, page, hasMore: true });
+
+      let savedContent: Array<{
+        id: string;
+        contentType: string | null;
+        title: string;
+        description: string | null;
+        url: string | null;
+        source: string | null;
+        duration: string | null;
+      }> = [];
+      let astrologyEnabled = false;
+      let interactionCounts = {
+        moreLikeThis: 0,
+        lessLikeThis: 0,
+        notInterested: 0,
+        saved: 0,
+      };
+
+      if (userId) {
+        try {
+          const [
+            saved,
+            userPrefs,
+            moreLikeThisInteractions,
+            lessLikeThisInteractions,
+            notInterestedInteractions,
+            savedInteractions,
+          ] = await Promise.all([
+            storage.getSavedContent(userId),
+            storage.getUserSystemPreferences(userId),
+            storage.getFeedInteractionsByAction(userId, "more_like_this"),
+            storage.getFeedInteractionsByAction(userId, "less_like_this"),
+            storage.getFeedInteractionsByAction(userId, "not_interested"),
+            storage.getFeedInteractionsByAction(userId, "saved"),
+          ]);
+
+          savedContent = saved.map((item: any) => ({
+            id: item.id,
+            contentType: item.contentType ?? null,
+            title: item.title,
+            description: item.description ?? null,
+            url: item.url ?? null,
+            source: item.source ?? null,
+            duration: item.duration ?? null,
+          }));
+          astrologyEnabled = Boolean(userPrefs?.astrologyEnabled);
+          interactionCounts = {
+            moreLikeThis: moreLikeThisInteractions.length,
+            lessLikeThis: lessLikeThisInteractions.length,
+            notInterested: notInterestedInteractions.length,
+            saved: savedInteractions.length,
+          };
+        } catch {
+          // keep defaults
+        }
+      }
+
+      const intelligenceFeed = buildExploreIntelligenceFeed({
+        cards: shuffled,
+        savedContent,
+        interests: userInterests,
+        goals: userGoals,
+        astrologyEnabled,
+        interactionCounts,
+        configurableWeights,
+      });
+
+      res.json({
+        cards: intelligenceFeed.cards,
+        sections: intelligenceFeed.sections,
+        mixWeights: intelligenceFeed.mixWeights,
+        page,
+        hasMore: true,
+      });
     } catch (error) {
       console.error("GET /api/discover/feed error:", error);
       res.status(500).json({ cards: [], page: 1, hasMore: false });

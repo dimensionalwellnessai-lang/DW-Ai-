@@ -621,7 +621,7 @@ export default function Browse() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<"for-you" | "explore" | "video" | "articles">("for-you");
+  const [activeTab, setActiveTab] = useState<"for-you" | "explore" | "video" | "articles" | "discover">("for-you");
   const [exploreCategory, setExploreCategory] = useState<"all" | "videos" | "articles" | "shows" | "music" | "workouts" | "skills" | "events">("all");
 
   // ── Discover feed state ──
@@ -649,6 +649,35 @@ export default function Browse() {
   const [discoverFilterType, setDiscoverFilterType] = useState<string>("all");
   const [discoverFilterDimension, setDiscoverFilterDimension] = useState<string>("all");
   const [discoverFilteredCards, setDiscoverFilteredCards] = useState<DiscoverCard[] | null>(null);
+  interface ExploreIntelligenceCard {
+    id: string;
+    type: "article" | "video" | "quote" | "fact" | "spiritual" | "lesson" | "topic";
+    title: string;
+    summary: string;
+    synopsis: string;
+    url: string;
+    source: string;
+    dimension: string;
+    readTime: string;
+    explainLabel: string;
+    explainConnection: string;
+    evidenceState:
+      | "Observed"
+      | "User reported"
+      | "Inferred"
+      | "Predicted"
+      | "Hypothesized"
+      | "Unknown"
+      | "Symbolic interpretation";
+    confidence: "high" | "medium" | "low";
+    lens: "observed" | "symbolic";
+  }
+  interface ExploreIntelligenceSection {
+    key: string;
+    title: string;
+    cards: ExploreIntelligenceCard[];
+  }
+  const [expandedWhyCardId, setExpandedWhyCardId] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [lengthFilter, setLengthFilter] = useState<"short" | "medium" | "long" | null>(null);
   const [topicFilter, setTopicFilter] = useState("");
@@ -691,6 +720,19 @@ export default function Browse() {
 
   const { data: dbContent } = useQuery<WellnessContent[]>({
     queryKey: ["/api/wellness-content"],
+  });
+
+  const { data: exploreIntelligenceData, isLoading: exploreIntelligenceLoading } = useQuery<{
+    sections: ExploreIntelligenceSection[];
+    mixWeights: { strong: number; adjacent: number; timely: number; discovery: number };
+  }>({
+    queryKey: ["/api/discover/feed", "explore-intelligence-v1"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/discover/feed?page=1");
+      return res.json();
+    },
+    staleTime: 15 * 60 * 1000,
+    enabled: activeTab === "explore",
   });
 
   // For You tab: AI suggestions (topic keywords)
@@ -888,6 +930,14 @@ ${contentList}`,
     },
   });
 
+  const feedInteractionMutation = useMutation({
+    mutationFn: async (data: { contentTitle: string; contentUrl: string; contentType: string; action: string; topic?: string }) => {
+      const response = await apiRequest("POST", "/api/feed-interactions", data);
+      if (!response.ok) throw new Error("Failed to record interaction");
+      return response.json();
+    },
+  });
+
   // Add to Schedule mutation
   const addToScheduleMutation = useMutation({
     mutationFn: async (data: { title: string; scheduledTime: string; contentUrl: string; contentType: string; description?: string; linkedRoute?: string }) => {
@@ -928,6 +978,48 @@ ${contentList}`,
     next.setHours(next.getHours() + 1, 0, 0, 0);
     setScheduleTime(next.toTimeString().slice(0, 5));
     setScheduleDialogOpen(true);
+  };
+
+  const handleExploreInteraction = (card: ExploreIntelligenceCard, action: string) => {
+    feedInteractionMutation.mutate({
+      contentTitle: card.title,
+      contentUrl: card.url || card.id,
+      contentType: card.type,
+      action,
+      topic: card.dimension,
+    });
+  };
+
+  const handleExploreSave = (card: ExploreIntelligenceCard) => {
+    if (saveContentMutation.isPending) return;
+    saveContentMutation.mutate({
+      contentType: card.type,
+      title: card.title,
+      description: card.summary,
+      url: card.url || "",
+      source: card.source,
+      duration: card.readTime,
+      metadata: {
+        explainLabel: card.explainLabel,
+        evidenceState: card.evidenceState,
+        confidence: card.confidence,
+      },
+    });
+    handleExploreInteraction(card, "saved");
+  };
+
+  const handleRemindMeLater = (card: ExploreIntelligenceCard) => {
+    const reminder = new Date();
+    reminder.setDate(reminder.getDate() + 1);
+    reminder.setHours(18, 0, 0, 0);
+    addToScheduleMutation.mutate({
+      title: `Revisit: ${card.title}`,
+      scheduledTime: reminder.toISOString(),
+      contentUrl: card.url,
+      contentType: card.type,
+      description: card.summary,
+    });
+    handleExploreInteraction(card, "remind_later");
   };
 
   const handleFeedItemSeen = useCallback(() => {
@@ -2511,12 +2603,11 @@ ${contentList}`,
       {/* ── Explore Tab ── */}
       {activeTab === "explore" && (
         <main className="pb-28">
-          {/* Search bar */}
           <div className="px-4 pt-4 pb-3 border-b border-border/30">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search anything — workouts, shows, music, skills..."
+                placeholder="Search Explore Intelligence..."
                 value={topicFilter}
                 onChange={(e) => setTopicFilter(e.target.value)}
                 className="pl-9 pr-9 rounded-full bg-muted/50 border-0 focus-visible:ring-1"
@@ -2530,337 +2621,127 @@ ${contentList}`,
             </div>
           </div>
 
-          {/* Category chips */}
-          <div className="flex gap-2 overflow-x-auto px-4 py-3 border-b border-border/30" style={{ scrollbarWidth: "none" }}>
-            {([
-              { key: "all", label: "All", icon: <Layers className="h-3.5 w-3.5" /> },
-              { key: "videos", label: "Videos", icon: <Video className="h-3.5 w-3.5" /> },
-              { key: "articles", label: "Articles", icon: <FileText className="h-3.5 w-3.5" /> },
-              { key: "shows", label: "Shows & Movies", icon: <Tv className="h-3.5 w-3.5" /> },
-              { key: "music", label: "Music", icon: <Music2 className="h-3.5 w-3.5" /> },
-              { key: "workouts", label: "Workouts", icon: <Dumbbell className="h-3.5 w-3.5" /> },
-              { key: "skills", label: "Skills", icon: <GraduationCap className="h-3.5 w-3.5" /> },
-              { key: "events", label: "Events", icon: <PartyPopper className="h-3.5 w-3.5" /> },
-            ] as const).map((cat) => (
-              <button
-                key={cat.key}
-                onClick={() => setExploreCategory(cat.key as any)}
-                className={`flex items-center gap-1.5 shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-                  exploreCategory === cat.key
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "bg-background text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
-                }`}
-                data-testid={`chip-explore-${cat.key}`}
-              >
-                {cat.icon}
-                {cat.label}
-              </button>
-            ))}
-          </div>
+          <div className="p-4 space-y-5">
+            {exploreIntelligenceData?.mixWeights && (
+              <Card className="border-border/40 bg-muted/30">
+                <CardContent className="p-3 text-xs text-muted-foreground space-y-1">
+                  <p className="font-medium text-foreground">Recommendation mix (adaptive)</p>
+                  <p>
+                    {Math.round(exploreIntelligenceData.mixWeights.strong)}% strong relevance ·{" "}
+                    {Math.round(exploreIntelligenceData.mixWeights.adjacent)}% adjacent interests ·{" "}
+                    {Math.round(exploreIntelligenceData.mixWeights.timely)}% timely context ·{" "}
+                    {Math.round(exploreIntelligenceData.mixWeights.discovery)}% intentional discovery
+                  </p>
+                </CardContent>
+              </Card>
+            )}
 
-          <div className="p-4 space-y-6">
+            {exploreIntelligenceLoading && (
+              <div className="space-y-3">
+                {[1, 2, 3].map((item) => (
+                  <div key={item} className="rounded-xl border p-4 animate-pulse space-y-2">
+                    <div className="h-3 bg-muted rounded w-1/3" />
+                    <div className="h-4 bg-muted rounded w-full" />
+                    <div className="h-3 bg-muted rounded w-4/5" />
+                  </div>
+                ))}
+              </div>
+            )}
 
-            {/* Videos section */}
-            {(exploreCategory === "all" || exploreCategory === "videos") && (
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <Video className="h-4 w-4 text-primary" />
-                  <h3 className="text-sm font-semibold">Videos</h3>
-                </div>
-                <div className="grid gap-3 grid-cols-2">
-                  {(forYouData?.videos?.length ? forYouData.videos : CURATED_VIDEO_LIBRARY)
-                    .filter((v: any) => !topicFilter || (v.title + " " + (v.description || v.channel || "") + " " + (v.category || v.dimension || "")).toLowerCase().includes(topicFilter.toLowerCase()))
-                    .slice(0, exploreCategory === "all" ? 6 : 20)
-                    .map((v: any, idx: number) => {
-                      const yt = getYouTubeThumbnail(v.url);
-                      return (
-                        <button
-                          key={v.id || idx}
-                          className="text-left group"
-                          onClick={() => { if (isSafeExternalUrl(v.url)) window.open(v.url, "_blank", "noopener,noreferrer"); }}
-                          data-testid={`card-explore-video-${idx}`}
-                        >
-                          <div className="aspect-video rounded-xl overflow-hidden relative bg-muted mb-1.5">
-                            <img
-                              src={yt || getContentThumbnail("video", String(idx))}
-                              alt={v.title}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                              onError={(e) => { (e.target as HTMLImageElement).src = getContentThumbnail("video", String(idx)); }}
-                            />
-                            <div className="absolute inset-0 bg-black/20 group-hover:bg-black/35 transition-colors rounded-xl" />
-                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                              <div className="bg-white/90 rounded-full p-2"><Play className="h-4 w-4 text-gray-900 fill-gray-900" /></div>
+            {(exploreIntelligenceData?.sections || [])
+              .map((section) => ({
+                ...section,
+                cards: section.cards.filter((card) => {
+                  if (!topicFilter.trim()) return true;
+                  const q = topicFilter.toLowerCase();
+                  return (
+                    card.title.toLowerCase().includes(q) ||
+                    card.summary.toLowerCase().includes(q) ||
+                    card.dimension.toLowerCase().includes(q) ||
+                    card.explainLabel.toLowerCase().includes(q)
+                  );
+                }),
+              }))
+              .filter((section) => section.cards.length > 0)
+              .map((section) => (
+                <section key={section.key} className="space-y-2.5" data-testid={`explore-section-${section.key}`}>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold">{section.title}</h3>
+                    <span className="text-[11px] text-muted-foreground">{section.cards.length} picks</span>
+                  </div>
+                  <div className="space-y-2.5">
+                    {section.cards.slice(0, section.key === "browse_topics" ? 8 : 4).map((card) => (
+                      <Card key={card.id} className="border-border/40">
+                        <CardContent className="p-3 space-y-2.5">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Badge variant="outline" className="capitalize text-[10px]">{card.dimension}</Badge>
+                            <Badge variant="secondary" className="text-[10px]">{card.explainLabel}</Badge>
+                            <Badge variant="outline" className="text-[10px]">{card.evidenceState}</Badge>
+                            <Badge variant="outline" className="text-[10px] uppercase">{card.confidence}</Badge>
+                            {card.lens === "symbolic" && (
+                              <Badge className="text-[10px] bg-violet-500/10 text-violet-700 dark:text-violet-300 border border-violet-500/20">
+                                Symbolic interpretation
+                              </Badge>
+                            )}
+                          </div>
+
+                          <div>
+                            <p className="text-sm font-semibold leading-snug">{card.title}</p>
+                            <p className="text-xs text-muted-foreground mt-1">{card.summary}</p>
+                          </div>
+
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                if (card.url && isSafeExternalUrl(card.url)) {
+                                  window.open(card.url, "_blank", "noopener,noreferrer");
+                                }
+                                handleExploreInteraction(card, "open");
+                              }}
+                              data-testid={`button-explore-open-${card.id}`}
+                            >
+                              <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                              Open
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setExpandedWhyCardId((current) => (current === card.id ? null : card.id))}
+                              data-testid={`button-explore-why-${card.id}`}
+                            >
+                              Ask why
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => handleExploreSave(card)}>Save</Button>
+                            <Button size="sm" variant="ghost" onClick={() => handleExploreInteraction(card, "more_like_this")}>More like this</Button>
+                            <Button size="sm" variant="ghost" onClick={() => handleExploreInteraction(card, "less_like_this")}>Less like this</Button>
+                            <Button size="sm" variant="ghost" onClick={() => handleNotInterested({ title: card.title, url: card.url || card.id, type: card.type, topic: card.dimension })}>Not interested</Button>
+                            <Button size="sm" variant="ghost" onClick={() => handleRemindMeLater(card)}>Remind me later</Button>
+                          </div>
+
+                          {expandedWhyCardId === card.id && (
+                            <div className="rounded-lg border bg-muted/40 p-2.5 text-xs text-muted-foreground space-y-1">
+                              <p className="font-medium text-foreground">Explain connection</p>
+                              <p>{card.explainConnection}</p>
+                              {card.lens === "symbolic" && (
+                                <p className="text-violet-700 dark:text-violet-300">
+                                  This symbolic card is optional and separate from observed data.
+                                </p>
+                              )}
                             </div>
-                            {v.duration && <span className="absolute bottom-1.5 right-1.5 text-[10px] text-white bg-black/60 px-1 rounded">{v.duration}</span>}
-                          </div>
-                          <p className="text-xs font-semibold line-clamp-2 leading-tight">{v.title}</p>
-                          <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1">{v.channel || v.source || ""}</p>
-                        </button>
-                      );
-                    })}
-                </div>
-              </div>
-            )}
-
-            {/* Articles section */}
-            {(exploreCategory === "all" || exploreCategory === "articles") && (
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <FileText className="h-4 w-4 text-amber-500" />
-                  <h3 className="text-sm font-semibold">Articles</h3>
-                  {aiArticlesLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground ml-1" />}
-                </div>
-                <div className="space-y-2">
-                  {(aiArticlesData?.articles || forYouData?.articles || [])
-                    .filter((a: any) => !topicFilter || (a.title + " " + (a.synopsis || a.description || "") + " " + (a.category || "")).toLowerCase().includes(topicFilter.toLowerCase()))
-                    .slice(0, exploreCategory === "all" ? 4 : 20)
-                    .map((article: any, idx: number) => (
-                      <button
-                        key={article.id || idx}
-                        className="w-full text-left flex gap-3 p-3 rounded-xl border border-border/50 hover:border-primary/30 hover:bg-muted/40 transition-colors group"
-                        onClick={() => { if (isSafeExternalUrl(article.url)) window.open(article.url, "_blank", "noopener,noreferrer"); }}
-                        data-testid={`card-explore-article-${idx}`}
-                      >
-                        <div className="w-16 h-16 rounded-lg overflow-hidden shrink-0 bg-muted">
-                          <img
-                            src={getContentThumbnail("article", String(idx))}
-                            alt=""
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold line-clamp-2 leading-snug">{article.title}</p>
-                          <p className="text-[11px] text-muted-foreground mt-1 line-clamp-2">{article.synopsis || article.description || ""}</p>
-                          <div className="flex items-center gap-2 mt-1.5">
-                            {article.readTimeMinutes && <span className="text-[10px] text-muted-foreground">{article.readTimeMinutes} min read</span>}
-                            {article.source && <span className="text-[10px] text-muted-foreground">{article.source}</span>}
-                            <ExternalLink className="h-3 w-3 text-muted-foreground ml-auto" />
-                          </div>
-                        </div>
-                      </button>
+                          )}
+                        </CardContent>
+                      </Card>
                     ))}
-                  {!aiArticlesLoading && !aiArticlesData?.articles?.length && !forYouData?.articles?.length && (
-                    <p className="text-xs text-muted-foreground text-center py-4">Loading personalized articles...</p>
-                  )}
-                </div>
-              </div>
-            )}
+                  </div>
+                </section>
+              ))}
 
-            {/* Shows & Movies section */}
-            {(exploreCategory === "all" || exploreCategory === "shows") && (
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <Tv className="h-4 w-4 text-violet-500" />
-                  <h3 className="text-sm font-semibold">Shows & Movies</h3>
-                  {entertainmentLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground ml-1" />}
-                  <span className="text-[10px] text-muted-foreground ml-auto">DW picked these for you</span>
-                </div>
-                <div className="grid gap-3 grid-cols-2 sm:grid-cols-3">
-                  {(entertainmentData?.shows || [])
-                    .filter((s: any) => !topicFilter || (s.title + " " + s.synopsis + " " + s.genre).toLowerCase().includes(topicFilter.toLowerCase()))
-                    .slice(0, exploreCategory === "all" ? 4 : 20)
-                    .map((show: any, idx: number) => (
-                      <button
-                        key={show.id || idx}
-                        className="text-left group"
-                        onClick={() => { if (isSafeExternalUrl(show.searchUrl)) window.open(show.searchUrl, "_blank", "noopener,noreferrer"); }}
-                        data-testid={`card-explore-show-${idx}`}
-                      >
-                        <div className="aspect-[2/3] rounded-xl overflow-hidden relative bg-muted mb-1.5">
-                          <img
-                            src={getContentThumbnail("entertainment", String(idx))}
-                            alt={show.title}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent rounded-xl" />
-                          <div className="absolute bottom-0 inset-x-0 p-2">
-                            <p className="text-white text-[10px] font-bold line-clamp-1">{show.title}</p>
-                            <p className="text-white/70 text-[9px]">{show.platform} · {show.type}</p>
-                          </div>
-                        </div>
-                        <p className="text-[10px] text-muted-foreground line-clamp-2">{show.whyPicked}</p>
-                      </button>
-                    ))}
-                  {!entertainmentLoading && !entertainmentData?.shows?.length && (
-                    <p className="text-xs text-muted-foreground col-span-full text-center py-4">Loading show recommendations...</p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Music section */}
-            {(exploreCategory === "all" || exploreCategory === "music") && (
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <Music2 className="h-4 w-4 text-violet-500" />
-                  <h3 className="text-sm font-semibold">Music & Playlists</h3>
-                  {musicLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground ml-1" />}
-                </div>
-                <div className="grid gap-3 grid-cols-2 sm:grid-cols-3">
-                  {(musicData?.playlists || [])
-                    .filter((p: any) => !topicFilter || (p.title + " " + p.mood + " " + p.genre + " " + p.description).toLowerCase().includes(topicFilter.toLowerCase()))
-                    .slice(0, exploreCategory === "all" ? 4 : 20)
-                    .map((pl: any, idx: number) => (
-                      <div key={idx} className="rounded-xl overflow-hidden" data-testid={`card-explore-music-${idx}`}>
-                        <div
-                          className="aspect-square flex flex-col items-center justify-center p-3 cursor-pointer hover:brightness-110 transition-all"
-                          style={{ background: `hsl(${(idx * 47 + 200) % 360}, 60%, 45%)` }}
-                          onClick={() => { if (isSafeExternalUrl(pl.spotifySearchUrl)) window.open(pl.spotifySearchUrl, "_blank", "noopener,noreferrer"); }}
-                        >
-                          <Music2 className="h-8 w-8 text-white/80 mb-1.5" />
-                          <p className="text-white text-xs font-bold text-center line-clamp-2">{pl.title}</p>
-                          <p className="text-white/70 text-[10px] mt-1">{pl.genre}</p>
-                          <div className="flex gap-1.5 mt-2">
-                            <button
-                              className="text-[9px] bg-green-500 hover:bg-green-400 text-white rounded-full px-2 py-0.5 font-medium"
-                              onClick={(e) => { e.stopPropagation(); if (isSafeExternalUrl(pl.spotifySearchUrl)) window.open(pl.spotifySearchUrl, "_blank", "noopener,noreferrer"); }}
-                            >Spotify</button>
-                            <button
-                              className="text-[9px] bg-red-500 hover:bg-red-400 text-white rounded-full px-2 py-0.5 font-medium"
-                              onClick={(e) => { e.stopPropagation(); if (isSafeExternalUrl(pl.youtubeSearchUrl)) window.open(pl.youtubeSearchUrl, "_blank", "noopener,noreferrer"); }}
-                            >YouTube</button>
-                          </div>
-                        </div>
-                        <div className="pt-1.5 px-0.5">
-                          <p className="text-xs font-semibold line-clamp-1">{pl.mood}</p>
-                          <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">{pl.description}</p>
-                        </div>
-                      </div>
-                    ))}
-                  {!musicLoading && !musicData?.playlists?.length && (
-                    <p className="text-xs text-muted-foreground col-span-full text-center py-4">Loading music picks...</p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Workouts section */}
-            {(exploreCategory === "all" || exploreCategory === "workouts") && (
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <Dumbbell className="h-4 w-4 text-emerald-500" />
-                  <h3 className="text-sm font-semibold">Workout Videos</h3>
-                </div>
-                <div className="flex gap-3 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
-                  {CURATED_VIDEO_LIBRARY
-                    .filter((v) => (v.dimension === "physical" || v.dimension === "emotional") && (!topicFilter || (v.title + " " + v.channel).toLowerCase().includes(topicFilter.toLowerCase())))
-                    .slice(0, exploreCategory === "all" ? 6 : 20)
-                    .map((v, idx) => (
-                      <button
-                        key={v.id}
-                        className="shrink-0 w-44 text-left group"
-                        onClick={() => { if (isSafeExternalUrl(v.url)) window.open(v.url, "_blank", "noopener,noreferrer"); }}
-                        data-testid={`card-explore-workout-${idx}`}
-                      >
-                        <div className="w-44 h-28 rounded-xl overflow-hidden relative bg-muted mb-1.5">
-                          <img src={v.thumb} alt={v.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                          <div className="absolute inset-0 bg-black/25 group-hover:bg-black/40 transition-colors rounded-xl" />
-                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                            <div className="bg-white/90 rounded-full p-2"><Play className="h-4 w-4 text-gray-900 fill-gray-900" /></div>
-                          </div>
-                          <span className="absolute bottom-1.5 right-1.5 text-[10px] text-white bg-black/60 px-1.5 py-0.5 rounded">{v.duration}</span>
-                        </div>
-                        <p className="text-xs font-semibold line-clamp-2 leading-tight">{v.title}</p>
-                        <p className="text-[11px] text-muted-foreground mt-0.5">{v.channel}</p>
-                      </button>
-                    ))}
-                </div>
-              </div>
-            )}
-
-            {/* Skills section */}
-            {(exploreCategory === "all" || exploreCategory === "skills") && (
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <GraduationCap className="h-4 w-4 text-amber-500" />
-                  <h3 className="text-sm font-semibold">Skill Building</h3>
-                  {learningLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground ml-1" />}
-                  <span className="text-[10px] text-muted-foreground ml-auto">DW curated for your goals</span>
-                </div>
-                <div className="space-y-2">
-                  {(learningData?.resources || [])
-                    .filter((r: any) => !topicFilter || (r.title + " " + (r.description || "") + " " + (r.platform || "")).toLowerCase().includes(topicFilter.toLowerCase()))
-                    .slice(0, exploreCategory === "all" ? 3 : 20)
-                    .map((resource: any, idx: number) => (
-                      <button
-                        key={idx}
-                        className="w-full text-left flex items-start gap-3 p-3 rounded-xl border border-border/50 hover:border-primary/30 hover:bg-muted/40 transition-colors group"
-                        onClick={() => { if (isSafeExternalUrl(resource.url)) window.open(resource.url, "_blank", "noopener,noreferrer"); }}
-                        data-testid={`card-explore-skill-${idx}`}
-                      >
-                        <div className="w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0">
-                          <BookOpen className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold line-clamp-1">{resource.title}</p>
-                          <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{resource.description || resource.whyPicked}</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            {resource.platform && <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">{resource.platform}</span>}
-                            {resource.duration && <span className="text-[10px] text-muted-foreground">{resource.duration}</span>}
-                            <ExternalLink className="h-3 w-3 text-muted-foreground ml-auto" />
-                          </div>
-                        </div>
-                      </button>
-                    ))}
-                  {!learningLoading && !learningData?.resources?.length && (
-                    <p className="text-xs text-muted-foreground text-center py-4">Loading skill picks...</p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Events / Activities section */}
-            {(exploreCategory === "all" || exploreCategory === "events") && (
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <PartyPopper className="h-4 w-4 text-rose-500" />
-                  <h3 className="text-sm font-semibold">Activities & Events</h3>
-                  {activitiesLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground ml-1" />}
-                  <span className="text-[10px] text-muted-foreground ml-auto">For {timeSlotNow}</span>
-                </div>
-                <div className="space-y-2">
-                  {(activitiesData?.activities || [])
-                    .filter((a: any) => !topicFilter || (a.title + " " + (a.description || a.why || "")).toLowerCase().includes(topicFilter.toLowerCase()))
-                    .slice(0, exploreCategory === "all" ? 4 : 20)
-                    .map((activity: any, idx: number) => (
-                      <div
-                        key={idx}
-                        className="flex items-start gap-3 p-3 rounded-xl border border-border/50 hover:border-primary/30 hover:bg-muted/40 transition-colors"
-                        data-testid={`card-explore-event-${idx}`}
-                      >
-                        <div className="w-10 h-10 rounded-lg bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center shrink-0">
-                          <PartyPopper className="h-5 w-5 text-rose-500" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold line-clamp-1">{activity.title}</p>
-                          <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{activity.description || activity.why || ""}</p>
-                          {activity.duration && <span className="text-[10px] text-muted-foreground mt-1 block">{activity.duration}</span>}
-                        </div>
-                        {activity.url && isSafeExternalUrl(activity.url) && (
-                          <button
-                            onClick={() => window.open(activity.url, "_blank", "noopener,noreferrer")}
-                            className="shrink-0 p-1.5 rounded-lg hover:bg-muted transition-colors"
-                          >
-                            <ExternalLink className="h-4 w-4 text-muted-foreground" />
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                  {!activitiesLoading && !activitiesData?.activities?.length && (
-                    <p className="text-xs text-muted-foreground text-center py-4">Loading activity picks...</p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Empty state */}
-            {topicFilter && exploreCategory === "all" &&
-              !forYouData?.videos?.length && !aiArticlesData?.articles?.length &&
-              !entertainmentData?.shows?.length && !musicData?.playlists?.length && (
-              <div className="text-center py-12">
-                <Search className="h-10 w-10 mx-auto mb-3 text-muted-foreground/40" />
-                <p className="text-sm text-muted-foreground">No results for "{topicFilter}"</p>
-                <button className="text-xs text-primary mt-2" onClick={() => setTopicFilter("")}>Clear search</button>
+            {!exploreIntelligenceLoading && !exploreIntelligenceData?.sections?.length && (
+              <div className="text-center py-10">
+                <Telescope className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
+                <p className="text-sm text-muted-foreground">Explore is keeping things quiet right now.</p>
               </div>
             )}
           </div>
