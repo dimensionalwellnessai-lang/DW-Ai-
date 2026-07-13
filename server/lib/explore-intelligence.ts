@@ -222,8 +222,9 @@ function quotaFromWeights(weights: ExploreMixWeights, total: number): ExploreMix
 
 function createTopicCards(goals: string[], interests: string[]): ExploreIntelligenceCard[] {
   const goalTopics = goals.slice(0, 2).filter(Boolean);
-  const interestTopics = interests.slice(0, 4).filter(Boolean);
   const goalSet = new Set(goalTopics);
+  // Filter out interests that are already included as goals to avoid duplicates
+  const interestTopics = interests.slice(0, 4).filter((t) => Boolean(t) && !goalSet.has(t));
   const topics = [...goalTopics, ...interestTopics];
   return topics.map((topic, index) => {
     const isGoal = goalSet.has(topic);
@@ -337,7 +338,7 @@ export function buildExploreIntelligenceFeed(input: ExploreIntelligenceBuildInpu
   const fromInterests = pickUnique(adjacentPool, quotas.adjacent, used);
   let worldTalkingPool = pickUnique(timelyPool, quotas.timely, used);
   if (worldTalkingPool.length === 0) {
-    worldTalkingPool = pickUnique([...strongPool, ...adjacentPool], Math.max(1, quotas.timely), used);
+    worldTalkingPool = pickUnique([...strongPool, ...adjacentPool], quotas.timely, used);
   }
   const worldTalking = worldTalkingPool.map((card, index) => ({
     ...card,
