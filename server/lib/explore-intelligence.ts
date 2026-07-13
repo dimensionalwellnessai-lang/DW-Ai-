@@ -200,35 +200,57 @@ function pickUnique<T extends { id: string }>(items: T[], count: number, used: S
 }
 
 function quotaFromWeights(weights: ExploreMixWeights, total: number): ExploreMixWeights {
+  const keys: (keyof ExploreMixWeights)[] = ["strong", "adjacent", "timely", "discovery"];
+  // Compute raw (fractional) quotas and floor each
+  const raw = keys.map((k) => (weights[k] / 100) * total);
+  const floored = raw.map((v) => Math.max(1, Math.floor(v)));
+  // Distribute remaining slots to the keys with largest fractional remainders
+  let remaining = total - floored.reduce((a, b) => a + b, 0);
+  const remainders = raw.map((v, i) => ({ i, rem: v - Math.floor(v) })).sort((a, b) => b.rem - a.rem);
+  for (const { i } of remainders) {
+    if (remaining <= 0) break;
+    floored[i]++;
+    remaining--;
+  }
   return {
-    strong: Math.max(1, Math.round((weights.strong / 100) * total)),
-    adjacent: Math.max(1, Math.round((weights.adjacent / 100) * total)),
-    timely: Math.max(1, Math.round((weights.timely / 100) * total)),
-    discovery: Math.max(1, Math.round((weights.discovery / 100) * total)),
+    strong: floored[0],
+    adjacent: floored[1],
+    timely: floored[2],
+    discovery: floored[3],
   };
 }
 
 function createTopicCards(goals: string[], interests: string[]): ExploreIntelligenceCard[] {
-  const topics = [...goals.slice(0, 2), ...interests.slice(0, 4)].filter(Boolean);
-  return topics.map((topic, index) => ({
-    id: generateSlugId("topic", topic, index),
-    type: "topic",
-    bucket: "explore",
-    title: topic,
-    summary: "Browse resources connected to this topic.",
-    synopsis: `This topic is kept in Explore so you can browse deliberately when the timing feels right.`,
-    dwConnection: "Quality over quantity: return when this topic is relevant.",
-    url: "",
-    source: "DW Topics",
-    dimension: "general",
-    readTime: "Browse",
-    recommendationClass: "adjacent",
-    explainLabel: `Connected to your ${topic.toLowerCase()} interests`,
-    evidenceState: "User reported",
-    confidence: "high",
-    lens: "observed",
-    explainConnection: "Added because you explicitly shared this interest or active direction.",
-  }));
+  const goalTopics = goals.slice(0, 2).filter(Boolean);
+  const interestTopics = interests.slice(0, 4).filter(Boolean);
+  const goalSet = new Set(goalTopics);
+  const topics = [...goalTopics, ...interestTopics];
+  return topics.map((topic, index) => {
+    const isGoal = goalSet.has(topic);
+    return {
+      id: generateSlugId("topic", topic, index),
+      type: "topic",
+      bucket: "explore",
+      title: topic,
+      summary: "Browse resources connected to this topic.",
+      synopsis: `This topic is kept in Explore so you can browse deliberately when the timing feels right.`,
+      dwConnection: "Quality over quantity: return when this topic is relevant.",
+      url: "",
+      source: "DW Topics",
+      dimension: "general",
+      readTime: "Browse",
+      recommendationClass: "adjacent",
+      explainLabel: isGoal
+        ? `Connected to your ${topic.toLowerCase()} goal`
+        : `Connected to your ${topic.toLowerCase()} interests`,
+      evidenceState: "User reported",
+      confidence: "high",
+      lens: "observed",
+      explainConnection: isGoal
+        ? "Added because you identified this as an active goal."
+        : "Added because you explicitly shared this interest or active direction.",
+    };
+  });
 }
 
 function createLocalCards(interests: string[]): ExploreIntelligenceCard[] {
@@ -315,7 +337,7 @@ export function buildExploreIntelligenceFeed(input: ExploreIntelligenceBuildInpu
   const fromInterests = pickUnique(adjacentPool, quotas.adjacent, used);
   let worldTalkingPool = pickUnique(timelyPool, quotas.timely, used);
   if (worldTalkingPool.length === 0) {
-    worldTalkingPool = [...strongPool, ...adjacentPool].slice(0, Math.max(1, quotas.timely));
+    worldTalkingPool = pickUnique([...strongPool, ...adjacentPool], Math.max(1, quotas.timely), used);
   }
   const worldTalking = worldTalkingPool.map((card, index) => ({
     ...card,

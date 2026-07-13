@@ -999,7 +999,7 @@ ${contentList}`,
       contentType: card.type,
       title: card.title,
       description: card.summary,
-      url: card.url || "",
+      url: card.url || `explore:${card.id}`,
       source: card.source,
       duration: card.readTime,
       metadata: {
@@ -1020,7 +1020,7 @@ ${contentList}`,
     addToScheduleMutation.mutate({
       title: `Revisit: ${card.title}`,
       scheduledTime: reminder.toISOString(),
-      contentUrl: card.url,
+      contentUrl: card.url || card.id,
       contentType: card.type,
       description: card.summary,
     });

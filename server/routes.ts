@@ -11734,7 +11734,11 @@ Return ONLY this JSON:
         cards.push(...slice);
       }
 
-      const shuffled = cards.sort(() => Math.random() - 0.5);
+      const shuffled = [...cards];
+      for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
 
       let savedContent: Array<{
         id: string;
@@ -11787,7 +11791,8 @@ Return ONLY this JSON:
             notInterested: notInterestedInteractions.length,
             saved: savedInteractions.length,
           };
-        } catch {
+        } catch (err) {
+          console.warn("[discover/feed] Failed to load saved content/preferences/interactions:", err);
           // keep defaults
         }
       }
