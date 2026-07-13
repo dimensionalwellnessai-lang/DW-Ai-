@@ -92,6 +92,11 @@ const DEFAULT_WEIGHTS: ExploreMixWeights = {
   timely: 15,
   discovery: 10,
 };
+const TIMELY_SOURCE_PATTERN = /youtube|ted|news|harvard|today|week/i;
+
+function generateSlugId(prefix: string, text: string, index = 0): string {
+  return `${prefix}-${index}-${text.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+}
 
 function normalizeWeights(weights: ExploreMixWeights): ExploreMixWeights {
   const total = Math.max(1, weights.strong + weights.adjacent + weights.timely + weights.discovery);
@@ -206,7 +211,7 @@ function quotaFromWeights(weights: ExploreMixWeights, total: number): ExploreMix
 function createTopicCards(goals: string[], interests: string[]): ExploreIntelligenceCard[] {
   const topics = [...goals.slice(0, 2), ...interests.slice(0, 4)].filter(Boolean);
   return topics.map((topic, index) => ({
-    id: `topic-${index}-${topic.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+    id: generateSlugId("topic", topic, index),
     type: "topic",
     bucket: "explore",
     title: topic,
@@ -231,7 +236,7 @@ function createLocalCards(interests: string[]): ExploreIntelligenceCard[] {
   if (seeds.length === 0) return [];
 
   return seeds.map((interest, index) => ({
-    id: `local-${index}-${interest.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+    id: generateSlugId("local", interest, index),
     type: "article",
     bucket: "explore",
     title: `${interest} events near you`,
@@ -254,7 +259,7 @@ function createLocalCards(interests: string[]): ExploreIntelligenceCard[] {
 function createSymbolicCard(interests: string[]): ExploreIntelligenceCard {
   const focus = interests[0] || "reflection";
   return {
-    id: `symbolic-${focus.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+    id: generateSlugId("symbolic", focus),
     type: "spiritual",
     bucket: "random",
     title: `Symbolic lens: ${focus}`,
@@ -293,7 +298,7 @@ export function buildExploreIntelligenceFeed(input: ExploreIntelligenceBuildInpu
   const discoveryPool = input.cards.filter((card) => card.bucket === "random").map((card) => toCard(card, "discovery", input.goals, input.interests));
 
   const timelySource = [...strongPool, ...adjacentPool].filter(
-    (card) => /youtube|ted|news|harvard|today|week/i.test(`${card.source} ${card.title}`),
+    (card) => TIMELY_SOURCE_PATTERN.test(`${card.source} ${card.title}`),
   );
   const timelyPool = (timelySource.length > 0 ? timelySource : [...strongPool]).map((card) => ({
     ...card,
@@ -308,9 +313,13 @@ export function buildExploreIntelligenceFeed(input: ExploreIntelligenceBuildInpu
 
   const mostRelevant = pickUnique(strongPool, quotas.strong, used);
   const fromInterests = pickUnique(adjacentPool, quotas.adjacent, used);
-  const worldTalking = timelyPool.slice(0, quotas.timely).map((card) => ({
+  let worldTalkingPool = pickUnique(timelyPool, quotas.timely, used);
+  if (worldTalkingPool.length === 0) {
+    worldTalkingPool = [...strongPool, ...adjacentPool].slice(0, Math.max(1, quotas.timely));
+  }
+  const worldTalking = worldTalkingPool.map((card, index) => ({
     ...card,
-    id: `${card.id}-timely`,
+    id: `${card.id}-timely-${index}`,
   }));
   const somethingNew = pickUnique(discoveryPool, quotas.discovery, used);
 
@@ -334,9 +343,9 @@ export function buildExploreIntelligenceFeed(input: ExploreIntelligenceBuildInpu
     explainConnection: "Directly based on your prior save action.",
   }));
 
-  const connections = [...mostRelevant.slice(0, 1), ...fromInterests.slice(0, 2)].map((card) => ({
+  const connections = [...mostRelevant.slice(0, 1), ...fromInterests.slice(0, 2)].map((card, index) => ({
     ...card,
-    id: `${card.id}-connection`,
+    id: `${card.id}-connection-${index}`,
     recommendationClass: "adjacent" as const,
     evidenceState: "Inferred" as const,
     confidence: "medium" as const,
@@ -345,6 +354,7 @@ export function buildExploreIntelligenceFeed(input: ExploreIntelligenceBuildInpu
   }));
 
   if (input.astrologyEnabled) {
+    // Keep symbolic guidance in the connections section as an optional lens, clearly labeled.
     connections.unshift(createSymbolicCard(input.interests));
   }
 

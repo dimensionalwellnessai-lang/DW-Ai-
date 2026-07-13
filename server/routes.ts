@@ -11562,10 +11562,13 @@ Return ONLY this JSON:
       const page = parseInt(req.query.page as string) || 1;
       const mixQuery = req.query.mix as string | undefined;
       const parsedMix = mixQuery
-        ? mixQuery.split(",").map((value) => Number(value.trim()))
+        ? mixQuery.split(",").map((value) => parseFloat(value.trim()))
         : [];
+      const hasValidMixRange =
+        parsedMix.length === 4 &&
+        parsedMix.every((value) => !Number.isNaN(value) && Number.isFinite(value) && value >= 0 && value <= 100);
       const configurableWeights: Partial<ExploreMixWeights> =
-        parsedMix.length === 4 && parsedMix.every((value) => Number.isFinite(value))
+        hasValidMixRange
           ? {
               strong: parsedMix[0],
               adjacent: parsedMix[1],

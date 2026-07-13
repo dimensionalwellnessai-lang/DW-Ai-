@@ -614,6 +614,9 @@ const SAMPLE_CONTENT = [
 
 
 const FOR_YOU_PAGE_SIZE = 9;
+const EXPLORE_SECTION_CARD_LIMIT = 4;
+const EXPLORE_TOPIC_CARD_LIMIT = 8;
+const REMIND_LATER_HOUR = 18;
 
 export default function Browse() {
   usePageMeta("Browse", "Explore curated wellness content, workouts, recipes, and more.");
@@ -1010,8 +1013,10 @@ ${contentList}`,
 
   const handleRemindMeLater = (card: ExploreIntelligenceCard) => {
     const reminder = new Date();
-    reminder.setDate(reminder.getDate() + 1);
-    reminder.setHours(18, 0, 0, 0);
+    if (reminder.getHours() >= REMIND_LATER_HOUR) {
+      reminder.setDate(reminder.getDate() + 1);
+    }
+    reminder.setHours(REMIND_LATER_HOUR, 0, 0, 0);
     addToScheduleMutation.mutate({
       title: `Revisit: ${card.title}`,
       scheduledTime: reminder.toISOString(),
@@ -2670,7 +2675,7 @@ ${contentList}`,
                     <span className="text-[11px] text-muted-foreground">{section.cards.length} picks</span>
                   </div>
                   <div className="space-y-2.5">
-                    {section.cards.slice(0, section.key === "browse_topics" ? 8 : 4).map((card) => (
+                    {section.cards.slice(0, section.key === "browse_topics" ? EXPLORE_TOPIC_CARD_LIMIT : EXPLORE_SECTION_CARD_LIMIT).map((card) => (
                       <Card key={card.id} className="border-border/40">
                         <CardContent className="p-3 space-y-2.5">
                           <div className="flex items-center gap-2 flex-wrap">
