@@ -201,9 +201,9 @@ function pickUnique<T extends { id: string }>(items: T[], count: number, used: S
 
 function quotaFromWeights(weights: ExploreMixWeights, total: number): ExploreMixWeights {
   const keys: (keyof ExploreMixWeights)[] = ["strong", "adjacent", "timely", "discovery"];
-  // Compute raw (fractional) quotas and floor each
+  // Compute raw (fractional) quotas and floor each (no minimum clamp to preserve sum invariant)
   const raw = keys.map((k) => (weights[k] / 100) * total);
-  const floored = raw.map((v) => Math.max(1, Math.floor(v)));
+  const floored = raw.map((v) => Math.floor(v));
   // Distribute remaining slots to the keys with largest fractional remainders
   let remaining = total - floored.reduce((a, b) => a + b, 0);
   const remainders = raw.map((v, i) => ({ i, rem: v - Math.floor(v) })).sort((a, b) => b.rem - a.rem);

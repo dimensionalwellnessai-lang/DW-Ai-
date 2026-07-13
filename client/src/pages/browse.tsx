@@ -986,7 +986,7 @@ ${contentList}`,
   const handleExploreInteraction = (card: ExploreIntelligenceCard, action: string) => {
     feedInteractionMutation.mutate({
       contentTitle: card.title,
-      contentUrl: card.url || card.id,
+      contentUrl: card.url || `explore:${card.id}`,
       contentType: card.type,
       action,
       topic: card.dimension,
@@ -1020,7 +1020,7 @@ ${contentList}`,
     addToScheduleMutation.mutate({
       title: `Revisit: ${card.title}`,
       scheduledTime: reminder.toISOString(),
-      contentUrl: card.url || card.id,
+      contentUrl: card.url || `explore:${card.id}`,
       contentType: card.type,
       description: card.summary,
     });
