@@ -13,12 +13,12 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../../src/stores/auth';
 import { useSubscriptionStore } from '../../src/stores/subscription';
 import { aiService } from '../../src/services/ai';
-import { ErrorState } from '../../src/components/ui/StateViews';
+import { ErrorState, NoticeState } from '../../src/components/ui/StateViews';
 import { analytics } from '../../src/services/analytics';
 
 export default function TodayScreen() {
   const user = useAuthStore((s) => s.user);
-  const { status: subscriptionStatus, fetchStatus } = useSubscriptionStore();
+  const { status: subscriptionStatus, fetchStatus, warning } = useSubscriptionStore();
 
   React.useEffect(() => {
     analytics.screen('Today');
@@ -78,6 +78,7 @@ export default function TodayScreen() {
         {/* AI Briefing */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Your Daily Briefing</Text>
+          {warning && <NoticeState message={warning} />}
           {briefingLoading ? (
             <View style={styles.skeletonCard} />
           ) : briefingError ? (

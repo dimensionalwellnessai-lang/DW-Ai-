@@ -1,30 +1,63 @@
 /**
  * API client for DW.ai mobile app.
- * Handles authentication, request timeouts, and retries.
+ * Handles secure session persistence, request timeouts, retries, and typed error normalization.
  */
 
 import * as SecureStore from 'expo-secure-store';
 import { Config } from '../config/env';
+import {
+  buildCorrelationId,
+  calculateBackoffDelay,
+  classifyErrorKind,
+  shouldRetryRequest,
+  type ReliabilityErrorKind,
+} from '../lib/reliability';
 
 const SESSION_KEY = 'dw_session_token';
-const REQUEST_TIMEOUT_MS = 15_000;
-const MAX_RETRIES = 2;
+const DEFAULT_TIMEOUT_MS = 15_000;
+const AI_TIMEOUT_MS = 30_000;
+const DEFAULT_RETRIES = 2;
 
-export class ApiError extends Error {
-  constructor(
-    message: string,
-    public readonly status: number,
-    public readonly code?: string,
-  ) {
-    super(message);
-    this.name = 'ApiError';
-  }
+export interface RequestOptions extends Omit<RequestInit, 'body'> {
+  body?: BodyInit | null;
+  timeoutMs?: number;
+  retries?: number;
+  correlationId?: string;
+  retryable?: boolean;
 }
 
-export class NetworkError extends Error {
-  constructor(message: string) {
+export interface ApiResponseMetadata {
+  correlationId: string;
+  requestId?: string;
+}
+
+interface ApiErrorPayload {
+  error?: string;
+  message?: string;
+  code?: string;
+  requestId?: string;
+}
+
+export class NormalizedApiError extends Error {
+  constructor(
+    message: string,
+    public readonly kind: ReliabilityErrorKind,
+    public readonly status?: number,
+    public readonly code?: string,
+    public readonly correlationId?: string,
+    public readonly requestId?: string,
+    public readonly retryable = false,
+  ) {
     super(message);
-    this.name = 'NetworkError';
+    this.name = 'NormalizedApiError';
+  }
+
+  get isTimeout(): boolean {
+    return this.kind === 'timeout';
+  }
+
+  get isNetworkError(): boolean {
+    return this.kind === 'network' || this.kind === 'timeout';
   }
 }
 
@@ -44,55 +77,121 @@ export async function clearSession(): Promise<void> {
   await SecureStore.deleteItemAsync(SESSION_KEY);
 }
 
-function buildHeaders(sessionToken?: string | null): Record<string, string> {
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    'X-Client': 'dw-mobile/1.0',
-  };
-  if (sessionToken) {
-    headers['Cookie'] = `connect.sid=${sessionToken}`;
+export async function hasStoredSession(): Promise<boolean> {
+  return (await getStoredSession()) != null;
+}
+
+function buildHeaders(
+  sessionToken?: string | null,
+  headers?: HeadersInit,
+  correlationId?: string,
+): Headers {
+  const normalized = new Headers(headers);
+  normalized.set('Content-Type', normalized.get('Content-Type') ?? 'application/json');
+  normalized.set('X-Client', 'dw-mobile/1.0');
+
+  if (correlationId) {
+    normalized.set('X-Correlation-ID', correlationId);
   }
-  return headers;
+
+  if (sessionToken) {
+    normalized.set('Cookie', `connect.sid=${sessionToken}`);
+  }
+
+  return normalized;
+}
+
+async function parseApiError(
+  response: Response,
+  metadata: ApiResponseMetadata,
+  method?: string,
+): Promise<NormalizedApiError> {
+  let payload: ApiErrorPayload | undefined;
+
+  try {
+    payload = (await response.json()) as ApiErrorPayload;
+  } catch {
+    payload = undefined;
+  }
+
+  const status = response.status;
+  const code = payload?.code ?? payload?.error;
+  const kind = classifyErrorKind(status, code);
+  const message =
+    payload?.message ??
+    payload?.error ??
+    (status === 401
+      ? 'Session expired. Please sign in again.'
+      : `Request failed with status ${status}.`);
+
+  return new NormalizedApiError(
+    message,
+    kind,
+    status,
+    code,
+    metadata.correlationId,
+    payload?.requestId ?? metadata.requestId,
+    shouldRetryRequest({
+      attempt: 0,
+      retries: 1,
+      method,
+      status,
+    }),
+  );
 }
 
 async function fetchWithTimeout(
   url: string,
   options: RequestInit,
-  timeoutMs = REQUEST_TIMEOUT_MS,
+  timeoutMs: number,
+  metadata: ApiResponseMetadata,
 ): Promise<Response> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const response = await fetch(url, {
+    return await fetch(url, {
       ...options,
       signal: controller.signal,
     });
-    return response;
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') {
-      throw new NetworkError('Request timed out. Please check your connection and try again.');
+      throw new NormalizedApiError(
+        'Request timed out. Please try again.',
+        'timeout',
+        undefined,
+        'TIMEOUT',
+        metadata.correlationId,
+        metadata.requestId,
+        true,
+      );
     }
-    throw new NetworkError('Network error. Please check your connection and try again.');
+
+    throw new NormalizedApiError(
+      'Network error. Please check your connection and try again.',
+      'network',
+      undefined,
+      'NETWORK',
+      metadata.correlationId,
+      metadata.requestId,
+      true,
+    );
   } finally {
     clearTimeout(timeoutId);
   }
 }
 
-async function request<T>(
-  path: string,
-  options: RequestInit = {},
-  retries = MAX_RETRIES,
-): Promise<T> {
+async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const sessionToken = await getStoredSession();
   const url = `${Config.apiBaseUrl}${path}`;
+  const correlationId = options.correlationId ?? buildCorrelationId('mobile');
+  const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const retries = options.retries ?? DEFAULT_RETRIES;
+  const metadata: ApiResponseMetadata = { correlationId };
 
   const requestOptions: RequestInit = {
     ...options,
-    headers: {
-      ...buildHeaders(sessionToken),
-      ...(options.headers as Record<string, string> | undefined),
-    },
+    headers: buildHeaders(sessionToken, options.headers, correlationId),
     credentials: 'include',
   };
 
@@ -100,9 +199,9 @@ async function request<T>(
 
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      const response = await fetchWithTimeout(url, requestOptions);
+      const response = await fetchWithTimeout(url, requestOptions, timeoutMs, metadata);
+      metadata.requestId = response.headers.get('x-request-id') ?? metadata.requestId;
 
-      // Extract and store session cookie for subsequent requests
       const setCookie = response.headers.get('set-cookie');
       if (setCookie) {
         const match = setCookie.match(/connect\.sid=([^;]+)/);
@@ -113,63 +212,77 @@ async function request<T>(
 
       if (response.status === 401) {
         await clearSession();
-        throw new ApiError('Session expired. Please sign in again.', 401, 'UNAUTHORIZED');
       }
 
       if (!response.ok) {
-        let message = `Request failed with status ${response.status}`;
-        try {
-          const body = await response.json() as { message?: string; error?: string };
-          message = body.message ?? body.error ?? message;
-        } catch {
-          // Ignore JSON parse error
-        }
-        throw new ApiError(message, response.status);
+        throw await parseApiError(response, metadata, requestOptions.method);
       }
 
-      // Handle empty responses
       const contentType = response.headers.get('content-type');
       if (!contentType?.includes('application/json')) {
-        return undefined as unknown as T;
+        return undefined as T;
       }
 
       return (await response.json()) as T;
     } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error));
+      const normalizedError =
+        error instanceof NormalizedApiError
+          ? error
+          : new NormalizedApiError(
+              error instanceof Error ? error.message : 'Unknown error',
+              'unknown',
+              undefined,
+              undefined,
+              correlationId,
+              metadata.requestId,
+            );
 
-      // Don't retry auth errors or client errors
-      if (error instanceof ApiError && error.status < 500) {
-        throw error;
+      lastError = normalizedError;
+
+      if (
+        !shouldRetryRequest({
+          attempt,
+          retries,
+          method: requestOptions.method,
+          status: normalizedError.status,
+          retryable: options.retryable,
+        })
+      ) {
+        throw normalizedError;
       }
 
-      // Wait before retry with exponential backoff
-      if (attempt < retries) {
-        await new Promise((resolve) => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
-      }
+      await new Promise((resolve) =>
+        setTimeout(resolve, calculateBackoffDelay(attempt)),
+      );
     }
   }
 
-  throw lastError ?? new NetworkError('Request failed after multiple attempts.');
+  throw lastError ?? new NormalizedApiError('Request failed.', 'unknown', undefined, undefined, correlationId);
 }
 
 export const api = {
-  get: <T>(path: string, options?: RequestInit) =>
+  get: <T>(path: string, options?: RequestOptions) =>
     request<T>(path, { ...options, method: 'GET' }),
 
-  post: <T>(path: string, body: unknown, options?: RequestInit) =>
+  post: <T>(path: string, body: unknown, options?: RequestOptions) =>
     request<T>(path, {
       ...options,
       method: 'POST',
       body: JSON.stringify(body),
     }),
 
-  put: <T>(path: string, body: unknown, options?: RequestInit) =>
+  put: <T>(path: string, body: unknown, options?: RequestOptions) =>
     request<T>(path, {
       ...options,
       method: 'PUT',
       body: JSON.stringify(body),
     }),
 
-  delete: <T>(path: string, options?: RequestInit) =>
+  delete: <T>(path: string, options?: RequestOptions) =>
     request<T>(path, { ...options, method: 'DELETE' }),
+};
+
+export const apiTimeouts = {
+  default: DEFAULT_TIMEOUT_MS,
+  ai: AI_TIMEOUT_MS,
 };

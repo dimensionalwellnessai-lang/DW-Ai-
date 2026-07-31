@@ -14,17 +14,17 @@ import { router } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { subscriptionService } from '../../src/services/subscriptions';
 import { useSubscriptionStore } from '../../src/stores/subscription';
-import { ErrorState } from '../../src/components/ui/StateViews';
+import { ErrorState, NoticeState } from '../../src/components/ui/StateViews';
 import { analytics } from '../../src/services/analytics';
 import type { PurchasesPackage } from 'react-native-purchases';
 
 export default function PaywallModal() {
-  const { purchase, restorePurchases, isPurchasing, isRestoring, status, error, clearError } =
+  const { purchase, restorePurchases, isPurchasing, isRestoring, status, error, warning, clearError } =
     useSubscriptionStore();
 
   useEffect(() => {
     analytics.screen('Paywall');
-    analytics.track('paywall_viewed', {});
+    analytics.track('paywall_shown', {});
   }, []);
 
   useEffect(() => {
@@ -63,8 +63,8 @@ export default function PaywallModal() {
   }
 
   async function handleRestore() {
-    await restorePurchases();
-    if (status.isPro) {
+    const restored = await restorePurchases();
+    if (restored) {
       Alert.alert(
         'Purchases Restored',
         'Your DW Plus subscription has been restored.',
@@ -123,13 +123,18 @@ export default function PaywallModal() {
         </View>
 
         {/* Packages */}
+        {warning && <NoticeState message={warning} />}
+
         {packages.length === 0 ? (
           <View style={styles.noPackages}>
             <Text style={styles.noPackagesText}>
               {Platform.OS === 'ios'
-                ? 'Subscription plans not configured yet. Check back soon.'
-                : 'Subscription not available on this platform.'}
+                ? 'Subscription plans are temporarily unavailable. Your current access stays unchanged while we retry.'
+                : 'Subscription not available on this platform right now.'}
             </Text>
+            <TouchableOpacity onPress={() => void refetch()}>
+              <Text style={styles.retryText}>Retry loading plans</Text>
+            </TouchableOpacity>
           </View>
         ) : (
           <View style={styles.packages}>
@@ -243,6 +248,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   noPackagesText: { color: '#64748b', textAlign: 'center', fontSize: 15 },
+  retryText: {
+    marginTop: 12,
+    color: '#6366f1',
+    fontSize: 14,
+    fontWeight: '700',
+  },
   packageCard: {
     borderWidth: 2,
     borderColor: '#e2e8f0',

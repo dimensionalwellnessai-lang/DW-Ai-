@@ -13,13 +13,14 @@ interface SubscriptionState {
   isPurchasing: boolean;
   isRestoring: boolean;
   error: string | null;
+  warning: string | null;
 }
 
 interface SubscriptionActions {
   fetchStatus: () => Promise<void>;
   fetchOffering: () => Promise<void>;
   purchase: (pkg: PurchasesPackage) => Promise<boolean>;
-  restorePurchases: () => Promise<void>;
+  restorePurchases: () => Promise<boolean>;
   clearError: () => void;
 }
 
@@ -32,12 +33,19 @@ export const useSubscriptionStore = create<SubscriptionStore>((set) => ({
   isPurchasing: false,
   isRestoring: false,
   error: null,
+  warning: null,
 
   fetchStatus: async () => {
     set({ isLoading: true, error: null });
     try {
       const status = await subscriptionService.getSubscriptionStatus();
-      set({ status, isLoading: false });
+      set({
+        status,
+        warning: status.isStale
+          ? 'Subscription access was restored from your last known state while we retry the service.'
+          : null,
+        isLoading: false,
+      });
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Failed to load subscription status.',
@@ -49,7 +57,12 @@ export const useSubscriptionStore = create<SubscriptionStore>((set) => ({
   fetchOffering: async () => {
     try {
       const offering = await subscriptionService.fetchOfferings();
-      set({ offering });
+      set({
+        offering,
+        warning: offering
+          ? null
+          : 'Subscription plans are temporarily unavailable. Your current access stays unchanged.',
+      });
     } catch (error) {
       console.error('[SubscriptionStore] Failed to fetch offering:', error);
     }
@@ -73,13 +86,15 @@ export const useSubscriptionStore = create<SubscriptionStore>((set) => ({
     try {
       const status = await subscriptionService.restorePurchases();
       set({ status, isRestoring: false });
+      return status.isPro;
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Failed to restore purchases.',
         isRestoring: false,
       });
+      return false;
     }
   },
 
-  clearError: () => set({ error: null }),
+  clearError: () => set({ error: null, warning: null }),
 }));
