@@ -11,10 +11,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Button } from '../../src/components/ui/Button';
 import { Input } from '../../src/components/ui/Input';
+import { NoticeState } from '../../src/components/ui/StateViews';
 import { useSubscriptionStore } from '../../src/stores/subscription';
 import { aiService, type ChatMessage } from '../../src/services/ai';
 import { analytics } from '../../src/services/analytics';
 import { captureError } from '../../src/services/monitoring';
+import { NormalizedApiError } from '../../src/services/api';
 
 const DAILY_FREE_LIMIT = 3;
 
@@ -30,6 +32,8 @@ export default function GuidanceScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId, setSessionId] = useState<string | undefined>();
   const [freeUsageCount, setFreeUsageCount] = useState(0);
+  const [retryMessage, setRetryMessage] = useState<string | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
   const flatListRef = useRef<FlatList>(null);
 
   const { status: subscriptionStatus } = useSubscriptionStore();
@@ -52,11 +56,13 @@ export default function GuidanceScreen() {
     }
 
     setInput('');
+    setAiError(null);
     setMessages((prev) => [...prev, { role: 'user', content: userMessage }]);
     setIsLoading(true);
+    setRetryMessage(userMessage);
 
     try {
-      analytics.track('core_ai_message_sent', { hasSessionId: Boolean(sessionId) });
+      analytics.track('core_ai_action_start', { hasSessionId: Boolean(sessionId) });
 
       const response = await aiService.sendMessage({
         message: userMessage,
@@ -73,11 +79,18 @@ export default function GuidanceScreen() {
         setFreeUsageCount((c) => c + 1);
       }
 
-      analytics.track('core_ai_message_received', {});
+      setRetryMessage(null);
+      analytics.track('core_ai_action_success', {});
     } catch (error) {
       captureError(error, { screen: 'Guidance', action: 'sendMessage' });
+      const normalizedError =
+        error instanceof NormalizedApiError ? error : null;
       const errorMsg =
         error instanceof Error ? error.message : 'Something went wrong. Please try again.';
+      const fallbackMessage = normalizedError?.isNetworkError
+        ? 'DW could not reach the AI right now. You can keep exploring the app and retry when ready.'
+        : 'DW hit a temporary issue. Please retry in a moment.';
+      setAiError(fallbackMessage);
       setMessages((prev) => [
         ...prev,
         {
@@ -85,6 +98,10 @@ export default function GuidanceScreen() {
           content: `I'm having trouble connecting right now. ${errorMsg}`,
         },
       ]);
+      analytics.track('core_ai_action_failure', {
+        errorClass: error instanceof Error ? error.name : 'UnknownError',
+        errorKind: normalizedError?.kind ?? 'unknown',
+      });
     } finally {
       setIsLoading(false);
       setTimeout(() => {
@@ -124,6 +141,20 @@ export default function GuidanceScreen() {
             >
               Upgrade →
             </Text>
+          </View>
+        )}
+
+        {aiError && retryMessage && (
+          <View style={styles.noticeWrapper}>
+            <NoticeState message={aiError} />
+            <Button
+              title="Retry last message"
+              onPress={() => {
+                setInput(retryMessage);
+                setAiError(null);
+              }}
+              variant="secondary"
+            />
           </View>
         )}
 
@@ -218,4 +249,9 @@ const styles = StyleSheet.create({
   },
   inputContainer: { flex: 1 },
   sendButton: { minWidth: 72 },
+  noticeWrapper: {
+    paddingHorizontal: 12,
+    paddingTop: 12,
+    gap: 8,
+  },
 });

@@ -20,9 +20,9 @@ export default function SettingsModal() {
 
   async function handleRestorePurchases() {
     analytics.track('restore_purchases_attempt', { source: 'settings' });
-    await restorePurchases();
+    const restored = await restorePurchases();
 
-    if (subscriptionStatus.isPro) {
+    if (restored) {
       Alert.alert('Restored!', 'Your DW Plus subscription has been restored.');
     } else {
       Alert.alert('No Active Subscription', 'No active subscription found for this Apple ID.');

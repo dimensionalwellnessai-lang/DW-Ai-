@@ -7,7 +7,7 @@ import { create } from 'zustand';
 import type { User } from '../services/auth';
 import { authService } from '../services/auth';
 import { analytics } from '../services/analytics';
-import { setUserContext, clearUserContext } from '../services/monitoring';
+import { captureError, setUserContext, clearUserContext } from '../services/monitoring';
 import { subscriptionService } from '../services/subscriptions';
 
 interface AuthState {
@@ -18,7 +18,8 @@ interface AuthState {
 }
 
 interface AuthActions {
-  initialize: () => Promise<void>;
+  initialize: () => Promise<User | null>;
+  revalidate: () => Promise<User | null>;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, username?: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -39,13 +40,35 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     try {
       const user = await authService.getMe();
       if (user) {
-        analytics.identify(user.id, { email: user.email });
-        setUserContext(user.id, user.email);
-        await subscriptionService.identifyUser(user.id);
+       analytics.identify(user.id);
+       setUserContext(user.id);
+       analytics.track('auth_restore_success', {});
+      } else {
+       analytics.track('auth_restore_success', { authenticated: false });
       }
       set({ user, isInitialized: true, isLoading: false });
+      return user;
     } catch {
+      analytics.track('auth_restore_failure', {});
       set({ user: null, isInitialized: true, isLoading: false });
+      return null;
+    }
+  },
+
+  revalidate: async () => {
+    try {
+      const user = await authService.getMe();
+      if (user) {
+       analytics.identify(user.id);
+       setUserContext(user.id);
+      } else {
+       clearUserContext();
+      }
+      set({ user });
+      return user;
+    } catch (error) {
+      captureError(error, { area: 'auth', action: 'revalidate' });
+      return get().user;
     }
   },
 
@@ -53,8 +76,8 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const user = await authService.login({ email, password });
-      analytics.identify(user.id, { email: user.email });
-      setUserContext(user.id, user.email);
+      analytics.identify(user.id);
+      setUserContext(user.id);
       await subscriptionService.identifyUser(user.id);
       analytics.track('auth_login_success', { method: 'email' });
       set({ user, isLoading: false });
@@ -70,8 +93,8 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const user = await authService.register({ email, password, username });
-      analytics.identify(user.id, { email: user.email });
-      setUserContext(user.id, user.email);
+      analytics.identify(user.id);
+      setUserContext(user.id);
       await subscriptionService.identifyUser(user.id);
       analytics.track('auth_register_success', { method: 'email' });
       set({ user, isLoading: false });
