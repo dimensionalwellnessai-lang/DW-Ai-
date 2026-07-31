@@ -3,7 +3,10 @@
  * Wraps PostHog for event tracking with graceful degradation.
  */
 
+import * as Sentry from '@sentry/react-native';
 import { Config } from '../config/env';
+import { sanitizeTelemetryProperties } from '../lib/reliability';
+import { getReleaseTag } from './monitoring';
 
 type EventProperties = Record<string, string | number | boolean | null | undefined>;
 
@@ -40,62 +43,98 @@ export const ANALYTICS_EVENTS = {
 
 export type AnalyticsEvent = (typeof ANALYTICS_EVENTS)[keyof typeof ANALYTICS_EVENTS];
 
-/** Shared context attached to every event. */
-function buildBaseProperties(): EventProperties {
-  return {
-    environment: Config.environment,
-  };
-}
-
 class AnalyticsService {
   private userId?: string;
   private initialized = false;
 
   initialize(): void {
-    if (!Config.posthogApiKey) {
-      console.warn('[Analytics] PostHog API key not configured. Analytics disabled.');
-      return;
+    try {
+      this.initialized = true;
+
+      if (!Config.posthogApiKey) {
+        console.warn('[Analytics] PostHog API key not configured. Falling back to local observability only.');
+      }
+    } catch (error) {
+      console.warn('[Analytics] Initialization failed', error);
     }
-    // PostHog would be initialized here once posthog-react-native is added
-    // For now we log in development
-    this.initialized = true;
   }
 
   identify(userId: string, properties?: EventProperties): void {
-    this.userId = userId;
-    if (Config.environment === 'development') {
-      console.log('[Analytics] identify:', userId, properties);
+    try {
+      this.userId = userId;
+      const sanitizedProperties = sanitizeTelemetryProperties(properties);
+      Sentry.setTag('analytics_environment', Config.environment);
+      Sentry.setTag('analytics_release', getReleaseTag());
+
+      if (Config.environment === 'development') {
+        console.log('[Analytics] identify:', userId, sanitizedProperties);
+      }
+    } catch (error) {
+      console.warn('[Analytics] Identify failed', error);
     }
   }
 
   reset(): void {
-    this.userId = undefined;
-    if (Config.environment === 'development') {
-      console.log('[Analytics] reset');
+    try {
+      this.userId = undefined;
+      if (Config.environment === 'development') {
+        console.log('[Analytics] reset');
+      }
+    } catch (error) {
+      console.warn('[Analytics] Reset failed', error);
     }
   }
 
   track(event: string, properties?: EventProperties): void {
-    const enriched: EventProperties = {
-      ...buildBaseProperties(),
-      ...properties,
-    };
+    try {
+      if (!this.initialized) {
+        this.initialize();
+      }
 
-    if (Config.environment === 'development') {
-      console.log('[Analytics] track:', event, enriched);
+      const sanitizedProperties = sanitizeTelemetryProperties({
+        ...properties,
+        environment: Config.environment,
+        release: getReleaseTag(),
+      });
+
+      Sentry.addBreadcrumb({
+        category: 'analytics',
+        type: 'info',
+        message: event,
+        level: 'info',
+        data: sanitizedProperties,
+      });
+
+      if (Config.environment === 'development') {
+        console.log('[Analytics] track:', event, sanitizedProperties);
+      }
+
+      // PostHog.capture would go here
+    } catch (error) {
+      console.warn('[Analytics] Track failed', error);
     }
-
-    // PostHog.capture would go here
   }
 
   screen(screenName: string, properties?: EventProperties): void {
-    const enriched: EventProperties = {
-      ...buildBaseProperties(),
-      ...properties,
-    };
+    try {
+      const sanitizedProperties = sanitizeTelemetryProperties({
+        ...properties,
+        environment: Config.environment,
+      });
 
-    if (Config.environment === 'development') {
-      console.log('[Analytics] screen:', screenName, enriched);
+      Sentry.addBreadcrumb({
+        category: 'screen',
+        type: 'navigation',
+        message: screenName,
+        level: 'info',
+        data: sanitizedProperties,
+      });
+
+      if (Config.environment === 'development') {
+        console.log('[Analytics] screen:', screenName, sanitizedProperties);
+      }
+    } catch (error) {
+      console.warn('[Analytics] Screen tracking failed', error);
     }
   }
 }

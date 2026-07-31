@@ -59,6 +59,18 @@ export function EmptyState({ title, message, emoji = '✨', action }: EmptyState
   );
 }
 
+interface NoticeStateProps {
+  message: string;
+}
+
+export function NoticeState({ message }: NoticeStateProps) {
+  return (
+    <View style={styles.noticeContainer}>
+      <Text style={styles.noticeText}>{message}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -81,4 +93,17 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   button: { marginTop: 8, alignSelf: 'stretch' },
+  noticeContainer: {
+    borderRadius: 12,
+    padding: 12,
+    backgroundColor: '#fff7ed',
+    borderWidth: 1,
+    borderColor: '#fdba74',
+  },
+  noticeText: {
+    fontSize: 14,
+    color: '#9a3412',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
 });

@@ -14,12 +14,23 @@ import { router } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { subscriptionService, PurchaseError } from '../../src/services/subscriptions';
 import { useSubscriptionStore } from '../../src/stores/subscription';
-import { ErrorState } from '../../src/components/ui/StateViews';
+import { ErrorState, NoticeState } from '../../src/components/ui/StateViews';
 import { analytics, ANALYTICS_EVENTS } from '../../src/services/analytics';
 import type { PurchasesPackage } from 'react-native-purchases';
 
 export default function PaywallModal() {
-  const { purchase, restorePurchases, isPurchasing, isRestoring, status, purchaseError, clearPurchaseError } =
+  const {
+    purchase,
+    restorePurchases,
+    isPurchasing,
+    isRestoring,
+    status,
+    error,
+    warning,
+    clearError,
+    purchaseError,
+    clearPurchaseError,
+  } =
     useSubscriptionStore();
 
   // Local state for restore result — avoids race with async store updates
@@ -32,6 +43,13 @@ export default function PaywallModal() {
     analytics.screen('Paywall');
     analytics.track(ANALYTICS_EVENTS.PAYWALL_VIEW, {});
   }, []);
+
+  // Surface generic status/offering errors from the store
+  useEffect(() => {
+    if (error) {
+      Alert.alert('Error', error, [{ text: 'OK', onPress: clearError }]);
+    }
+  }, [error, clearError]);
 
   // Surface typed purchase errors (skip cancelled — that's not an error)
   useEffect(() => {
@@ -208,13 +226,18 @@ export default function PaywallModal() {
         </View>
 
         {/* Packages */}
+        {warning && <NoticeState message={warning} />}
+
         {packages.length === 0 ? (
           <View style={styles.noPackages}>
             <Text style={styles.noPackagesText}>
               {Platform.OS === 'ios'
-                ? 'Subscription plans not configured yet. Check back soon.'
-                : 'Subscription not available on this platform.'}
+                ? 'Subscription plans are temporarily unavailable. Your current access stays unchanged while we retry.'
+                : 'Subscription not available on this platform right now.'}
             </Text>
+            <TouchableOpacity onPress={() => void refetch()}>
+              <Text style={styles.retryText}>Retry loading plans</Text>
+            </TouchableOpacity>
           </View>
         ) : (
           <View style={styles.packages}>
@@ -347,6 +370,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   noPackagesText: { color: '#64748b', textAlign: 'center', fontSize: 15 },
+  retryText: {
+    marginTop: 12,
+    color: '#6366f1',
+    fontSize: 14,
+    fontWeight: '700',
+  },
   packageCard: {
     borderWidth: 2,
     borderColor: '#e2e8f0',

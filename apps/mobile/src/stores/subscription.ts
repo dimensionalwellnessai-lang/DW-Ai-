@@ -28,6 +28,9 @@ interface SubscriptionState {
    */
   error: string | null;
 
+  /** Non-blocking degraded-mode notice (e.g., stale cached entitlement). */
+  warning: string | null;
+
   /** Typed error from the most recent purchase attempt. */
   purchaseError: PurchaseError | null;
 
@@ -66,6 +69,7 @@ export const useSubscriptionStore = create<SubscriptionStore>((set, get) => ({
   isPurchasing: false,
   isRestoring: false,
   error: null,
+  warning: null,
   purchaseError: null,
   restoreError: null,
   entitlementLastValidated: null,
@@ -74,7 +78,14 @@ export const useSubscriptionStore = create<SubscriptionStore>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const status = await revalidateEntitlement();
-      set({ status, isLoading: false, entitlementLastValidated: Date.now() });
+      set({
+        status,
+        warning: status.isStale
+          ? 'Subscription access was restored from your last known state while we retry the service.'
+          : null,
+        isLoading: false,
+        entitlementLastValidated: Date.now(),
+      });
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : 'Failed to load subscription status.',
@@ -87,7 +98,12 @@ export const useSubscriptionStore = create<SubscriptionStore>((set, get) => ({
     set({ error: null });
     try {
       const offering = await subscriptionService.fetchOfferings();
-      set({ offering });
+      set({
+        offering,
+        warning: offering
+          ? null
+          : 'Subscription plans are temporarily unavailable. Your current access stays unchanged.',
+      });
     } catch (error) {
       const message =
         error instanceof PurchaseError
@@ -147,7 +163,7 @@ export const useSubscriptionStore = create<SubscriptionStore>((set, get) => ({
     }
   },
 
-  clearError: () => set({ error: null }),
+  clearError: () => set({ error: null, warning: null }),
   clearPurchaseError: () => set({ purchaseError: null }),
   clearRestoreError: () => set({ restoreError: null }),
 }));

@@ -3,7 +3,7 @@
  * Wraps the backend chat endpoint with timeout and retry.
  */
 
-import { api } from './api';
+import { api, apiTimeouts } from './api';
 
 export interface ChatMessage {
   id?: string;
@@ -41,7 +41,7 @@ export const aiService = {
         context: request.context,
         sessionId: request.sessionId,
       },
-      { headers: { 'X-Timeout': '30000' } },
+      { timeoutMs: apiTimeouts.ai, retries: 1, retryable: false },
     );
   },
 

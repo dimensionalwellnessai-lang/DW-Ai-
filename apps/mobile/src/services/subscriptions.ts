@@ -1,6 +1,6 @@
 /**
  * RevenueCat subscription service for DW.ai mobile app.
- * Handles iOS/Android in-app purchases with entitlement gating.
+ * Handles iOS/Android in-app purchases with entitlement gating and degraded-mode caching.
  *
  * Normalized error flow:
  *   - `PurchaseError.reason === 'cancelled'`  → user cancelled (not a true error)
@@ -10,6 +10,7 @@
  *   - `PurchaseError.reason === 'failed'`     → unexpected failure
  */
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Purchases, {
   type PurchasesOffering,
   type CustomerInfo,
@@ -22,6 +23,8 @@ import { analytics, ANALYTICS_EVENTS } from './analytics';
 import { addBreadcrumb, captureError } from './monitoring';
 
 export const ENTITLEMENT_ID = 'dw_plus';
+const SUBSCRIPTION_CACHE_KEY = 'dw_subscription_status';
+const SUBSCRIPTION_TIMEOUT_MS = 15_000;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -32,6 +35,10 @@ export interface SubscriptionStatus {
   entitlements: string[];
   activeSubscription?: string;
   expirationDate?: string;
+  isStale?: boolean;
+  source?: 'live' | 'cache' | 'default';
+  degradedReason?: 'service_unavailable';
+  lastValidatedAt?: string;
 }
 
 export type PurchaseErrorReason =
@@ -66,8 +73,8 @@ function isUserCancelledError(error: unknown): boolean {
 
   // Also check the error code enum as a fallback
   if (
-    typeof rc['code'] === 'number' &&
-    rc['code'] === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR
+    rc['code'] != null &&
+    String(rc['code']) === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR
   ) {
     return true;
   }
@@ -114,6 +121,55 @@ function normalizePurchaseError(error: unknown, context: string): PurchaseError 
   const message =
     error instanceof Error ? error.message : `${context} failed. Please try again.`;
   return new PurchaseError(message, 'failed', error);
+}
+
+function buildDefaultStatus(): SubscriptionStatus {
+  return { isPro: false, entitlements: [], source: 'default' };
+}
+
+async function withTimeout<T>(operation: Promise<T>, timeoutMessage: string): Promise<T> {
+  return await Promise.race([
+    operation,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(timeoutMessage)), SUBSCRIPTION_TIMEOUT_MS),
+    ),
+  ]);
+}
+
+async function persistStatus(status: SubscriptionStatus): Promise<void> {
+  try {
+    await AsyncStorage.setItem(
+      SUBSCRIPTION_CACHE_KEY,
+      JSON.stringify({
+        ...status,
+        isStale: false,
+        source: 'live',
+        lastValidatedAt: new Date().toISOString(),
+      }),
+    );
+  } catch (error) {
+    console.warn('[Subscriptions] Failed to persist status cache', error);
+  }
+}
+
+async function readCachedStatus(): Promise<SubscriptionStatus | null> {
+  try {
+    const raw = await AsyncStorage.getItem(SUBSCRIPTION_CACHE_KEY);
+    if (!raw) {
+      return null;
+    }
+
+    const parsed = JSON.parse(raw) as SubscriptionStatus;
+    return {
+      ...parsed,
+      isStale: true,
+      source: 'cache',
+      degradedReason: 'service_unavailable',
+    };
+  } catch (error) {
+    console.warn('[Subscriptions] Failed to read cached status', error);
+    return null;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -182,13 +238,13 @@ export const subscriptionService = {
         return;
       }
 
-      await Purchases.configure({ apiKey });
+      Purchases.configure({ apiKey });
       initialized = true;
 
       addBreadcrumb('RevenueCat initialized', { platform: Platform.OS });
     } catch (error) {
+      captureError(error, { area: 'subscriptions', action: 'initialize' });
       console.error('[Subscriptions] Failed to initialize RevenueCat:', error);
-      captureError(error, { context: 'RevenueCat initialization' });
     }
   },
 
@@ -199,11 +255,11 @@ export const subscriptionService = {
   async identifyUser(userId: string): Promise<void> {
     if (!initialized) return;
     try {
-      await Purchases.logIn(userId);
+      await withTimeout(Purchases.logIn(userId), 'Subscription identity sync timed out.');
       addBreadcrumb('RevenueCat user identified', { userId });
     } catch (error) {
+      captureError(error, { area: 'subscriptions', action: 'identify_user' });
       console.error('[Subscriptions] Failed to identify user:', error);
-      captureError(error, { context: 'RevenueCat identifyUser', userId });
     }
   },
 
@@ -213,18 +269,17 @@ export const subscriptionService = {
   async resetUser(): Promise<void> {
     if (!initialized) return;
     try {
-      await Purchases.logOut();
+      await withTimeout(Purchases.logOut(), 'Subscription logout timed out.');
       addBreadcrumb('RevenueCat user reset');
     } catch (error) {
+      captureError(error, { area: 'subscriptions', action: 'reset_user' });
       console.error('[Subscriptions] Failed to reset user:', error);
-      captureError(error, { context: 'RevenueCat resetUser' });
     }
   },
 
   /**
    * Fetch the current RevenueCat offering.
-   * Returns `null` if RevenueCat is not initialized, no offering is configured,
-   * or the network is unavailable.
+   * Returns `null` if RevenueCat is not initialized or no offering is configured.
    *
    * Throws a `PurchaseError` (reason: 'network' | 'store' | 'failed') on
    * recoverable failure so callers can surface a retry affordance.
@@ -233,32 +288,48 @@ export const subscriptionService = {
     if (!initialized) return null;
     try {
       addBreadcrumb('Fetching offerings');
-      const offerings = await Purchases.getOfferings();
+      const offerings = await withTimeout(
+        Purchases.getOfferings(),
+        'Loading subscription plans took too long. Please try again.',
+      );
       return offerings.current;
     } catch (error) {
       const normalized = normalizePurchaseError(error, 'fetchOfferings');
       console.error('[Subscriptions] Failed to fetch offerings:', error);
-      captureError(normalized, { context: 'fetchOfferings' });
+      captureError(normalized, { area: 'subscriptions', action: 'fetch_offerings' });
       throw normalized;
     }
   },
 
   /**
-   * Return the current entitlement status derived from RevenueCat's cached
-   * CustomerInfo.  Does NOT make a network call — use when low-latency reads
-   * are required (e.g., gating checks, foreground resume).
+   * Return the current entitlement status derived from RevenueCat's
+   * CustomerInfo, falling back to the last persisted cache (marked stale)
+   * when the service is unavailable.
    */
   async getSubscriptionStatus(): Promise<SubscriptionStatus> {
     if (!initialized) {
-      return { isPro: false, entitlements: [] };
+      return (await readCachedStatus()) ?? buildDefaultStatus();
     }
 
+    analytics.track('entitlement_fetch_started', {});
+
     try {
-      const customerInfo = await Purchases.getCustomerInfo();
-      return parseSubscriptionStatus(customerInfo);
+      const customerInfo = await withTimeout(
+        Purchases.getCustomerInfo(),
+        'Subscription status took too long to refresh.',
+      );
+      const status = parseSubscriptionStatus(customerInfo);
+      await persistStatus(status);
+      analytics.track('entitlement_fetch_success', { source: 'live' });
+      return status;
     } catch (error) {
+      captureError(error, { area: 'subscriptions', action: 'get_status' });
+      const cachedStatus = await readCachedStatus();
+      analytics.track('entitlement_fetch_failure', {
+        fallback: cachedStatus ? 'cache' : 'default',
+      });
       console.error('[Subscriptions] Failed to get subscription status:', error);
-      return { isPro: false, entitlements: [] };
+      return cachedStatus ?? buildDefaultStatus();
     }
   },
 
@@ -284,8 +355,12 @@ export const subscriptionService = {
     });
 
     try {
-      const { customerInfo } = await Purchases.purchasePackage(packageToPurchase);
+      const { customerInfo } = await withTimeout(
+        Purchases.purchasePackage(packageToPurchase),
+        'Purchase confirmation took too long. Please try again.',
+      );
       const status = parseSubscriptionStatus(customerInfo);
+      await persistStatus(status);
 
       addBreadcrumb('Purchase completed', {
         packageId: packageToPurchase.identifier,
@@ -326,7 +401,8 @@ export const subscriptionService = {
         error: normalized.message,
       });
       captureError(normalized, {
-        context: 'purchase',
+        area: 'subscriptions',
+        action: 'purchase',
         packageId: packageToPurchase.identifier,
         reason: normalized.reason,
       });
@@ -343,15 +419,19 @@ export const subscriptionService = {
    */
   async restorePurchases(): Promise<SubscriptionStatus> {
     if (!initialized) {
-      return { isPro: false, entitlements: [] };
+      return (await readCachedStatus()) ?? buildDefaultStatus();
     }
 
     addBreadcrumb('Restore purchases started');
     analytics.track(ANALYTICS_EVENTS.RESTORE_START, {});
 
     try {
-      const customerInfo = await Purchases.restorePurchases();
+      const customerInfo = await withTimeout(
+        Purchases.restorePurchases(),
+        'Restoring purchases took too long. Please try again.',
+      );
       const status = parseSubscriptionStatus(customerInfo);
+      await persistStatus(status);
 
       addBreadcrumb('Restore completed', { isPro: status.isPro });
       analytics.track(ANALYTICS_EVENTS.RESTORE_SUCCESS, { isPro: status.isPro });
@@ -373,7 +453,11 @@ export const subscriptionService = {
         reason: normalized.reason,
         error: normalized.message,
       });
-      captureError(normalized, { context: 'restorePurchases', reason: normalized.reason });
+      captureError(normalized, {
+        area: 'subscriptions',
+        action: 'restore_purchases',
+        reason: normalized.reason,
+      });
 
       throw normalized;
     }
@@ -394,5 +478,8 @@ function parseSubscriptionStatus(customerInfo: CustomerInfo): SubscriptionStatus
     entitlements,
     activeSubscription: entitlementInfo?.productIdentifier,
     expirationDate: entitlementInfo?.expirationDate ?? undefined,
+    isStale: false,
+    source: 'live',
+    lastValidatedAt: new Date().toISOString(),
   };
 }
