@@ -104,7 +104,11 @@ export function sanitizeTelemetryProperties(
       return [key, value.name] as const;
     }
 
-    return [key, JSON.stringify(value)] as const;
+    try {
+      return [key, JSON.stringify(value)] as const;
+    } catch {
+      return [key, '[unserializable]'] as const;
+    }
   });
 
   return Object.fromEntries(sanitizedEntries);

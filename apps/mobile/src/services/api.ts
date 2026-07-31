@@ -245,7 +245,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
           retries,
           method: requestOptions.method,
           status: normalizedError.status,
-          retryable: options.retryable ?? normalizedError.retryable,
+          retryable: options.retryable,
         })
       ) {
         throw normalizedError;
