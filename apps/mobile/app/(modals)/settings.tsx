@@ -19,13 +19,22 @@ export default function SettingsModal() {
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
   async function handleRestorePurchases() {
-    analytics.track('restore_purchases_attempt', { source: 'settings' });
-    await restorePurchases();
-
-    if (subscriptionStatus.isPro) {
-      Alert.alert('Restored!', 'Your DW Plus subscription has been restored.');
-    } else {
-      Alert.alert('No Active Subscription', 'No active subscription found for this Apple ID.');
+    analytics.track('restore_purchases_open', { source: 'settings' });
+    try {
+      const restoredStatus = await restorePurchases();
+      if (restoredStatus.isPro) {
+        Alert.alert('Restored! ✓', 'Your DW Plus subscription has been restored.');
+      } else {
+        Alert.alert(
+          'No Active Subscription',
+          'No active DW Plus subscription was found for this Apple ID.',
+        );
+      }
+    } catch {
+      Alert.alert(
+        'Restore Failed',
+        'We couldn\'t restore your purchases. Please check your internet connection and try again.',
+      );
     }
   }
 
@@ -82,7 +91,7 @@ export default function SettingsModal() {
           <Text style={styles.sectionTitle}>Subscriptions</Text>
           <Button
             title="Restore Purchases"
-            onPress={handleRestorePurchases}
+            onPress={() => void handleRestorePurchases()}
             variant="secondary"
             isLoading={isRestoring}
           />
@@ -102,7 +111,7 @@ export default function SettingsModal() {
           <Text style={[styles.sectionTitle, styles.dangerTitle]}>Danger Zone</Text>
           <Button
             title={isDeletingAccount ? 'Deleting...' : 'Delete Account'}
-            onPress={handleDeleteAccount}
+            onPress={() => void handleDeleteAccount()}
             variant="destructive"
             isLoading={isDeletingAccount}
             disabled={isDeletingAccount}

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -12,33 +12,78 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
-import { subscriptionService } from '../../src/services/subscriptions';
+import { subscriptionService, PurchaseError } from '../../src/services/subscriptions';
 import { useSubscriptionStore } from '../../src/stores/subscription';
 import { ErrorState } from '../../src/components/ui/StateViews';
-import { analytics } from '../../src/services/analytics';
+import { analytics, ANALYTICS_EVENTS } from '../../src/services/analytics';
 import type { PurchasesPackage } from 'react-native-purchases';
 
 export default function PaywallModal() {
-  const { purchase, restorePurchases, isPurchasing, isRestoring, status, error, clearError } =
+  const { purchase, restorePurchases, isPurchasing, isRestoring, status, purchaseError, clearPurchaseError } =
     useSubscriptionStore();
+
+  // Local state for restore result — avoids race with async store updates
+  const [restoreResult, setRestoreResult] = useState<'success' | 'none' | 'error' | null>(null);
+
+  // Ref to prevent duplicate purchase taps (idempotency guard)
+  const purchaseInFlight = useRef(false);
 
   useEffect(() => {
     analytics.screen('Paywall');
-    analytics.track('paywall_viewed', {});
+    analytics.track(ANALYTICS_EVENTS.PAYWALL_VIEW, {});
   }, []);
 
+  // Surface typed purchase errors (skip cancelled — that's not an error)
   useEffect(() => {
-    if (error) {
-      Alert.alert('Error', error, [{ text: 'OK', onPress: clearError }]);
-    }
-  }, [error, clearError]);
+    if (purchaseError && purchaseError.reason !== 'cancelled') {
+      const title =
+        purchaseError.reason === 'network'
+          ? 'No Internet Connection'
+          : purchaseError.reason === 'store'
+            ? 'Store Unavailable'
+            : purchaseError.reason === 'pending'
+              ? 'Purchase Pending'
+              : 'Purchase Failed';
 
-  // Redirect away if already subscribed
+      Alert.alert(title, purchaseError.message, [
+        { text: 'OK', onPress: clearPurchaseError },
+      ]);
+    }
+  }, [purchaseError, clearPurchaseError]);
+
+  // Redirect if user becomes Pro (e.g., purchase succeeded or restored)
   useEffect(() => {
     if (status.isPro) {
       router.back();
     }
   }, [status.isPro]);
+
+  // Show restore result dialog
+  useEffect(() => {
+    if (restoreResult === null) return;
+
+    if (restoreResult === 'success') {
+      Alert.alert(
+        'Purchases Restored ✓',
+        'Your DW Plus subscription has been restored.',
+        [{ text: 'Continue', onPress: () => router.back() }],
+      );
+    } else if (restoreResult === 'none') {
+      Alert.alert(
+        'No Active Subscription',
+        'No active DW Plus subscription was found for this Apple ID. If you believe this is wrong, contact support.',
+        [{ text: 'OK' }],
+      );
+    } else {
+      Alert.alert(
+        'Restore Failed',
+        'We couldn\'t restore your purchases. Please check your internet connection and try again.',
+        [{ text: 'OK' }],
+      );
+    }
+
+    setRestoreResult(null);
+  }, [restoreResult]);
 
   const {
     data: offering,
@@ -52,51 +97,91 @@ export default function PaywallModal() {
   });
 
   async function handlePurchase(pkg: PurchasesPackage) {
-    const success = await purchase(pkg);
-    if (success) {
-      Alert.alert(
-        'Welcome to DW Plus! ✨',
-        'You now have access to all premium features.',
-        [{ text: 'Continue', onPress: () => router.back() }],
-      );
+    // Idempotency guard — prevent double-tap
+    if (purchaseInFlight.current || isPurchasing) return;
+
+    analytics.track(ANALYTICS_EVENTS.PLAN_SELECT, {
+      packageIdentifier: pkg.identifier,
+    });
+
+    purchaseInFlight.current = true;
+    try {
+      const isNowPro = await purchase(pkg);
+      if (isNowPro) {
+        Alert.alert(
+          'Welcome to DW Plus! ✨',
+          'You now have access to all premium features.',
+          [{ text: 'Continue', onPress: () => router.back() }],
+        );
+      }
+      // If not pro after purchase (e.g., pending), no action — store reflects state
+    } catch {
+      // Error already stored in purchaseError; Alert shown by the effect above
+    } finally {
+      purchaseInFlight.current = false;
     }
   }
 
   async function handleRestore() {
-    await restorePurchases();
-    if (status.isPro) {
-      Alert.alert(
-        'Purchases Restored',
-        'Your DW Plus subscription has been restored.',
-        [{ text: 'Continue', onPress: () => router.back() }],
-      );
-    } else {
-      Alert.alert('No Active Subscription', 'No active subscription found for this account.');
+    try {
+      const restoredStatus = await restorePurchases();
+      setRestoreResult(restoredStatus.isPro ? 'success' : 'none');
+    } catch {
+      setRestoreResult('error');
     }
   }
+
+  // ---------------------------------------------------------------------------
+  // Render: loading
+  // ---------------------------------------------------------------------------
 
   if (offeringLoading) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#6366f1" />
-          <Text style={styles.loadingText}>Loading plans...</Text>
+          <Text style={styles.loadingText}>Loading plans…</Text>
         </View>
       </SafeAreaView>
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // Render: offering fetch error
+  // ---------------------------------------------------------------------------
+
   if (offeringError) {
+    const isNetworkError =
+      offeringError instanceof PurchaseError && offeringError.reason === 'network';
+    const isStoreError =
+      offeringError instanceof PurchaseError && offeringError.reason === 'store';
+
+    const errorTitle = isNetworkError
+      ? 'No Internet Connection'
+      : isStoreError
+        ? 'Store Unavailable'
+        : "Couldn't Load Plans";
+
+    const errorMessage = isNetworkError
+      ? 'Please check your connection and try again.'
+      : isStoreError
+        ? 'The App Store is temporarily unavailable. Please try again later.'
+        : "We're having trouble loading subscription options. Please try again.";
+
     return (
       <SafeAreaView style={styles.container}>
         <ErrorState
-          title="Couldn't load plans"
-          message="We're having trouble loading subscription options. Please try again."
+          title={errorTitle}
+          message={errorMessage}
           onRetry={() => void refetch()}
         />
       </SafeAreaView>
     );
   }
+
+  // ---------------------------------------------------------------------------
+  // Render: paywall
+  // ---------------------------------------------------------------------------
 
   const packages = offering?.availablePackages ?? [];
 
@@ -137,7 +222,7 @@ export default function PaywallModal() {
               <PackageCard
                 key={pkg.identifier}
                 pkg={pkg}
-                onPress={() => handlePurchase(pkg)}
+                onPress={() => { void handlePurchase(pkg); }}
                 isLoading={isPurchasing}
               />
             ))}
@@ -145,9 +230,14 @@ export default function PaywallModal() {
         )}
 
         {/* Restore */}
-        <TouchableOpacity onPress={handleRestore} disabled={isRestoring}>
+        <TouchableOpacity
+          onPress={() => void handleRestore()}
+          disabled={isRestoring}
+          accessibilityLabel="Restore previous purchases"
+          accessibilityRole="button"
+        >
           <Text style={styles.restoreText}>
-            {isRestoring ? 'Restoring...' : 'Restore Previous Purchases'}
+            {isRestoring ? 'Restoring…' : 'Restore Previous Purchases'}
           </Text>
         </TouchableOpacity>
 
@@ -178,8 +268,22 @@ function PackageCard({
   onPress: () => void;
   isLoading: boolean;
 }) {
-  const isAnnual = pkg.identifier.toLowerCase().includes('annual') ||
+  const isAnnual =
+    pkg.identifier.toLowerCase().includes('annual') ||
     pkg.identifier.toLowerCase().includes('yearly');
+
+  const introPrice = pkg.product.introPrice;
+  const hasFreeTrial =
+    introPrice != null &&
+    (introPrice.priceString === '$0.00' ||
+      introPrice.price === 0 ||
+      introPrice.periodUnit != null);
+
+  const trialLabel = hasFreeTrial
+    ? `Start free trial`
+    : isAnnual
+      ? 'Subscribe'
+      : 'Start';
 
   return (
     <TouchableOpacity
@@ -187,6 +291,8 @@ function PackageCard({
       onPress={onPress}
       disabled={isLoading}
       activeOpacity={0.8}
+      accessibilityLabel={`${isAnnual ? 'Annual' : 'Monthly'} plan — ${pkg.product.priceString}`}
+      accessibilityRole="button"
     >
       {isAnnual && (
         <View style={styles.savingsBadge}>
@@ -199,23 +305,21 @@ function PackageCard({
         </Text>
         <Text style={[styles.packagePrice, isAnnual && styles.packagePriceFeatured]}>
           {pkg.product.priceString}
-          <Text style={styles.packagePeriod}>
-            {isAnnual ? '/year' : '/month'}
-          </Text>
+          <Text style={styles.packagePeriod}>{isAnnual ? '/year' : '/month'}</Text>
         </Text>
-        {isAnnual && (
+        {hasFreeTrial && introPrice ? (
           <Text style={styles.packageNote}>
-            {pkg.product.introPrice?.priceString
-              ? `${pkg.product.introPrice.priceString} trial available`
-              : 'Cancel anytime'}
+            {introPrice.periodNumberOfUnits} {introPrice.periodUnit?.toLowerCase()} free trial, then {pkg.product.priceString}/{isAnnual ? 'year' : 'month'}
           </Text>
-        )}
+        ) : isAnnual ? (
+          <Text style={styles.packageNote}>Cancel anytime</Text>
+        ) : null}
       </View>
       {isLoading ? (
         <ActivityIndicator color={isAnnual ? '#ffffff' : '#6366f1'} />
       ) : (
         <Text style={[styles.packageCta, isAnnual && styles.packageCtaFeatured]}>
-          {isAnnual ? 'Subscribe' : 'Start'}
+          {trialLabel}
         </Text>
       )}
     </TouchableOpacity>
