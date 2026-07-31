@@ -14,7 +14,7 @@ import { useSubscriptionStore } from '../../src/stores/subscription';
 import { analytics } from '../../src/services/analytics';
 
 export default function SettingsModal() {
-  const { user, logout, isLoading: authLoading } = useAuthStore();
+  const { user } = useAuthStore();
   const { restorePurchases, isRestoring, status: subscriptionStatus } = useSubscriptionStore();
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 

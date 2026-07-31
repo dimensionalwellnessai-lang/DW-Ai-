@@ -131,7 +131,7 @@ export const subscriptionService = {
         analytics.track('paywall_purchase_cancelled', {
           packageIdentifier: packageToPurchase.identifier,
         });
-        throw new Error('Purchase was cancelled.');
+        return subscriptionService.getSubscriptionStatus();
       }
 
       analytics.track('paywall_purchase_failure', {

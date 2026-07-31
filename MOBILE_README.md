@@ -75,7 +75,7 @@ The mobile app connects to the existing DW.ai backend:
 | `staging` | `https://staging.dimensionalwellnessai.com` |
 | `production` | `https://dimensionalwellnessai.com` |
 
-The environment is selected via the `APP_ENV` variable set in `eas.json` build profiles.
+The environment is selected via the `EXPO_PUBLIC_APP_ENV` variable set in `eas.json` build profiles.
 Session cookies are stored securely using `expo-secure-store`.
 
 ---

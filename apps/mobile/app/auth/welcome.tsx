@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   SafeAreaView,
-  Image,
 } from 'react-native';
 import { router } from 'expo-router';
 import { Button } from '../../src/components/ui/Button';

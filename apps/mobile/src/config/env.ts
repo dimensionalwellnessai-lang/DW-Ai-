@@ -3,7 +3,7 @@
  * Supports development, staging, and production environments.
  */
 
-const ENV = process.env.APP_ENV ?? 'development';
+const ENV = process.env.EXPO_PUBLIC_APP_ENV ?? 'development';
 
 interface EnvConfig {
   apiBaseUrl: string;
@@ -51,4 +51,10 @@ const configs: Record<string, EnvConfig> = {
   production,
 };
 
-export const Config: EnvConfig = configs[ENV] ?? development;
+const selectedConfig = configs[ENV] ?? development;
+const apiBaseUrlOverride = process.env.EXPO_PUBLIC_API_BASE_URL;
+
+export const Config: EnvConfig = {
+  ...selectedConfig,
+  apiBaseUrl: apiBaseUrlOverride || selectedConfig.apiBaseUrl,
+};

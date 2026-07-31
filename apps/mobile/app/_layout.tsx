@@ -10,7 +10,9 @@ import { analytics } from '../src/services/analytics';
 import { useAuthStore } from '../src/stores/auth';
 
 // Keep splash screen visible while we initialize
-SplashScreen.preventAutoHideAsync();
+void SplashScreen.preventAutoHideAsync().catch((error) => {
+  Sentry.captureException(error);
+});
 
 // Initialize monitoring early
 initializeSentry();

@@ -14,7 +14,6 @@ import { router } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { subscriptionService } from '../../src/services/subscriptions';
 import { useSubscriptionStore } from '../../src/stores/subscription';
-import { Button } from '../../src/components/ui/Button';
 import { ErrorState } from '../../src/components/ui/StateViews';
 import { analytics } from '../../src/services/analytics';
 import type { PurchasesPackage } from 'react-native-purchases';

@@ -6,13 +6,11 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
-  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Button } from '../../src/components/ui/Button';
 import { Input } from '../../src/components/ui/Input';
-import { useAuthStore } from '../../src/stores/auth';
 import { useSubscriptionStore } from '../../src/stores/subscription';
 import { aiService, type ChatMessage } from '../../src/services/ai';
 import { analytics } from '../../src/services/analytics';
