@@ -40,11 +40,11 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     try {
       const user = await authService.getMe();
       if (user) {
-       analytics.identify(user.id);
-       setUserContext(user.id);
-       analytics.track('auth_restore_success', {});
+        analytics.identify(user.id);
+        setUserContext(user.id);
+        analytics.track('auth_restore_success', {});
       } else {
-       analytics.track('auth_restore_success', { authenticated: false });
+        analytics.track('auth_restore_success', { authenticated: false });
       }
       set({ user, isInitialized: true, isLoading: false });
       return user;
@@ -59,10 +59,10 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     try {
       const user = await authService.getMe();
       if (user) {
-       analytics.identify(user.id);
-       setUserContext(user.id);
+        analytics.identify(user.id);
+        setUserContext(user.id);
       } else {
-       clearUserContext();
+        clearUserContext();
       }
       set({ user });
       return user;

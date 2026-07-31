@@ -6,7 +6,7 @@ import {
   resolveInitialRoute,
   sanitizeTelemetryProperties,
   shouldRetryRequest,
-} from '../../apps/mobile/src/lib/reliability';
+} from '../../shared/reliability';
 
 describe('mobile reliability helpers', () => {
   it('retries transient idempotent failures only', () => {
