@@ -72,10 +72,7 @@ function isUserCancelledError(error: unknown): boolean {
   if (rc['userCancelled'] === true) return true;
 
   // Also check the error code enum as a fallback
-  if (
-    rc['code'] != null &&
-    String(rc['code']) === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR
-  ) {
+  if (rc['code'] === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR) {
     return true;
   }
 

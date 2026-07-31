@@ -299,8 +299,7 @@ function PackageCard({
   const hasFreeTrial =
     introPrice != null &&
     (introPrice.priceString === '$0.00' ||
-      introPrice.price === 0 ||
-      introPrice.periodUnit != null);
+      introPrice.price === 0);
 
   const trialLabel = hasFreeTrial
     ? `Start free trial`

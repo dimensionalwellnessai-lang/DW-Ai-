@@ -11,7 +11,7 @@ import { router } from 'expo-router';
 import { Button } from '../../src/components/ui/Button';
 import { useAuthStore } from '../../src/stores/auth';
 import { useSubscriptionStore } from '../../src/stores/subscription';
-import { analytics } from '../../src/services/analytics';
+import { analytics, ANALYTICS_EVENTS } from '../../src/services/analytics';
 
 export default function SettingsModal() {
   const { user } = useAuthStore();
@@ -19,7 +19,7 @@ export default function SettingsModal() {
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
   async function handleRestorePurchases() {
-    analytics.track('restore_purchases_open', { source: 'settings' });
+    analytics.track(ANALYTICS_EVENTS.RESTORE_START, { source: 'settings' });
     try {
       const restoredStatus = await restorePurchases();
       if (restoredStatus.isPro) {
