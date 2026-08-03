@@ -97,8 +97,11 @@ export async function revalidateAppSession(
   try {
     const user = await useAuthStore.getState().revalidate();
 
+    // Entitlements can change outside the app (App Store purchase/approval),
+    // so revalidate them on resume even without an authenticated session.
+    await useSubscriptionStore.getState().fetchStatus();
+
     if (user) {
-      await useSubscriptionStore.getState().fetchStatus();
       await queryClient.invalidateQueries({ queryKey: ['morning-briefing'] });
       await queryClient.invalidateQueries({ queryKey: ['mood-context'] });
     }

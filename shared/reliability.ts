@@ -97,7 +97,7 @@ export function sanitizeTelemetryProperties(
       typeof value === 'number' ||
       typeof value === 'boolean'
     ) {
-      return [key, value] as const;
+      return [key, value ?? null] as const;
     }
 
     if (value instanceof Error) {

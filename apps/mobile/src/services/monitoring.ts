@@ -52,3 +52,21 @@ export function captureError(error: unknown, context?: Record<string, unknown>):
     Sentry.captureMessage(String(error), 'error');
   }
 }
+
+/**
+ * Add a breadcrumb for richer error context around purchase and restore operations.
+ * Breadcrumbs appear in the Sentry event timeline, helping trace the user's path
+ * leading up to an error.
+ */
+export function addBreadcrumb(
+  message: string,
+  data?: Record<string, string | number | boolean | null | undefined>,
+  level: Sentry.SeverityLevel = 'info',
+): void {
+  Sentry.addBreadcrumb({
+    message,
+    data,
+    level,
+    category: 'subscription',
+  });
+}

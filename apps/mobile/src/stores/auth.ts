@@ -6,9 +6,10 @@
 import { create } from 'zustand';
 import type { User } from '../services/auth';
 import { authService } from '../services/auth';
-import { analytics } from '../services/analytics';
+import { analytics, ANALYTICS_EVENTS } from '../services/analytics';
 import { captureError, setUserContext, clearUserContext } from '../services/monitoring';
 import { subscriptionService } from '../services/subscriptions';
+import { revalidateEntitlement, invalidateEntitlementCache } from '../services/entitlement';
 
 interface AuthState {
   user: User | null;
@@ -46,6 +47,8 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       } else {
         analytics.track('auth_restore_success', { authenticated: false });
       }
+      // Revalidate entitlement on every app startup
+      await revalidateEntitlement();
       set({ user, isInitialized: true, isLoading: false });
       return user;
     } catch {
@@ -79,11 +82,13 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       analytics.identify(user.id);
       setUserContext(user.id);
       await subscriptionService.identifyUser(user.id);
-      analytics.track('auth_login_success', { method: 'email' });
+      // Revalidate entitlement after login so premium gating reflects the signed-in user
+      await revalidateEntitlement();
+      analytics.track(ANALYTICS_EVENTS.AUTH_LOGIN_SUCCESS, { method: 'email' });
       set({ user, isLoading: false });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Login failed. Please try again.';
-      analytics.track('auth_login_failure', { error: message });
+      analytics.track(ANALYTICS_EVENTS.AUTH_LOGIN_FAILURE, { error: message });
       set({ error: message, isLoading: false });
       throw error;
     }
@@ -96,11 +101,13 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       analytics.identify(user.id);
       setUserContext(user.id);
       await subscriptionService.identifyUser(user.id);
-      analytics.track('auth_register_success', { method: 'email' });
+      // New user starts without a subscription — revalidate to set correct initial state
+      await revalidateEntitlement();
+      analytics.track(ANALYTICS_EVENTS.AUTH_REGISTER_SUCCESS, { method: 'email' });
       set({ user, isLoading: false });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Registration failed. Please try again.';
-      analytics.track('auth_register_failure', { error: message });
+      analytics.track(ANALYTICS_EVENTS.AUTH_REGISTER_FAILURE, { error: message });
       set({ error: message, isLoading: false });
       throw error;
     }
@@ -113,7 +120,9 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       clearUserContext();
       analytics.reset();
       await subscriptionService.resetUser();
-      analytics.track('auth_logout', {});
+      // Clear the entitlement cache so the next session starts clean
+      invalidateEntitlementCache();
+      analytics.track(ANALYTICS_EVENTS.AUTH_LOGOUT, {});
     } finally {
       set({ user: null, isLoading: false });
     }
