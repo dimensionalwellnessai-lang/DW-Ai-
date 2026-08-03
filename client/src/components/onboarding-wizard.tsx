@@ -342,8 +342,16 @@ function DWVoiceOrb({ script, voiceEnabled, onToggleVoice, autoSpeak, size = 72 
 
 function PhaseProgress({ step }: { step: number }) {
   const currentPhase = PHASES.findIndex(p => p.steps.includes(step));
+  const totalPhases = PHASES.length;
   return (
-    <div className="flex items-center gap-1.5 w-full">
+    <div
+      className="flex items-center gap-1.5 w-full"
+      role="progressbar"
+      aria-valuemin={0}
+      aria-valuemax={totalPhases - 1}
+      aria-valuenow={currentPhase}
+      aria-label={`Onboarding step ${currentPhase + 1} of ${totalPhases}: ${PHASES[currentPhase]?.label ?? ""}`}
+    >
       {PHASES.map((phase, i) => (
         <div key={phase.label} className="flex-1 flex flex-col gap-1">
           <div className={cn(

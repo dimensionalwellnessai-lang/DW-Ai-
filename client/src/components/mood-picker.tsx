@@ -62,8 +62,9 @@ export function MoodPicker({ onClose, compact = false }: MoodPickerProps) {
               onClick={() => handleMoodSelect(option.id)}
               className="gap-1"
               data-testid={`button-mood-${option.id}`}
+              aria-pressed={isSelected}
             >
-              <Icon className="h-3 w-3" style={{ color: isSelected ? undefined : option.color }} />
+              <Icon className="h-3 w-3" style={{ color: isSelected ? undefined : option.color }} aria-hidden="true" />
               <span className="text-xs">{option.name}</span>
             </Button>
           );
@@ -105,10 +106,13 @@ export function MoodPicker({ onClose, compact = false }: MoodPickerProps) {
                     : "bg-muted/50"
                 }`}
                 data-testid={`button-mood-${option.id}`}
+                aria-pressed={isSelected}
+                aria-label={`${option.name} mood${isSelected ? ", selected" : ""}`}
               >
                 <div
                   className="w-10 h-10 rounded-full flex items-center justify-center"
                   style={{ backgroundColor: `${option.color}30` }}
+                  aria-hidden="true"
                 >
                   <Icon className="h-5 w-5" style={{ color: option.color }} />
                 </div>

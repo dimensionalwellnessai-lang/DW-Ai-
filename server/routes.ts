@@ -1071,10 +1071,11 @@ export async function registerRoutes(
         });
       }
       
-      // Send welcome email (non-blocking — don't fail registration if email fails)
-      sendWelcomeEmail(email).catch((err) =>
-        console.error('[email] Welcome email failed for new user:', err)
-      );
+            // Send welcome email (non-blocking — don't fail registration if email fails)
+      sendWelcomeEmail(email).catch((err) => {
+        // Avoid logging email address in production to protect user privacy.
+        console.error('[email] Welcome email failed for new user:', process.env.NODE_ENV === "development" ? err : "(redacted)");
+      });
 
       // Success! Return user data
       res.json({ 
@@ -1870,7 +1871,13 @@ export async function registerRoutes(
       
       const emailSent = await sendPasswordResetEmail(email, token);
       if (!emailSent) {
-        console.error("[auth] Password reset email failed to send for:", email);
+        // Avoid logging the full email address in production to protect user privacy.
+        // Log only in dev; production logs a redacted version.
+        if (process.env.NODE_ENV === "development") {
+          console.error("[auth] Password reset email failed to send for:", email);
+        } else {
+          console.error("[auth] Password reset email failed to send (redacted)");
+        }
       }
       
       res.json({ success: true, message: "If an account exists with this email, a reset link has been sent." });

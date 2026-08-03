@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -282,7 +282,8 @@ function MyLifeSystemSection() {
 
   if (!hasAnyItems) return null;
 
-  const countsBySource = (items: { dataSource?: string | null }[]) => {
+  // Performance: memoize countsBySource to avoid recomputation on every render
+  const countsBySource = useMemo(() => (items: { dataSource?: string | null }[]) => {
     const counts = { user: 0, ai: 0, imported: 0 };
     items.forEach((item) => {
       const source = item.dataSource || "user";
@@ -291,7 +292,7 @@ function MyLifeSystemSection() {
       else counts.user++;
     });
     return counts;
-  };
+  }, []);
 
   const goalCounts = countsBySource(goals);
   const habitCounts = countsBySource(habits);

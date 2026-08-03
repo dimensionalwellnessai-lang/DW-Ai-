@@ -1457,8 +1457,9 @@ export function TalkItOutPage() {
               size="icon"
               className="rounded-full h-12 w-12 shrink-0"
               data-testid="button-send-talk"
+              aria-label={isTyping ? "Waiting for response" : "Send message"}
             >
-              {isTyping ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+              {isTyping ? <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" /> : <Send className="h-5 w-5" aria-hidden="true" />}
             </Button>
             <Button
               type="button"

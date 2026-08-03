@@ -430,9 +430,11 @@ function PageLoadingFallback() {
     <div
       className="flex items-center justify-center min-h-screen"
       aria-label="Loading page"
+      aria-live="polite"
       role="status"
     >
-      <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      <span className="sr-only">Loading…</span>
+      <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" aria-hidden="true" />
     </div>
   );
 }

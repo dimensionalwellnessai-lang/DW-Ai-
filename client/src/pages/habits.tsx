@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorScreen } from "@/components/ui/state-screen";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/page-header";
 import {
@@ -87,7 +88,7 @@ export default function HabitsPage() {
     wellnessDimension: "",
   });
 
-  const { data: habits = [], isLoading } = useQuery<any[]>({ queryKey: ["/api/habits"] });
+  const { data: habits = [], isLoading, isError, refetch } = useQuery<any[]>({ queryKey: ["/api/habits"] });
   const { data: goals = [] } = useQuery<any[]>({ queryKey: ["/api/goals"] });
 
   const createMutation = useMutation({
@@ -286,13 +287,22 @@ export default function HabitsPage() {
 
           {/* Loading */}
           {isLoading && (
-            <div className="space-y-3">
+            <div className="space-y-3" role="status" aria-live="polite" aria-label="Loading habits">
+              <span className="sr-only">Loading habits…</span>
               {[1, 2, 3].map(i => <Skeleton key={i} className="h-20 w-full rounded-xl" />)}
             </div>
           )}
 
+          {/* Error state */}
+          {isError && !isLoading && (
+            <ErrorScreen
+              message="We couldn't load your habits right now. Tap to try again."
+              onRetry={() => void refetch()}
+            />
+          )}
+
           {/* Empty state */}
-          {!isLoading && habits.length === 0 && !showForm && (
+          {!isLoading && !isError && habits.length === 0 && !showForm && (
             <Card>
               <CardContent className="text-center py-14">
                 <CheckSquare className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
