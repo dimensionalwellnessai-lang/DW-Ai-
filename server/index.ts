@@ -17,12 +17,18 @@ app.use(
       directives: {
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.plaid.com"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
-        imgSrc: ["'self'", "data:", "blob:"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        imgSrc: ["'self'", "data:", "blob:", "https://images.unsplash.com", "https://img.youtube.com"],
         connectSrc: ["'self'", "https://api.openai.com", "https://api.stripe.com", "https://cdn.plaid.com", "https://production.plaid.com", "https://sandbox.plaid.com", "https://development.plaid.com"],
-        fontSrc: ["'self'"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
         objectSrc: ["'none'"],
+        frameSrc: ["'self'", "https://www.youtube.com", "https://www.youtube-nocookie.com", "https://cdn.plaid.com"],
         frameAncestors: ["'none'"],
+        // upgrade-insecure-requests breaks plain-HTTP dev previews; keep it
+        // production-only.
+        ...(process.env.NODE_ENV === "production"
+          ? {}
+          : { upgradeInsecureRequests: null }),
       },
     },
     crossOriginEmbedderPolicy: false,

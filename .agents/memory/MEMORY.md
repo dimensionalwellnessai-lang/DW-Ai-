@@ -1,2 +1,3 @@
 - [Mockup-sandbox port blocker](mockup-sandbox-port-blocker.md) — preview server can fail DIDNT_OPEN_A_PORT despite vite "ready"; fall back to static HTML in client/public + screenshots as canvas image shapes.
 - [Billing architecture (Stripe)](billing-architecture.md) — backend is real Stripe via env vars (not the connector); client must use /api/billing/checkout, never grant entitlement locally.
+- [Helmet CSP must match external assets](csp-helmet.md) — strict CSP blocks any unlisted host; whitelist new external assets in server entry; SW must never cache /api/.
