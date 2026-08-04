@@ -649,6 +649,18 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
     enabled: true,
   },
   {
+    id: "my-level",
+    path: "/my-level",
+    label: "My Level",
+    icon: "trophy",
+    type: "page",
+    description: "Your level-up progress, trends, and growth review",
+    showInMenu: true,
+    menuSection: "more",
+    menuOrder: 74,
+    enabled: true,
+  },
+  {
     id: "role-map",
     path: "/role-map",
     label: "Role Map",

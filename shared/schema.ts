@@ -4625,3 +4625,37 @@ export const groupChallengeCheckins = pgTable(
 );
 
 export type GroupChallengeCheckin = typeof groupChallengeCheckins.$inferSelect;
+
+// ─── Growth Snapshots (Level-Up metrics) ────────────────────────────────────
+// One row per user per UTC day capturing the computed level-up metrics so the
+// "My Level" page can draw trends without recomputing history. Rows are
+// upserted lazily whenever the level-progress API runs for that day.
+
+export const growthSnapshots = pgTable(
+  "growth_snapshots",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    /** UTC day "YYYY-MM-DD" the snapshot belongs to. */
+    dateKey: text("date_key").notNull(),
+    roleMapId: varchar("role_map_id").references(() => roleMaps.id, { onDelete: "set null" }),
+    currentLevel: integer("current_level"),
+    /** Milestones done / total for the next level up. */
+    milestonesDone: integer("milestones_done").notNull().default(0),
+    milestonesTotal: integer("milestones_total").notNull().default(0),
+    /** 0-100: % of next-level milestones completed. */
+    levelProgressPct: integer("level_progress_pct").notNull().default(0),
+    /** 0-100: habit completion rate over the trailing 7 days. */
+    habitConsistencyPct: integer("habit_consistency_pct").notNull().default(0),
+    /** 0-100: average progress across active goals. */
+    goalProgressAvg: integer("goal_progress_avg").notNull().default(0),
+    /** Group-challenge check-ins in the trailing 7 days. */
+    challengeCheckins7d: integer("challenge_checkins_7d").notNull().default(0),
+    /** Trailing-7d wearable averages, when available: { sleepMinutesAvg?, stepsAvg? }. */
+    wearable: jsonb("wearable").$type<{ sleepMinutesAvg?: number; stepsAvg?: number } | null>(),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (t) => [uniqueIndex("growth_snapshots_user_date_idx").on(t.userId, t.dateKey)],
+);
+
+export type GrowthSnapshot = typeof growthSnapshots.$inferSelect;

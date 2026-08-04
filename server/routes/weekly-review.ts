@@ -6,6 +6,12 @@ import { requireAuth } from "./_shared";
 
 import { updateWeeklyPlanReviewSchema } from "@shared/schema";
 
+import {
+  buildGrowthReview,
+  computeGrowthMetrics,
+  getGrowthTrends,
+} from "../lib/growth-metrics";
+
 export function registerWeeklyReviewRoutes(app: Express): void {
   app.get("/api/weekly-review/:planId", requireAuth, async (req, res) => {
     try {
@@ -57,7 +63,21 @@ export function registerWeeklyReviewRoutes(app: Express): void {
         });
       }
 
-      res.json({ review, plan, days: daysWithActions });
+      // Level-up section: the same growth review shown on My Level, so the
+      // weekly review reflects role-map progress and one recommended focus.
+      // Best-effort — a metrics failure must not break the plan review.
+      let levelUp: ReturnType<typeof buildGrowthReview> | null = null;
+      try {
+        const [metrics, series] = await Promise.all([
+          computeGrowthMetrics(userId),
+          getGrowthTrends(userId, 7),
+        ]);
+        levelUp = buildGrowthReview("week", series, metrics);
+      } catch (err) {
+        console.error("Weekly review level-up section failed:", err);
+      }
+
+      res.json({ review, plan, days: daysWithActions, levelUp });
     } catch (error) {
       console.error("Weekly review get error:", error);
       res.status(500).json({ error: "Failed to get weekly review" });

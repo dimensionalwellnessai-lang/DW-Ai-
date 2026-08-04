@@ -1099,7 +1099,7 @@ export function toPromptString(snap: UserContextSnapshot): string {
       rmBits.push(`next level: ${rm.nextLevelTitle}`);
     if (rm.milestonesTotal > 0)
       rmBits.push(
-        `milestone progress ${rm.milestonesDone}/${rm.milestonesTotal} toward next level`,
+        `milestone progress ${rm.milestonesDone}/${rm.milestonesTotal} (${Math.round((rm.milestonesDone / rm.milestonesTotal) * 100)}%) toward next level`,
       );
     if (rm.nextMilestones.length)
       rmBits.push(`next milestones: ${rm.nextMilestones.join("; ")}`);

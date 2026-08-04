@@ -94,6 +94,7 @@ const VoiceOnboardingPage = lazy(() => import("@/pages/voice-onboarding"));
 const RoleMapPage = lazy(() => import("@/pages/role-map"));
 const CommunityPage = lazy(() => import("@/pages/community"));
 const GroupChallengesPage = lazy(() => import("@/pages/group-challenges"));
+const MyLevelPage = lazy(() => import("@/pages/my-level"));
 const LifeDashboardPage = lazy(() => import("@/pages/life-dashboard"));
 const LifeDimensionsPage = lazy(() => import("@/pages/life-dimensions"));
 const CalendarPlansPage = lazy(() =>
@@ -298,6 +299,7 @@ function Router() {
       <Route path="/community" component={CommunityPage} />
       <Route path="/community/b/:slug" component={CommunityPage} />
       <Route path="/community/p/:id" component={CommunityPage} />
+      <Route path="/my-level" component={MyLevelPage} />
       <Route path="/group-challenges" component={GroupChallengesPage} />
       <Route path="/group-challenges/:id" component={GroupChallengesPage} />
       <Route path="/paywall" component={PaywallPage} />
