@@ -94,12 +94,13 @@ export function EmptyScreen({
       )}
       {children}
       {actionLabel && onAction && (
-        <Button size="sm" className="mt-2" onClick={onAction}>
+        <Button type="button" size="sm" className="mt-2" onClick={onAction}>
           {actionLabel}
         </Button>
       )}
       {secondaryLabel && onSecondary && (
         <Button
+          type="button"
           size="sm"
           variant="ghost"
           className="text-muted-foreground"
@@ -143,6 +144,7 @@ export function ErrorScreen({
       <p className="text-sm text-muted-foreground max-w-xs">{message}</p>
       {onRetry && (
         <Button
+          type="button"
           size="sm"
           variant="outline"
           className="mt-2 gap-2"

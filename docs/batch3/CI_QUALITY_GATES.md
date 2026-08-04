@@ -60,7 +60,7 @@ npm run check
 
 **What it does:** Runs `tsc` against `tsconfig.json` which covers both `client/` and `server/`.
 
-**Expected output:** No errors. Pre-existing warnings about `baseUrl` and type definitions in `tsconfig.json` are noted and benign (exit code 0).
+**Expected output:** No errors (exit code 0). Any TypeScript errors are blocking and must be fixed before merge.
 
 **When to run:** Before every PR merge.
 
@@ -151,14 +151,6 @@ These run `npm run build` first, then `npx cap sync`.
 
 ---
 
-## Known Pre-Existing Issues (Non-Blocking)
+## Known Pre-Existing Issues
 
-The following `tsc` warnings appear on every run and are pre-existing / benign:
-
-```
-error TS2688: Cannot find type definition file for 'node'.
-error TS2688: Cannot find type definition file for 'vite/client'.
-tsconfig.json: Option 'baseUrl' has been removed.
-```
-
-These do not affect runtime behavior (exit code remains 0). A follow-up task to clean up `tsconfig.json` is noted but deferred.
+No known non-blocking TypeScript issues are currently documented. Any `npm run check` errors should be treated as blocking and remediated before merge.

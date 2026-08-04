@@ -314,12 +314,12 @@ export async function sendPasswordResetEmail(toEmail: string, resetToken: string
           'Error detail:', error.message
         );
       } else {
-        console.error('[email] Resend API error for password reset to:', toEmail, '-', error.message);
+        console.error('[email] Resend API error for password reset:', error.message);
       }
       return false;
     }
     
-    console.log('[email] Password reset email sent successfully to:', toEmail, '- id:', data?.id);
+    console.log('[email] Password reset email sent successfully - id:', data?.id);
     return true;
   } catch (error: any) {
     if (isDomainVerificationError(error)) {
@@ -330,7 +330,7 @@ export async function sendPasswordResetEmail(toEmail: string, resetToken: string
         'Error detail:', error?.message || error
       );
     } else {
-      console.error('[email] Failed to send password reset email to:', toEmail, '- error:', error?.message || error);
+      console.error('[email] Failed to send password reset email - error:', error?.message || error);
     }
     if (error?.statusCode) console.error('[email] Resend status code:', error.statusCode);
     return false;
@@ -566,10 +566,10 @@ export async function sendWelcomeEmail(toEmail: string, firstName?: string): Pro
       `,
     });
 
-    console.log('[email] Welcome email sent to:', toEmail);
+    console.log('[email] Welcome email sent successfully');
     return true;
   } catch (error) {
-    console.error('[email] Failed to send welcome email to:', toEmail, error);
+    console.error('[email] Failed to send welcome email:', error);
     return false;
   }
 }
