@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useLocation, Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -226,25 +226,26 @@ export default function DWHomePage() {
 
   const plan = PLAN_LIBRARY[recommendation.recommendedSwitchId][signals.timeBand];
 
-  const handleEnergyChange = (level: EnergyLevel) => {
+  // Performance: useCallback prevents new function identity on every render,
+  // which matters for these handlers passed into motion/animated children.
+  const handleEnergyChange = useCallback((level: EnergyLevel) => {
     updateEnergyLevel(level);
     setSignals(getUserSignals());
-  };
+  }, []);
 
-  const handleTimeChange = (band: TimeBand) => {
+  const handleTimeChange = useCallback((band: TimeBand) => {
     updateTimeBand(band);
     setSignals(getUserSignals());
-  };
+  }, []);
 
-  const getRecentSwitches = () => {
+  // Memoize derived switch list so it doesn't recalculate on every render.
+  const recentSwitches = useMemo(() => {
     const entries = Object.entries(switchData)
       .filter(([_, data]) => data.status !== "off")
       .sort((a, b) => b[1].lastUpdated - a[1].lastUpdated)
       .slice(0, 3);
     return entries as [SwitchId, typeof switchData[SwitchId]][];
-  };
-
-  const recentSwitches = getRecentSwitches();
+  }, [switchData]);
 
   // ─── Derived card data ────────────────────────────────────────────────────
   const mirrorPrompt = useMemo(() => {

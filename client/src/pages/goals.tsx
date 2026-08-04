@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorScreen } from "@/components/ui/state-screen";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
@@ -62,7 +63,7 @@ export default function GoalsPage() {
     targetValue: 100,
   });
 
-  const { data: goals = [], isLoading } = useQuery<any[]>({ queryKey: ["/api/goals"] });
+  const { data: goals = [], isLoading, isError, refetch } = useQuery<any[]>({ queryKey: ["/api/goals"] });
   const { data: habits = [] } = useQuery<any[]>({ queryKey: ["/api/habits"] });
   const { data: progressData = [] } = useQuery<any[]>({
     queryKey: ["/api/goals/progress-data"],
@@ -323,13 +324,22 @@ export default function GoalsPage() {
 
           {/* Loading */}
           {isLoading && (
-            <div className="space-y-3">
+            <div className="space-y-3" role="status" aria-live="polite" aria-label="Loading goals">
+              <span className="sr-only">Loading goals…</span>
               {[1, 2, 3].map(i => <Skeleton key={i} className="h-28 w-full rounded-xl" />)}
             </div>
           )}
 
+          {/* Error state */}
+          {isError && !isLoading && (
+            <ErrorScreen
+              message="We couldn't load your goals right now. Tap to try again."
+              onRetry={() => void refetch()}
+            />
+          )}
+
           {/* Empty state */}
-          {!isLoading && goals.length === 0 && !showForm && (
+          {!isLoading && !isError && goals.length === 0 && !showForm && (
             <Card>
               <CardContent className="text-center py-14">
                 <Target className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />

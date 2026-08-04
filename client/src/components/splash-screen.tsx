@@ -39,6 +39,9 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
         initial={{ opacity: 1 }}
         animate={{ opacity: phase === "fading" ? 0 : 1 }}
         transition={{ duration: 0.7 }}
+        role="status"
+        aria-label="Loading Dimensional Wellness AI"
+        aria-live="polite"
       >
         <div className="relative flex flex-col items-center">
           <div className="relative w-32 h-32 mb-6">
