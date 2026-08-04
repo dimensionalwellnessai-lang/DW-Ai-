@@ -48,6 +48,7 @@ import { registerPlaidRoutes } from "./routes/plaid";
 import { registerOnboardingRoutes } from "./routes/onboarding";
 import { registerRoleMapRoutes } from "./routes/role-maps";
 import { registerCommunityRoutes } from "./routes/community";
+import { registerGroupChallengeRoutes } from "./routes/group-challenges";
 import { registerLearningThreadRoutes } from "./routes/learning-threads";
 import { sendPasswordResetEmail, sendFeedbackEmail, sendAccountDeletionEmail, sendSupportReportEmail, sendWelcomeEmail } from "./email";
 import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, detectIntentAndRespondStreaming, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument, generateInteractionInsights, generateContextualSearch, generateIngredientSubstitutes, processConversationIntoInsights, generateElevationPlanStructure, openai, getAiConfigStatus, generateDiscoverRandomContent, enforceOneQuestion, type SearchCategory } from "./openai";
@@ -600,6 +601,7 @@ export async function registerRoutes(
   // Role Maps — AI-interview-built personal level-up maps
   registerRoleMapRoutes(app);
   registerCommunityRoutes(app);
+  registerGroupChallengeRoutes(app);
 
   // Learning Threads — Spec 13 PR C: save coaching conversations as reusable learning threads
   registerLearningThreadRoutes(app);

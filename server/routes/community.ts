@@ -162,7 +162,17 @@ export function registerCommunityRoutes(app: Express): void {
   app.get("/api/community/profile", requireAuth, async (req, res) => {
     try {
       const profile = await getProfile(req.session.userId!);
-      res.json({ profile });
+      // Surface earned group-challenge badges on the community profile.
+      let badges: { title: string; unlockedAt: Date | null }[] = [];
+      try {
+        const achievements = await storage.getAchievements(req.session.userId!);
+        badges = achievements
+          .filter((a) => a.achievementType === "group_challenge")
+          .map((a) => ({ title: a.title, unlockedAt: a.unlockedAt }));
+      } catch {
+        // Badges are decorative — never fail the profile load over them.
+      }
+      res.json({ profile, badges });
     } catch (error) {
       console.error("Get community profile error:", error);
       res.status(500).json({ error: "Failed to load profile" });

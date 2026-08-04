@@ -4548,3 +4548,75 @@ export const communityBlocks = pgTable(
 );
 
 export type CommunityBlock = typeof communityBlocks.$inferSelect;
+
+// ── Group Challenges (monthly level-up cohorts) ──────────────────────────────
+// A themed challenge each month. Users join a cohort, check in daily, see
+// group stats, discuss on the community board, and earn a completion badge.
+
+/** One daily/weekly activity inside a group challenge. */
+export interface GroupChallengeActivity {
+  id: string;
+  title: string;
+  description?: string;
+}
+
+export const groupChallenges = pgTable("group_challenges", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  description: text("description"),
+  /** Short theme line, e.g. "30 days of morning routines". */
+  theme: text("theme"),
+  /** Month key "YYYY-MM" the challenge belongs to. */
+  month: text("month").notNull(),
+  startDate: timestamp("start_date").notNull(),
+  endDate: timestamp("end_date").notNull(),
+  /** Suggested activities for check-ins. */
+  activities: jsonb("activities").$type<GroupChallengeActivity[]>().notNull().default(sql`'[]'::jsonb`),
+  /** Check-ins (distinct days) needed to earn the completion badge. */
+  targetCheckins: integer("target_checkins").notNull().default(20),
+  /** draft | published | archived. */
+  status: text("status").notNull().default("published"),
+  /** Community post id of the challenge's discussion thread (created lazily). */
+  discussionPostId: varchar("discussion_post_id"),
+  /** Badge title awarded on completion. */
+  badgeTitle: text("badge_title"),
+  createdBy: varchar("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type GroupChallenge = typeof groupChallenges.$inferSelect;
+
+export const groupChallengeParticipants = pgTable(
+  "group_challenge_participants",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    challengeId: varchar("challenge_id").notNull().references(() => groupChallenges.id, { onDelete: "cascade" }),
+    userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    joinedAt: timestamp("joined_at").defaultNow(),
+    /** Set when the user leaves; rejoining clears it. */
+    leftAt: timestamp("left_at"),
+    /** Set once the user reaches targetCheckins distinct days. */
+    completedAt: timestamp("completed_at"),
+  },
+  (t) => [uniqueIndex("group_challenge_participants_unique_idx").on(t.challengeId, t.userId)],
+);
+
+export type GroupChallengeParticipant = typeof groupChallengeParticipants.$inferSelect;
+
+export const groupChallengeCheckins = pgTable(
+  "group_challenge_checkins",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    challengeId: varchar("challenge_id").notNull().references(() => groupChallenges.id, { onDelete: "cascade" }),
+    userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    /** Local calendar day "YYYY-MM-DD" the check-in counts toward. */
+    dateKey: text("date_key").notNull(),
+    /** Optional activity id from the challenge's activities list. */
+    activityId: text("activity_id"),
+    note: text("note"),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (t) => [uniqueIndex("group_challenge_checkins_unique_idx").on(t.challengeId, t.userId, t.dateKey)],
+);
+
+export type GroupChallengeCheckin = typeof groupChallengeCheckins.$inferSelect;

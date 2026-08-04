@@ -625,6 +625,18 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
     enabled: true,
   },
   {
+    id: "group-challenges",
+    path: "/group-challenges",
+    label: "Group Challenges",
+    icon: "trophy",
+    type: "page",
+    description: "Monthly level-up challenges you complete together",
+    showInMenu: true,
+    menuSection: "more",
+    menuOrder: 74,
+    enabled: true,
+  },
+  {
     id: "community",
     path: "/community",
     label: "Community",

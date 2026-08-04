@@ -337,6 +337,23 @@ export function ChallengesPage() {
             Challenges are here to empower you, not pressure you. Pick something that feels right for where you are today.
           </p>
 
+          <Link href="/group-challenges">
+            <Card className="cursor-pointer hover-elevate border-primary/30 bg-primary/5" data-testid="card-group-challenges-hub">
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="p-3 rounded-xl bg-primary/10">
+                  <Users className="h-6 w-6 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-display font-semibold text-foreground">Monthly Group Challenge</h3>
+                  <p className="text-sm text-muted-foreground font-body">
+                    Join this month's cohort, check in daily, and level up together.
+                  </p>
+                </div>
+                <ChevronRight className="h-5 w-5 text-muted-foreground" />
+              </CardContent>
+            </Card>
+          </Link>
+
           {aiPicks.length > 0 && (
             <section className="space-y-3">
               <div className="flex items-center gap-2">
