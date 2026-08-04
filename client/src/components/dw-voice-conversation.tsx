@@ -2,7 +2,6 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { DWOrb } from "@/components/dw-orb";
 import { Button } from "@/components/ui/button";
 import { X, Loader2, MessageSquare, Mic, MicOff } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { DW_MODES, type DWMode } from "@shared/dw-persona";
 
 interface ChatMessage {
@@ -47,7 +46,6 @@ export function DWVoiceConversation({
   const [statusText, setStatusText] = useState("Waking DW…");
   const [mode, setMode] = useState<DWMode>(initialMode);
   const [modeReason, setModeReason] = useState<string>("default opener");
-  const [modeLocked, setModeLocked] = useState<boolean>(false);
   const [reasonOpen, setReasonOpen] = useState<boolean>(false);
   const [muted, setMuted] = useState(false);
   const [errorText, setErrorText] = useState<string | null>(null);
@@ -66,8 +64,6 @@ export function DWVoiceConversation({
   const userBufferRef = useRef<string>("");
   const modeRef = useRef<DWMode>(initialMode);
   modeRef.current = mode;
-  const modeLockedRef = useRef<boolean>(false);
-  modeLockedRef.current = modeLocked;
 
   const setState = useCallback((s: ConvState) => {
     if (isMountedRef.current) setConvState(s);
@@ -138,18 +134,6 @@ export function DWVoiceConversation({
     [sendEvent]
   );
 
-  const handleModeChange = useCallback(
-    (next: DWMode) => {
-      // Manual tap → lock the lane for the rest of the session.
-      setModeLocked(true);
-      setModeReason("you picked this lane");
-      if (next === modeRef.current) return;
-      setMode(next);
-      applyMode(next);
-    },
-    [applyMode]
-  );
-
   // Per-turn role pick. Called after every completed user transcript.
   const requestRolePick = useCallback(
     async (transcript: string) => {
@@ -161,7 +145,6 @@ export function DWVoiceConversation({
           credentials: "include",
           body: JSON.stringify({
             message: transcript,
-            lockedMode: modeLockedRef.current ? modeRef.current : undefined,
             // Hysteresis: tell the picker which lane we're already in so it
             // requires a clearly stronger signal to switch lanes mid-call.
             previousMode: modeRef.current,
@@ -456,7 +439,6 @@ export function DWVoiceConversation({
           aria-label="Why this mode?"
         >
           DW · {DW_MODES.find((m) => m.id === mode)?.label ?? "Companion"}
-          {modeLocked ? " · locked" : ""}
         </button>
       </div>
       {reasonOpen && (
@@ -467,28 +449,6 @@ export function DWVoiceConversation({
           {modeReason}
         </div>
       )}
-
-      {/* Mode pills */}
-      <div className="flex flex-wrap gap-2 px-3 py-2 border-b overflow-x-auto">
-        {DW_MODES.map((m) => (
-          <button
-            key={m.id}
-            type="button"
-            onClick={() => handleModeChange(m.id)}
-            data-testid={`button-voice-mode-${m.id}`}
-            className={cn(
-              "px-3 py-1.5 text-xs rounded-full border whitespace-nowrap transition-colors duration-300",
-              mode === m.id
-                ? "bg-primary text-primary-foreground border-primary"
-                : "bg-background text-foreground border-border hover:bg-accent"
-            )}
-            aria-pressed={mode === m.id}
-            aria-label={`Switch to ${m.label} mode — ${m.short}`}
-          >
-            {m.label}
-          </button>
-        ))}
-      </div>
 
       {/* Center stage */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 gap-6">
@@ -526,7 +486,7 @@ export function DWVoiceConversation({
 
         <p className="text-xs text-muted-foreground max-w-xs text-center flex items-center gap-1">
           <MessageSquare className="h-3 w-3" />
-          Just talk. DW will reply. Tap a mode above to shift the vibe.
+          Just talk. DW will reply and adapt its role to the conversation.
         </p>
       </div>
     </div>

@@ -210,9 +210,7 @@ export function TalkItOutPage() {
   const [input, setInput] = useState("");
   const [chatMode, setChatMode] = useState<DWMode>("companion");
   const [chatModeReason, setChatModeReason] = useState<string>("");
-  const [chatModeLocked, setChatModeLocked] = useState<boolean>(false);
   const [chatModeReasonOpen, setChatModeReasonOpen] = useState<boolean>(false);
-  const [modePickerOpen, setModePickerOpen] = useState<boolean>(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [history, setHistory] = useState<SavedSession[]>(() => loadHistory());
@@ -340,7 +338,7 @@ export function TalkItOutPage() {
       };
       const updated = [plan, ...existing].slice(0, 50);
       localStorage.setItem("dw_saved_plans", JSON.stringify(updated));
-      setSavedPlanIds((prev) => new Set([...prev, index]));
+      setSavedPlanIds((prev) => new Set([...Array.from(prev), index]));
       setSavedPlansList(updated);
       toast({ title: "Plan saved", description: "Tap My Plans to view it anytime." });
     } catch {
@@ -679,7 +677,6 @@ export function TalkItOutPage() {
         context: "talk-it-out",
         conversationHistory: messages.slice(-10),
         systemOverride: systemOverrideOverride || TALK_SYSTEM_PROMPT,
-        modeLock: chatModeLocked ? chatMode : undefined,
         // Hysteresis: tell the picker which lane we're already in so it
         // requires a clearly stronger signal to switch lanes mid-thread.
         previousMode: chatMode,
@@ -728,7 +725,7 @@ export function TalkItOutPage() {
         ];
       });
       // Update the active DW lane from the picker (unless the user locked one).
-      if (data?.dwMode && !chatModeLocked) {
+      if (data?.dwMode) {
         const next = data.dwMode.id as DWMode;
         if (DW_MODES.some((m) => m.id === next)) {
           setChatMode(next);
@@ -1348,46 +1345,17 @@ export function TalkItOutPage() {
               </div>
             </div>
           )}
-          {modePickerOpen && (
-            <div className="flex flex-wrap gap-1.5 px-1 pb-2" data-testid="chat-mode-picker">
-              {DW_MODES.map((m) => (
-                <button
-                  key={m.id}
-                  type="button"
-                  onClick={() => {
-                    setChatMode(m.id);
-                    setChatModeLocked(true);
-                    setChatModeReason(`You picked ${m.label}.`);
-                    setModePickerOpen(false);
-                    setChatModeReasonOpen(false);
-                  }}
-                  data-testid={`button-chat-mode-${m.id}`}
-                  className={`text-[11px] px-2 py-1 rounded-full border transition-colors ${
-                    chatMode === m.id
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "bg-background text-foreground border-border hover:bg-accent"
-                  }`}
-                  aria-label={`Lock to ${m.label} — ${m.short}`}
-                  title={m.short}
-                >
-                  {m.label}
-                </button>
-              ))}
-            </div>
-          )}
           <div className="flex items-center justify-between px-1 pb-1 gap-2">
             <div className="flex items-center gap-2 min-w-0 flex-wrap">
               <button
                 type="button"
                 onClick={() => setChatModeReasonOpen((v) => !v)}
-                onDoubleClick={() => setModePickerOpen(true)}
                 data-testid="button-chat-mode-label"
                 className="text-[11px] px-2 py-0.5 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors shrink-0"
-                aria-label="Active DW mode — tap for why, double-tap to change"
-                title="Tap for why · Double-tap to change"
+                aria-label="Active DW mode — tap to see why"
+                title="DW picks its role automatically from the conversation"
               >
                 DW · {DW_MODES.find((m) => m.id === chatMode)?.label ?? "Companion"}
-                {chatModeLocked ? " · locked" : ""}
               </button>
               {chatModeReasonOpen && chatModeReason && (
                 <span
@@ -1396,19 +1364,6 @@ export function TalkItOutPage() {
                 >
                   {chatModeReason}
                 </span>
-              )}
-              {chatModeLocked && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setChatModeLocked(false);
-                    setChatModeReason("unlocked");
-                  }}
-                  className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-                  data-testid="button-chat-mode-unlock"
-                >
-                  unlock
-                </button>
               )}
               {voiceModeActive && (
                 <span className="flex items-center gap-2 text-xs text-muted-foreground">
