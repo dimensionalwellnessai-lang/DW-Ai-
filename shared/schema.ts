@@ -2552,6 +2552,11 @@ export const notificationPreferences = pgTable("notification_preferences", {
   // this from Accountability Settings without affecting other reminders.
   relationshipNudgesEnabled: boolean("relationship_nudges_enabled").default(true),
 
+  // Guide check-ins: DW proactively offers a coaching check-in when level-up
+  // progress stalls or a milestone is close (role map / group challenges).
+  // Mutable from Accountability Settings without affecting other reminders.
+  guideCheckinsEnabled: boolean("guide_checkins_enabled").default(true),
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

@@ -273,6 +273,30 @@ export function AccountabilitySettings() {
 
           <Separator />
 
+          {/* Guide Check-ins */}
+          <div>
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="guide-checkins-enabled" className="flex items-center gap-2">
+                  Guide Check-ins
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  A nudge from your guide when level-up progress stalls or a milestone is close
+                </p>
+              </div>
+              <Switch
+                id="guide-checkins-enabled"
+                checked={preferences.guideCheckinsEnabled ?? false}
+                onCheckedChange={(checked) => handleToggle('guideCheckinsEnabled', checked)}
+                disabled={!preferences.accountabilityEnabled}
+                data-testid="switch-guide-checkins-enabled"
+              />
+            </div>
+            {fieldIndicator('guideCheckinsEnabled', 'status-guide-checkins-enabled')}
+          </div>
+
+          <Separator />
+
           {/* Morning Briefing */}
           <div className="space-y-4">
             <div>

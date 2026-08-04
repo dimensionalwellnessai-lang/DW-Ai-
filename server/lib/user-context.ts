@@ -15,7 +15,7 @@
  *     a single readable paragraph instead of a structured object.
  */
 
-import { and, desc, eq, gte } from "drizzle-orm";
+import { and, desc, eq, gte, isNull, lte } from "drizzle-orm";
 
 import { storage } from "../storage";
 import { db } from "../db";
@@ -25,6 +25,9 @@ import {
   peopleInteractions,
   roleMaps,
   type RoleMapLevel,
+  groupChallenges,
+  groupChallengeParticipants,
+  groupChallengeCheckins,
   coachingModeEnum,
   type CoachingMode,
   type Goal,
@@ -150,6 +153,20 @@ export interface UserContextSnapshot {
     nextLevelTitle?: string;
     /** Up to 3 not-yet-done milestones for the next level up (or current level if at top). */
     nextMilestones: string[];
+    /** Milestone progress toward the next level: how many are done vs total. */
+    milestonesDone: number;
+    milestonesTotal: number;
+  } | null;
+  /** Active group challenge the user has joined (current month, not left). */
+  challenge: {
+    title: string;
+    theme?: string;
+    endDate: string; // YYYY-MM-DD
+    targetCheckins: number;
+    myCheckins: number;
+    checkedInToday: boolean;
+    completed: boolean;
+    daysLeft: number;
   } | null;
   plans: {
     activeGoals: Array<{
@@ -324,6 +341,7 @@ export async function getUserContextSnapshot(
     astrologyPredictions,
     importedDocs,
     activeRoleMapRows,
+    activeChallengeData,
   ] = await Promise.all([
     safe(storage.getUser(userId)),
     safe(storage.getUserProfile(userId)),
@@ -387,6 +405,46 @@ export async function getUserContextSnapshot(
         .from(roleMaps)
         .where(and(eq(roleMaps.userId, userId), eq(roleMaps.status, "active")))
         .limit(1),
+    ),
+    safe(
+      (async () => {
+        const rows = await db
+          .select({
+            challenge: groupChallenges,
+            participant: groupChallengeParticipants,
+          })
+          .from(groupChallengeParticipants)
+          .innerJoin(
+            groupChallenges,
+            eq(groupChallengeParticipants.challengeId, groupChallenges.id),
+          )
+          .where(
+            and(
+              eq(groupChallengeParticipants.userId, userId),
+              isNull(groupChallengeParticipants.leftAt),
+              eq(groupChallenges.status, "published"),
+              lte(groupChallenges.startDate, new Date()),
+              gte(groupChallenges.endDate, new Date()),
+            ),
+          )
+          .orderBy(desc(groupChallenges.startDate))
+          .limit(1);
+        if (!rows.length) return null;
+        const checkins = await db
+          .select({ dateKey: groupChallengeCheckins.dateKey })
+          .from(groupChallengeCheckins)
+          .where(
+            and(
+              eq(groupChallengeCheckins.challengeId, rows[0].challenge.id),
+              eq(groupChallengeCheckins.userId, userId),
+            ),
+          );
+        return {
+          challenge: rows[0].challenge,
+          participant: rows[0].participant,
+          checkinDays: checkins.map((c) => c.dateKey),
+        };
+      })(),
     ),
   ]);
 
@@ -741,6 +799,7 @@ export async function getUserContextSnapshot(
     const currentDef = levels.find((l) => l.level === activeRoleMap.currentLevel);
     const nextDef =
       levels.find((l) => l.level === activeRoleMap.currentLevel + 1) ?? currentDef;
+    const nextMilestoneList = nextDef?.milestones ?? [];
     roleMapCtx = {
       targetRole: activeRoleMap.targetRole,
       identityStatement: activeRoleMap.identityStatement ?? undefined,
@@ -748,10 +807,34 @@ export async function getUserContextSnapshot(
       maxLevel,
       currentLevelTitle: currentDef?.title,
       nextLevelTitle: nextDef?.title,
-      nextMilestones: (nextDef?.milestones ?? [])
+      nextMilestones: nextMilestoneList
         .filter((m) => !m.done)
         .slice(0, 3)
         .map((m) => m.title),
+      milestonesDone: nextMilestoneList.filter((m) => m.done).length,
+      milestonesTotal: nextMilestoneList.length,
+    };
+  }
+
+  // ── Active group challenge ──
+  let challengeCtx: UserContextSnapshot["challenge"] = null;
+  if (activeChallengeData) {
+    const { challenge, participant, checkinDays } = activeChallengeData;
+    // dateKey is the user's *local* calendar day (the check-in endpoint
+    // accepts ±36h around UTC today), so a strict UTC-today comparison can
+    // miss a legitimate "today" check-in for non-UTC users. Treat any
+    // check-in dated UTC-today or later as "today".
+    const todayKey = new Date().toISOString().slice(0, 10);
+    const endMs = new Date(challenge.endDate).getTime();
+    challengeCtx = {
+      title: challenge.title,
+      theme: challenge.theme ?? undefined,
+      endDate: new Date(challenge.endDate).toISOString().slice(0, 10),
+      targetCheckins: challenge.targetCheckins,
+      myCheckins: checkinDays.length,
+      checkedInToday: checkinDays.some((d) => d >= todayKey),
+      completed: !!participant.completedAt,
+      daysLeft: Math.max(0, Math.ceil((endMs - Date.now()) / 86_400_000)),
     };
   }
 
@@ -792,6 +875,7 @@ export async function getUserContextSnapshot(
     },
     spirit,
     roleMap: roleMapCtx,
+    challenge: challengeCtx,
     plans,
     triggers,
     insights,
@@ -1013,9 +1097,26 @@ export function toPromptString(snap: UserContextSnapshot): string {
     ];
     if (rm.nextLevelTitle && rm.currentLevel < rm.maxLevel)
       rmBits.push(`next level: ${rm.nextLevelTitle}`);
+    if (rm.milestonesTotal > 0)
+      rmBits.push(
+        `milestone progress ${rm.milestonesDone}/${rm.milestonesTotal} toward next level`,
+      );
     if (rm.nextMilestones.length)
       rmBits.push(`next milestones: ${rm.nextMilestones.join("; ")}`);
     lines.push(`ROLE MAP: ${rmBits.join(" • ")}.`);
+  }
+
+  // Active group challenge
+  if (snap.challenge) {
+    const c = snap.challenge;
+    const cBits: string[] = [
+      `"${c.title}"${c.theme ? ` (${c.theme})` : ""}`,
+      `${c.myCheckins}/${c.targetCheckins} check-ins`,
+      c.checkedInToday ? "checked in today" : "not checked in today",
+      `${c.daysLeft} day(s) left`,
+    ];
+    if (c.completed) cBits.push("badge earned");
+    lines.push(`GROUP CHALLENGE: ${cBits.join(" • ")}.`);
   }
 
   // Plans

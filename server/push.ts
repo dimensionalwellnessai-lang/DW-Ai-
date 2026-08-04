@@ -387,6 +387,7 @@ interface ReminderPayload {
     | "pre_task"
     | "post_task"
     | "relationship_nudge"
+    | "guide_checkin"
     | "plaid_reconnect";
   url?: string;
   // Required for pre/post-task reminders so the service worker can post the

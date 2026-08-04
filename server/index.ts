@@ -156,6 +156,17 @@ app.use((req, res, next) => {
     console.error("[relationship-nudges] Failed to start scheduler:", err);
   }
 
+  // Guide check-ins — proactive level-up coaching nudges when role-map or
+  // group-challenge progress stalls or a milestone is within reach. Mute
+  // lives on notification_preferences.guideCheckinsEnabled. See
+  // server/guide-checkins.ts.
+  try {
+    const { startGuideCheckinsScheduler } = await import("./guide-checkins");
+    startGuideCheckinsScheduler();
+  } catch (err) {
+    console.error("[guide-checkins] Failed to start scheduler:", err);
+  }
+
   // Start the background Plaid sync scheduler so connected bank
   // transactions are imported every few hours without the user having to
   // tap "Sync" on the Finances page. See server/plaid-sync.ts.

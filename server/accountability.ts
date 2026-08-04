@@ -332,6 +332,10 @@ export async function updateNotificationPreferences(
   userId: string,
   updates: Partial<NotificationPreferences>
 ): Promise<NotificationPreferences> {
+  // Ensure the defaults row exists first — otherwise an update issued before
+  // the user ever opened settings silently matches zero rows and the change
+  // (e.g. muting a nudge) is lost.
+  await getNotificationPreferences(userId);
   const [updated] = await db
     .update(notificationPreferences)
     .set({

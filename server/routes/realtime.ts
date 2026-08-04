@@ -50,15 +50,21 @@ export function registerRealtimeRoutes(app: Express): void {
     let initialPick: { reason: string; confidence: number } | null = null;
 
     let userName: string | null = null;
-    let contextSummary: string | null = parsed.data.userContextSummary ?? null;
+    // Client-supplied text (e.g. recent spoken turns) supplements — never
+    // replaces — the server-derived snapshot, so guide context (role map,
+    // group challenge) always reaches voice sessions.
+    const clientSummary = (parsed.data.userContextSummary ?? "").trim();
+    let contextSummary: string | null = clientSummary || null;
     try {
       // Always mint realtime sessions with a fresh snapshot — voice mode
       // is the most context-sensitive surface and a 60s stale window is
       // unacceptable when the user is mid-conversation.
       const snap = await getUserContextSnapshot(userId, { forceFresh: true });
       userName = snap.identity.firstName || null;
-      // Only derive the summary server-side when the client did not supply one.
-      if (!contextSummary) contextSummary = toPromptString(snap);
+      const serverSummary = toPromptString(snap);
+      contextSummary = clientSummary
+        ? `${serverSummary}\n\nRECENT CONVERSATION (from the client):\n${clientSummary}`
+        : serverSummary;
       if (!parsed.data.mode) {
         const opener = pickInitialRole(snap);
         mode = opener.mode;

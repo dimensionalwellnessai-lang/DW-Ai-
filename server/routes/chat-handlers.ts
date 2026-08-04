@@ -33,6 +33,7 @@ import {
   extractSyncableItems,
 } from "./_shared";
 import { getUserContextSnapshot, toUserLifeContext } from "../lib/user-context";
+import { DW_GUIDE_BEHAVIOR } from "@shared/dw-persona";
 import { resolveAdaptiveDWMode } from "../lib/dw-role-picker";
 import { logDwRolePick } from "../lib/dw-role-pick-log";
 
@@ -105,7 +106,7 @@ export async function chatHandler(req: Request, res: Response) {
       message,
       conversationHistory || [],
       userContext,
-      dwModeResult.modeAddendum,
+      [dwModeResult.modeAddendum, DW_GUIDE_BEHAVIOR].filter(Boolean).join("\n\n"),
     );
 
     const response = typeof rawResponse === "string" ? rawResponse : rawResponse.content;
@@ -352,7 +353,7 @@ export async function smartChatHandler(req: Request, res: Response) {
       typeof context === "string" && Object.prototype.hasOwnProperty.call(CONTEXT_SYSTEM_OVERRIDES, context)
         ? CONTEXT_SYSTEM_OVERRIDES[context]
         : undefined;
-    const composedOverride = [dwModeResult.modeAddendum, ctxOverride]
+    const composedOverride = [dwModeResult.modeAddendum, DW_GUIDE_BEHAVIOR, ctxOverride]
       .filter(Boolean)
       .join("\n\n");
 
