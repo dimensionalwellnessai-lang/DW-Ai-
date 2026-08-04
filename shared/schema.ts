@@ -4330,3 +4330,86 @@ export const insertLearningThreadSchema = createInsertSchema(learningThreads).om
 
 export type LearningThread = typeof learningThreads.$inferSelect;
 export type InsertLearningThread = z.infer<typeof insertLearningThreadSchema>;
+
+// ── Role Maps (Level Up — personalized role maps via AI interview) ──────────
+// A Role Map is DW's synthesis of an informational-interview conversation:
+// the role/identity the user wants to grow into, a ladder of levels with
+// milestones, and the activities/habits/mindsets for the next level.
+
+/** One rung on the role-map ladder. */
+export interface RoleMapLevel {
+  /** 1-based level number on the ladder. */
+  level: number;
+  title: string;
+  description?: string;
+  /** Concrete outcomes that mark this level as reached. */
+  milestones: Array<{ id: string; title: string; done?: boolean }>;
+  /** Recommended activities to practice at this level. */
+  activities: string[];
+  /** Recommended repeatable habits at this level. */
+  habits: string[];
+  /** Mindset shifts / ways of thinking for this level. */
+  mindsets: string[];
+}
+
+export const roleMaps = pgTable("role_maps", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  /** The role/identity the user is growing into (e.g. "Calm, present founder"). */
+  targetRole: text("target_role").notNull(),
+  /** One-sentence identity statement in the user's voice. */
+  identityStatement: text("identity_statement"),
+  /** Summary of the gap between today and the target life. */
+  gapSummary: text("gap_summary"),
+  /** 1-based current level on the ladder. */
+  currentLevel: integer("current_level").notNull().default(1),
+  /** draft (awaiting user review) | active (accepted) | archived. */
+  status: text("status").notNull().default("draft"),
+  /** Ladder of levels — RoleMapLevel[]. */
+  levels: jsonb("levels").notNull().default(sql`'[]'::jsonb`),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const roleMapsRelations = relations(roleMaps, ({ one }) => ({
+  user: one(users, {
+    fields: [roleMaps.userId],
+    references: [users.id],
+  }),
+}));
+
+export const insertRoleMapSchema = createInsertSchema(roleMaps).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type RoleMap = typeof roleMaps.$inferSelect;
+export type InsertRoleMap = z.infer<typeof insertRoleMapSchema>;
+
+/** Interview transcript + state for building/evolving a role map. */
+export const roleMapInterviews = pgTable("role_map_interviews", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  /** Set once the interview is synthesized into a map. */
+  roleMapId: varchar("role_map_id").references(() => roleMaps.id, { onDelete: "set null" }),
+  /** active | completed | abandoned. */
+  status: text("status").notNull().default("active"),
+  /** Full message array — [{role: "assistant"|"user", content}, ...] */
+  messages: jsonb("messages").notNull().default(sql`'[]'::jsonb`),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const roleMapInterviewsRelations = relations(roleMapInterviews, ({ one }) => ({
+  user: one(users, {
+    fields: [roleMapInterviews.userId],
+    references: [users.id],
+  }),
+  roleMap: one(roleMaps, {
+    fields: [roleMapInterviews.roleMapId],
+    references: [roleMaps.id],
+  }),
+}));
+
+export type RoleMapInterview = typeof roleMapInterviews.$inferSelect;

@@ -23,6 +23,8 @@ import type { UserLifeContext, EnergyContext } from "../openai";
 import {
   people,
   peopleInteractions,
+  roleMaps,
+  type RoleMapLevel,
   coachingModeEnum,
   type CoachingMode,
   type Goal,
@@ -138,6 +140,17 @@ export interface UserContextSnapshot {
       energyWorkEnabled?: boolean | null;
     };
   };
+  /** Active Role Map (Level Up): who the user is becoming and where they are on the ladder. */
+  roleMap: {
+    targetRole: string;
+    identityStatement?: string;
+    currentLevel: number;
+    maxLevel: number;
+    currentLevelTitle?: string;
+    nextLevelTitle?: string;
+    /** Up to 3 not-yet-done milestones for the next level up (or current level if at top). */
+    nextMilestones: string[];
+  } | null;
   plans: {
     activeGoals: Array<{
       id: string;
@@ -310,6 +323,7 @@ export async function getUserContextSnapshot(
     birthChart,
     astrologyPredictions,
     importedDocs,
+    activeRoleMapRows,
   ] = await Promise.all([
     safe(storage.getUser(userId)),
     safe(storage.getUserProfile(userId)),
@@ -367,6 +381,13 @@ export async function getUserContextSnapshot(
       isFull,
     ),
     maybe(storage.getImportedDocuments(userId), isFull),
+    safe(
+      db
+        .select()
+        .from(roleMaps)
+        .where(and(eq(roleMaps.userId, userId), eq(roleMaps.status, "active")))
+        .limit(1),
+    ),
   ]);
 
   // ── Identity ──
@@ -707,6 +728,33 @@ export async function getUserContextSnapshot(
       createdAt: d.createdAt ?? null,
     }));
 
+  // ── Role Map ──
+  const activeRoleMap = (activeRoleMapRows ?? [])[0] ?? null;
+  let roleMapCtx: UserContextSnapshot["roleMap"] = null;
+  if (activeRoleMap) {
+    const levels = (Array.isArray(activeRoleMap.levels)
+      ? activeRoleMap.levels
+      : []) as RoleMapLevel[];
+    const maxLevel = levels.length
+      ? Math.max(...levels.map((l) => l.level))
+      : activeRoleMap.currentLevel;
+    const currentDef = levels.find((l) => l.level === activeRoleMap.currentLevel);
+    const nextDef =
+      levels.find((l) => l.level === activeRoleMap.currentLevel + 1) ?? currentDef;
+    roleMapCtx = {
+      targetRole: activeRoleMap.targetRole,
+      identityStatement: activeRoleMap.identityStatement ?? undefined,
+      currentLevel: activeRoleMap.currentLevel,
+      maxLevel,
+      currentLevelTitle: currentDef?.title,
+      nextLevelTitle: nextDef?.title,
+      nextMilestones: (nextDef?.milestones ?? [])
+        .filter((m) => !m.done)
+        .slice(0, 3)
+        .map((m) => m.title),
+    };
+  }
+
   const nowDate = new Date();
   const hour = nowDate.getHours();
   const timeOfDay: UserContextSnapshot["today"]["timeOfDay"] =
@@ -743,6 +791,7 @@ export async function getUserContextSnapshot(
       recentInteractions,
     },
     spirit,
+    roleMap: roleMapCtx,
     plans,
     triggers,
     insights,
@@ -955,6 +1004,19 @@ export function toPromptString(snap: UserContextSnapshot): string {
   if (spirit.upcomingPredictions.length)
     spiritBits.push(`upcoming: ${spirit.upcomingPredictions.map((p) => p.title).join(", ")}`);
   if (spiritBits.length) lines.push(`SPIRIT: ${spiritBits.join("; ")}.`);
+
+  // Role Map (Level Up)
+  if (snap.roleMap) {
+    const rm = snap.roleMap;
+    const rmBits: string[] = [
+      `becoming "${rm.targetRole}", level ${rm.currentLevel}/${rm.maxLevel}${rm.currentLevelTitle ? ` (${rm.currentLevelTitle})` : ""}`,
+    ];
+    if (rm.nextLevelTitle && rm.currentLevel < rm.maxLevel)
+      rmBits.push(`next level: ${rm.nextLevelTitle}`);
+    if (rm.nextMilestones.length)
+      rmBits.push(`next milestones: ${rm.nextMilestones.join("; ")}`);
+    lines.push(`ROLE MAP: ${rmBits.join(" • ")}.`);
+  }
 
   // Plans
   const planBits: string[] = [];

@@ -625,6 +625,18 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
     enabled: true,
   },
   {
+    id: "role-map",
+    path: "/role-map",
+    label: "Role Map",
+    icon: "compass",
+    type: "page",
+    description: "Your ladder to the next level, built with DW",
+    showInMenu: true,
+    menuSection: "more",
+    menuOrder: 74,
+    enabled: true,
+  },
+  {
     id: "finances",
     path: "/finances",
     label: "Finances",
