@@ -15,6 +15,7 @@ import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { Strategy as FacebookStrategy } from "passport-facebook";
 import rateLimit from "express-rate-limit";
 import { doubleCsrf } from "csrf-csrf";
+import cookieParser from "cookie-parser";
 import { patchRateLimiter, validatePatchPayloadSize, sanitizePatchBody } from "./middleware/guardrails";
 import { storage } from "./storage";
 import { pool } from "./db";
@@ -549,10 +550,17 @@ export async function registerRoutes(
   app.use(passport.initialize());
 
   // CSRF double-submit cookie protection for all mutating API routes.
+  // csrf-csrf reads its token from req.cookies, which only exists when
+  // cookie-parser is mounted — without it every mutating request 500s.
+  app.use(cookieParser());
   // The /api/csrf-token endpoint lets the frontend fetch its token on boot.
   const { generateCsrfToken, doubleCsrfProtection } = doubleCsrf({
     getSecret: () => sessionSecret,
-    getSessionIdentifier: (req) => req.sessionID ?? "",
+    // Do NOT bind the token to req.sessionID: with saveUninitialized:false
+    // anonymous visitors get a new sessionID on every request, and the ID
+    // also rotates at login — both cause spurious "invalid csrf token" 403s.
+    // The signed double-submit cookie alone is sufficient protection.
+    getSessionIdentifier: () => "",
     cookieName: "fts.csrf",
     cookieOptions: {
       httpOnly: true,

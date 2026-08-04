@@ -80,11 +80,20 @@ export function useInteractionTracking() {
     const handleBeforeUnload = () => {
       const duration = Date.now() - pageStartTime.current;
       if (duration > 1000) {
-        navigator.sendBeacon?.("/api/interactions", JSON.stringify({
-          eventType: "page_view",
-          pagePath: location,
-          durationMs: duration,
-        }));
+        // fetch + keepalive instead of sendBeacon: beacons can't carry the
+        // x-csrf-token header, so the CSRF middleware would reject them.
+        // keepalive lets the request outlive the unloading page.
+        void fetch("/api/interactions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          keepalive: true,
+          body: JSON.stringify({
+            eventType: "page_view",
+            pagePath: location,
+            durationMs: duration,
+          }),
+        }).catch(() => {});
       }
     };
 

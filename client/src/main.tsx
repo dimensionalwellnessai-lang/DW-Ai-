@@ -2,6 +2,11 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
 import { initializeDemoMode, isDemoMode } from "./lib/demo-mode";
+import { installCsrfFetch } from "./lib/csrf-fetch";
+
+// Attach CSRF tokens to all mutating /api requests app-wide. Must run before
+// any component code issues a fetch.
+installCsrfFetch();
 
 // Activate Demo Mode via URL query param (?demo=true) – works in web, Capacitor WebView, and
 // can also be triggered by a deep link that opens the app with this param in the initial URL.

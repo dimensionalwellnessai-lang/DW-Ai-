@@ -31,31 +31,17 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
-/** Cached CSRF token — fetched once on first mutating request. */
-let csrfToken: string | null = null;
-
-async function getCsrfToken(): Promise<string> {
-  if (csrfToken) return csrfToken;
-  const res = await fetch("/api/csrf-token", { credentials: "include" });
-  if (!res.ok) throw new Error("Failed to fetch CSRF token");
-  const data = (await res.json()) as { token: string };
-  csrfToken = data.token;
-  return csrfToken;
-}
-
+// CSRF handling lives in ./csrf-fetch: a global fetch interceptor (installed
+// in main.tsx) attaches x-csrf-token to every mutating same-origin /api
+// request, so apiRequest needs no token logic of its own.
 export async function apiRequest(
   method: string,
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  const isMutating = !["GET", "HEAD", "OPTIONS"].includes(method.toUpperCase());
   const headers: Record<string, string> = data
     ? { "Content-Type": "application/json" }
     : {};
-
-  if (isMutating) {
-    headers["x-csrf-token"] = await getCsrfToken();
-  }
 
   const res = await fetch(url, {
     method,
@@ -63,12 +49,6 @@ export async function apiRequest(
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
   });
-
-  // If the server rejects our CSRF token, invalidate the cache so the next
-  // mutating request will fetch a fresh one.
-  if (res.status === 403 && isMutating) {
-    csrfToken = null;
-  }
 
   await throwIfResNotOk(res);
   return res;
