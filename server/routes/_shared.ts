@@ -39,6 +39,9 @@ export const FREE_DAILY_QUOTAS: Record<UsageMeterKind, number> = {
   coach_chat: 5,
   insights: 3,
   today: 5,
+  // Community posts + replies per day on the free tier (no AI cost, but keeps
+  // spam manageable and gives Plus a perk).
+  community: 10,
 };
 
 function todayKeyUtc(): string {

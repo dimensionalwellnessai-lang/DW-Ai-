@@ -92,6 +92,7 @@ const CheckoutPage = lazy(() => import("@/pages/checkout"));
 const EnhancedOnboardingPage = lazy(() => import("@/pages/enhanced-onboarding"));
 const VoiceOnboardingPage = lazy(() => import("@/pages/voice-onboarding"));
 const RoleMapPage = lazy(() => import("@/pages/role-map"));
+const CommunityPage = lazy(() => import("@/pages/community"));
 const LifeDashboardPage = lazy(() => import("@/pages/life-dashboard"));
 const LifeDimensionsPage = lazy(() => import("@/pages/life-dimensions"));
 const CalendarPlansPage = lazy(() =>
@@ -293,6 +294,9 @@ function Router() {
       <Route path="/welcome"><Redirect to="/voice-onboarding" /></Route>
       <Route path="/voice-onboarding" component={VoiceOnboardingPage} />
       <Route path="/role-map" component={RoleMapPage} />
+      <Route path="/community" component={CommunityPage} />
+      <Route path="/community/b/:slug" component={CommunityPage} />
+      <Route path="/community/p/:id" component={CommunityPage} />
       <Route path="/paywall" component={PaywallPage} />
       <Route path="/upgrade" component={PaywallPage} />
       <Route path="/subscription" component={SubscriptionPage} />

@@ -43,7 +43,7 @@ export const users = pgTable("users", {
   uniqueIndex("users_stripe_customer_id_idx").on(t.stripeCustomerId),
 ]);
 
-export const usageMeterKindEnum = ["chat", "voice", "import", "coach_chat", "insights", "today"] as const;
+export const usageMeterKindEnum = ["chat", "voice", "import", "coach_chat", "insights", "today", "community"] as const;
 export type UsageMeterKind = typeof usageMeterKindEnum[number];
 
 export const usageMeters = pgTable("usage_meters", {
@@ -4413,3 +4413,138 @@ export const roleMapInterviewsRelations = relations(roleMapInterviews, ({ one })
 }));
 
 export type RoleMapInterview = typeof roleMapInterviews.$inferSelect;
+
+// ── Community (message boards — members grow together) ──────────────────────
+// Boards organized by growth topic (wellness dimension / role type). Users
+// need an opt-in community profile before posting. Safety: reports, blocks,
+// author+admin delete.
+
+/** Opt-in public identity for the community. Nothing is shared until a user creates one. */
+export const communityProfiles = pgTable("community_profiles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().unique().references(() => users.id, { onDelete: "cascade" }),
+  /** Public display name shown on posts/replies (never the account email/name). */
+  displayName: text("display_name").notNull(),
+  /** Simple emoji avatar. */
+  avatarEmoji: text("avatar_emoji").notNull().default("🌱"),
+  /** Optional short bio. */
+  bio: text("bio"),
+  /** Opt-in: show current Role Map target + level next to the display name. */
+  shareRoleMapLevel: boolean("share_role_map_level").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertCommunityProfileSchema = createInsertSchema(communityProfiles).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type CommunityProfile = typeof communityProfiles.$inferSelect;
+export type InsertCommunityProfile = z.infer<typeof insertCommunityProfileSchema>;
+
+/** Topic boards (seeded; per wellness dimension plus general growth topics). */
+export const communityBoards = pgTable("community_boards", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  slug: text("slug").notNull().unique(),
+  name: text("name").notNull(),
+  description: text("description"),
+  /** Icon name (lucide) for the board list. */
+  icon: text("icon"),
+  /** Optional wellness dimension this board maps to. */
+  dimension: text("dimension"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type CommunityBoard = typeof communityBoards.$inferSelect;
+
+export const communityPosts = pgTable("community_posts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  boardId: varchar("board_id").notNull().references(() => communityBoards.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  body: text("body").notNull(),
+  /** visible | removed (soft delete keeps thread integrity). */
+  status: text("status").notNull().default("visible"),
+  replyCount: integer("reply_count").notNull().default(0),
+  reactionCount: integer("reaction_count").notNull().default(0),
+  lastActivityAt: timestamp("last_activity_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertCommunityPostSchema = createInsertSchema(communityPosts).omit({
+  id: true,
+  status: true,
+  replyCount: true,
+  reactionCount: true,
+  lastActivityAt: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type CommunityPost = typeof communityPosts.$inferSelect;
+
+export const communityReplies = pgTable("community_replies", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  postId: varchar("post_id").notNull().references(() => communityPosts.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  /** One level of nesting: reply-to-reply references the top-level reply. */
+  parentReplyId: varchar("parent_reply_id"),
+  body: text("body").notNull(),
+  /** visible | removed. */
+  status: text("status").notNull().default("visible"),
+  reactionCount: integer("reaction_count").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type CommunityReply = typeof communityReplies.$inferSelect;
+
+/** Lightweight encouragements on posts/replies. One per user+target+kind. */
+export const communityReactions = pgTable(
+  "community_reactions",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    /** post | reply. */
+    targetType: text("target_type").notNull(),
+    targetId: varchar("target_id").notNull(),
+    /** encourage | celebrate | insight. */
+    kind: text("kind").notNull().default("encourage"),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("community_reactions_unique_idx").on(t.userId, t.targetType, t.targetId, t.kind),
+  ],
+);
+
+export type CommunityReaction = typeof communityReactions.$inferSelect;
+
+export const communityReports = pgTable("community_reports", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  reporterId: varchar("reporter_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  /** post | reply. */
+  targetType: text("target_type").notNull(),
+  targetId: varchar("target_id").notNull(),
+  reason: text("reason"),
+  /** open | resolved | dismissed. */
+  status: text("status").notNull().default("open"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type CommunityReport = typeof communityReports.$inferSelect;
+
+export const communityBlocks = pgTable(
+  "community_blocks",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    blockerId: varchar("blocker_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    blockedUserId: varchar("blocked_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (t) => [uniqueIndex("community_blocks_unique_idx").on(t.blockerId, t.blockedUserId)],
+);
+
+export type CommunityBlock = typeof communityBlocks.$inferSelect;

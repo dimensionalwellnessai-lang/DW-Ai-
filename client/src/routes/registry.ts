@@ -625,6 +625,18 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
     enabled: true,
   },
   {
+    id: "community",
+    path: "/community",
+    label: "Community",
+    icon: "users",
+    type: "page",
+    description: "Message boards where members grow together",
+    showInMenu: true,
+    menuSection: "more",
+    menuOrder: 73,
+    enabled: true,
+  },
+  {
     id: "role-map",
     path: "/role-map",
     label: "Role Map",
