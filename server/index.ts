@@ -23,7 +23,10 @@ app.use(
         fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
         objectSrc: ["'none'"],
         frameSrc: ["'self'", "https://www.youtube.com", "https://www.youtube-nocookie.com", "https://cdn.plaid.com"],
-        frameAncestors: ["'none'"],
+        // In development the app runs inside Replit's preview iframe, so it
+        // must be embeddable; in production block all framing (clickjacking).
+        frameAncestors:
+          process.env.NODE_ENV === "production" ? ["'none'"] : ["*"],
         // upgrade-insecure-requests breaks plain-HTTP dev previews; keep it
         // production-only.
         ...(process.env.NODE_ENV === "production"
@@ -32,6 +35,9 @@ app.use(
       },
     },
     crossOriginEmbedderPolicy: false,
+    // X-Frame-Options would also block the Replit preview iframe in dev;
+    // frame-ancestors above already covers production.
+    frameguard: process.env.NODE_ENV === "production" ? undefined : false,
   })
 );
 // Wrap app.get/post/... so any duplicate `${METHOD} ${path}` registration
