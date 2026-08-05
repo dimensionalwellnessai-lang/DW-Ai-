@@ -167,6 +167,18 @@ app.use((req, res, next) => {
     console.error("[guide-checkins] Failed to start scheduler:", err);
   }
 
+  // Daily growth snapshots — upserts a growth_snapshots row for every
+  // recently-active user so My Level trend charts stay continuous even on
+  // days the user never opens the app. See server/growth-snapshots-scheduler.ts.
+  try {
+    const { startGrowthSnapshotsScheduler } = await import(
+      "./growth-snapshots-scheduler"
+    );
+    startGrowthSnapshotsScheduler();
+  } catch (err) {
+    console.error("[growth-snapshots] Failed to start scheduler:", err);
+  }
+
   // Start the background Plaid sync scheduler so connected bank
   // transactions are imported every few hours without the user having to
   // tap "Sync" on the Finances page. See server/plaid-sync.ts.
