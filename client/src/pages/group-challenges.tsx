@@ -8,17 +8,24 @@ import {
   ChevronLeft,
   Flame,
   MessageCircle,
+  Plus,
+  Rocket,
+  Sparkles,
+  Trash2,
   Trophy,
   Users,
 } from "lucide-react";
 
 import { PageHeader } from "@/components/page-header";
 import { usePageMeta } from "@/hooks/use-page-meta";
+import { useUserRole } from "@/hooks/use-user-role";
 import { apiRequest, parseApiError } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
@@ -74,9 +81,271 @@ function todayKey(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+function nextMonthKey(): string {
+  const d = new Date();
+  const y = d.getMonth() === 11 ? d.getFullYear() + 1 : d.getFullYear();
+  const m = (d.getMonth() + 1) % 12; // 0-based next month
+  return `${y}-${String(m + 1).padStart(2, "0")}`;
+}
+
+// ─── Admin: publish next month ───────────────────────────────────────────────
+
+interface SuggestionT {
+  title?: string;
+  theme?: string;
+  description?: string;
+  activities?: ActivityT[];
+  targetCheckins?: number;
+  badgeTitle?: string;
+}
+
+function slugify(s: string): string {
+  return (
+    s
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 40) || "activity"
+  );
+}
+
+function AdminPublishSection({ existing }: { existing: ChallengeT[] }) {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const month = nextMonthKey();
+  const alreadyPublished = existing.some((c) => c.month === month);
+
+  const [title, setTitle] = useState("");
+  const [theme, setTheme] = useState("");
+  const [description, setDescription] = useState("");
+  const [activities, setActivities] = useState<ActivityT[]>([]);
+  const [targetCheckins, setTargetCheckins] = useState(20);
+  const [badgeTitle, setBadgeTitle] = useState("");
+  const [suggested, setSuggested] = useState(false);
+
+  const suggest = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/group-challenges/suggest");
+      return (await res.json()) as { suggestion: SuggestionT };
+    },
+    onSuccess: ({ suggestion: s }) => {
+      setTitle(s.title ?? "");
+      setTheme(s.theme ?? "");
+      setDescription(s.description ?? "");
+      setActivities(
+        (s.activities ?? []).slice(0, 10).map((a, i) => ({
+          id: a.id ? slugify(a.id) : slugify(a.title || `activity-${i + 1}`),
+          title: a.title ?? "",
+          description: a.description,
+        })),
+      );
+      setTargetCheckins(
+        Math.min(31, Math.max(1, Math.round(Number(s.targetCheckins) || 20))),
+      );
+      setBadgeTitle(s.badgeTitle ?? "");
+      setSuggested(true);
+      toast({ title: "Suggestion ready", description: "Review and tweak it, then publish." });
+    },
+    onError: (e) => toast({ title: parseApiError(e), variant: "destructive" }),
+  });
+
+  const publish = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/group-challenges", {
+        title: title.trim(),
+        month,
+        ...(theme.trim() ? { theme: theme.trim() } : {}),
+        ...(description.trim() ? { description: description.trim() } : {}),
+        activities: activities
+          .filter((a) => a.title.trim())
+          .map((a) => ({
+            id: a.id || slugify(a.title),
+            title: a.title.trim(),
+            ...(a.description?.trim() ? { description: a.description.trim() } : {}),
+          })),
+        targetCheckins,
+        ...(badgeTitle.trim() ? { badgeTitle: badgeTitle.trim() } : {}),
+      });
+      return (await res.json()) as { challenge: ChallengeT };
+    },
+    onSuccess: () => {
+      toast({
+        title: "Challenge published!",
+        description: `It now shows under "Coming up" for ${monthLabel(month)}.`,
+      });
+      setTitle("");
+      setTheme("");
+      setDescription("");
+      setActivities([]);
+      setTargetCheckins(20);
+      setBadgeTitle("");
+      setSuggested(false);
+      qc.invalidateQueries({ queryKey: ["/api/group-challenges"] });
+    },
+    onError: (e) => toast({ title: parseApiError(e), variant: "destructive" }),
+  });
+
+  const updateActivity = (i: number, patch: Partial<ActivityT>) =>
+    setActivities((prev) => prev.map((a, idx) => (idx === i ? { ...a, ...patch } : a)));
+
+  return (
+    <section className="space-y-2" data-testid="section-admin-publish">
+      <h3 className="text-sm font-semibold text-muted-foreground">
+        Admin — publish {monthLabel(month)}
+      </h3>
+      <Card>
+        <CardContent className="p-4 space-y-3">
+          {alreadyPublished && (
+            <p className="text-xs text-amber-600">
+              A challenge for {monthLabel(month)} is already published. Publishing again will add
+              another one for the same month.
+            </p>
+          )}
+
+          <Button
+            variant="outline"
+            className="w-full"
+            disabled={suggest.isPending}
+            onClick={() => suggest.mutate()}
+            data-testid="button-suggest-challenge"
+          >
+            <Sparkles className="w-4 h-4 mr-2" />
+            {suggest.isPending
+              ? "Thinking…"
+              : suggested
+                ? "Get a new AI suggestion"
+                : "Get AI suggestion"}
+          </Button>
+
+          <div className="space-y-1">
+            <Label htmlFor="admin-title">Title</Label>
+            <Input
+              id="admin-title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. Mindful Mornings"
+              maxLength={120}
+              data-testid="input-admin-title"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="admin-theme">Theme</Label>
+            <Input
+              id="admin-theme"
+              value={theme}
+              onChange={(e) => setTheme(e.target.value)}
+              placeholder="e.g. 30 days of morning stillness"
+              maxLength={160}
+              data-testid="input-admin-theme"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="admin-description">Description</Label>
+            <Textarea
+              id="admin-description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
+              maxLength={2000}
+              placeholder="What's this month about?"
+              data-testid="input-admin-description"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Activities</Label>
+            {activities.map((a, i) => (
+              <div key={i} className="flex gap-2 items-start" data-testid={`row-admin-activity-${i}`}>
+                <div className="flex-1 space-y-1">
+                  <Input
+                    value={a.title}
+                    onChange={(e) => updateActivity(i, { title: e.target.value })}
+                    placeholder="Activity title"
+                    maxLength={120}
+                    data-testid={`input-admin-activity-title-${i}`}
+                  />
+                  <Input
+                    value={a.description ?? ""}
+                    onChange={(e) => updateActivity(i, { description: e.target.value })}
+                    placeholder="Short description (optional)"
+                    maxLength={300}
+                    data-testid={`input-admin-activity-desc-${i}`}
+                  />
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setActivities((prev) => prev.filter((_, idx) => idx !== i))}
+                  aria-label="Remove activity"
+                  data-testid={`button-admin-remove-activity-${i}`}
+                >
+                  <Trash2 className="w-4 h-4 text-muted-foreground" />
+                </Button>
+              </div>
+            ))}
+            {activities.length < 10 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs"
+                onClick={() =>
+                  setActivities((prev) => [...prev, { id: "", title: "", description: "" }])
+                }
+                data-testid="button-admin-add-activity"
+              >
+                <Plus className="w-3.5 h-3.5 mr-1" /> Add activity
+              </Button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label htmlFor="admin-target">Target check-ins</Label>
+              <Input
+                id="admin-target"
+                type="number"
+                min={1}
+                max={31}
+                value={targetCheckins}
+                onChange={(e) => {
+                  const n = Math.round(Number(e.target.value));
+                  setTargetCheckins(Number.isFinite(n) ? Math.min(31, Math.max(1, n)) : 20);
+                }}
+                data-testid="input-admin-target"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="admin-badge">Badge title</Label>
+              <Input
+                id="admin-badge"
+                value={badgeTitle}
+                onChange={(e) => setBadgeTitle(e.target.value)}
+                placeholder="e.g. Morning Master"
+                maxLength={120}
+                data-testid="input-admin-badge"
+              />
+            </div>
+          </div>
+
+          <Button
+            className="w-full"
+            disabled={publish.isPending || title.trim().length < 3}
+            onClick={() => publish.mutate()}
+            data-testid="button-admin-publish"
+          >
+            <Rocket className="w-4 h-4 mr-2" />
+            {publish.isPending ? "Publishing…" : `Publish for ${monthLabel(month)}`}
+          </Button>
+        </CardContent>
+      </Card>
+    </section>
+  );
+}
+
 // ─── Hub ─────────────────────────────────────────────────────────────────────
 
 function HubView() {
+  const { isAdmin } = useUserRole();
   const { data, isLoading } = useQuery<{ challenges: ChallengeT[] }>({
     queryKey: ["/api/group-challenges"],
   });
@@ -127,6 +396,8 @@ function HubView() {
           ))}
         </section>
       )}
+
+      {isAdmin && <AdminPublishSection existing={data?.challenges ?? []} />}
     </div>
   );
 }
