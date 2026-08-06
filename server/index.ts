@@ -167,6 +167,19 @@ app.use((req, res, next) => {
     console.error("[guide-checkins] Failed to start scheduler:", err);
   }
 
+  // Group-challenge check-in reminders — one gentle evening push + inbox
+  // card per day for participants of an active challenge who haven't checked
+  // in yet. Mute lives on notification_preferences.challengeRemindersEnabled.
+  // See server/challenge-reminders.ts.
+  try {
+    const { startChallengeRemindersScheduler } = await import(
+      "./challenge-reminders"
+    );
+    startChallengeRemindersScheduler();
+  } catch (err) {
+    console.error("[challenge-reminders] Failed to start scheduler:", err);
+  }
+
   // Daily growth snapshots — upserts a growth_snapshots row for every
   // recently-active user so My Level trend charts stay continuous even on
   // days the user never opens the app. See server/growth-snapshots-scheduler.ts.

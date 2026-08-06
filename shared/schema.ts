@@ -2557,6 +2557,12 @@ export const notificationPreferences = pgTable("notification_preferences", {
   // Mutable from Accountability Settings without affecting other reminders.
   guideCheckinsEnabled: boolean("guide_checkins_enabled").default(true),
 
+  // Group-challenge check-in reminders: one gentle evening push + inbox card
+  // per day for participants of an active challenge who haven't checked in
+  // yet that day. Mutable from Accountability Settings without affecting
+  // other reminders.
+  challengeRemindersEnabled: boolean("challenge_reminders_enabled").default(true),
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

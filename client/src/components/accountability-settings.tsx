@@ -297,6 +297,30 @@ export function AccountabilitySettings() {
 
           <Separator />
 
+          {/* Challenge Check-in Reminders */}
+          <div>
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="challenge-reminders-enabled">
+                  Challenge Check-in Reminders
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  An evening reminder on days you haven't checked in to an active group challenge
+                </p>
+              </div>
+              <Switch
+                id="challenge-reminders-enabled"
+                checked={preferences.challengeRemindersEnabled ?? false}
+                onCheckedChange={(checked) => handleToggle('challengeRemindersEnabled', checked)}
+                disabled={!preferences.accountabilityEnabled}
+                data-testid="switch-challenge-reminders-enabled"
+              />
+            </div>
+            {fieldIndicator('challengeRemindersEnabled', 'status-challenge-reminders-enabled')}
+          </div>
+
+          <Separator />
+
           {/* Morning Briefing */}
           <div className="space-y-4">
             <div>
