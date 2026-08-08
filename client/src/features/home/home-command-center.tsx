@@ -11,6 +11,7 @@ import { ProactiveCard } from "@/components/proactive-card";
 import type { ProactiveCardProps } from "@/components/proactive-card";
 import { DWReadingCard } from "@/components/dw-reading-card";
 import { InsightSnapshotCard } from "./components/InsightSnapshotCard";
+import { LevelProgressCardSlide } from "./components/LevelProgressCard";
 import { useNavigationStore } from "@/stores/useNavigationStore";
 import { useHomeSummary } from "./useHomeSummary";
 import { isE2ETestMode } from "@/lib/e2e-mode";
@@ -578,6 +579,8 @@ export default function HomeCommandCenter() {
                   <DWReadingCard energyLevel={summary.energyLevel} className="h-full" />
                 </CarouselItem>
               )}
+
+              <LevelProgressCardSlide />
 
               <CarouselItem className="pl-2 basis-[85%] h-full">
                 <InsightSnapshotCard summary={summary} className="h-full" />
