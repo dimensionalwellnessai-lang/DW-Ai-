@@ -4,10 +4,10 @@ import { z } from "zod";
 import rateLimit from "express-rate-limit";
 
 import { db } from "../db";
-import { storage } from "../storage";
 import { requireAuth, requireAdmin } from "./_shared";
 import { openai } from "../openai";
 import {
+  achievements,
   communityBoards,
   communityPosts,
   communityProfiles,
@@ -374,13 +374,20 @@ export function registerGroupChallengeRoutes(app: Express): void {
       }
       if (completedNow) {
         try {
-          await storage.createAchievement({
-            userId,
-            achievementType: "group_challenge",
-            title: challenge.badgeTitle ?? `${challenge.title} Finisher`,
-            description: `Completed the "${challenge.title}" group challenge (${challenge.targetCheckins} check-ins).`,
-            metadata: { challengeId: challenge.id, month: challenge.month },
-          });
+          // Idempotent at the DB level too: a partial unique index on
+          // achievements (user, type, metadata->>'challengeId') guarantees at
+          // most one completion badge per (user, challenge) even if another
+          // code path races us — see migrations/0039.
+          await db
+            .insert(achievements)
+            .values({
+              userId,
+              achievementType: "group_challenge",
+              title: challenge.badgeTitle ?? `${challenge.title} Finisher`,
+              description: `Completed the "${challenge.title}" group challenge (${challenge.targetCheckins} check-ins).`,
+              metadata: { challengeId: challenge.id, month: challenge.month },
+            })
+            .onConflictDoNothing();
         } catch (err) {
           console.error("Award challenge badge error:", err);
         }

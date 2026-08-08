@@ -2425,7 +2425,14 @@ export const achievements = pgTable("achievements", {
   unlockedAt: timestamp("unlocked_at").defaultNow(),
   relatedDimension: text("related_dimension"),
   metadata: jsonb("metadata"),
-});
+}, (t) => [
+  // A finisher can never earn the same group-challenge completion badge
+  // twice, no matter which code path inserts it. Partial unique index over
+  // (user, type, challengeId) — see migrations/0039.
+  uniqueIndex("achievements_group_challenge_unique_idx")
+    .on(t.userId, t.achievementType, sql`(${t.metadata}->>'challengeId')`)
+    .where(sql`${t.achievementType} = 'group_challenge' AND ${t.metadata}->>'challengeId' IS NOT NULL`),
+]);
 
 export const insertAchievementSchema = createInsertSchema(achievements).omit({
   id: true,
