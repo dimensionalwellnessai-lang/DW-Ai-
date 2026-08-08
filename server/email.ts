@@ -37,7 +37,12 @@ async function getCredentials() {
   if (!connectionSettings || (!connectionSettings.settings.api_key)) {
     throw new Error('Resend not connected');
   }
-  return { apiKey: connectionSettings.settings.api_key, fromEmail: connectionSettings.settings.from_email };
+  return {
+    apiKey: connectionSettings.settings.api_key,
+    // Prefer the explicitly configured from-address (verified domain) over
+    // the connector's default setting.
+    fromEmail: process.env.RESEND_FROM_EMAIL || connectionSettings.settings.from_email,
+  };
 }
 
 // Resend's shared, pre-verified sender address.  Used as a last-resort
