@@ -20,7 +20,7 @@ import { patchRateLimiter, validatePatchPayloadSize, sanitizePatchBody } from ".
 import { storage } from "./storage";
 import { pool } from "./db";
 import { db } from "./db";
-import { elevationPlans, elevationPlanDays, elevationPlanActions, aiLearnings, goals as goalsTable, habits as habitsTable, scheduleBlocks as scheduleBlocksTable, shoppingLists as shoppingListsTable, lifeSystems as lifeSystemsTable, routines as routinesTable, calendarEvents as calendarEventsTable, onboardingProfiles as onboardingProfilesTable, aiSyncSessions as aiSyncSessionsTable, aiSyncItems as aiSyncItemsTable, interactionEvents as interactionEventsTable, aiPatternSnapshots as aiPatternSnapshotsTable, userLearningProfile as userLearningProfileTable } from "@shared/schema";
+import { elevationPlans, elevationPlanDays, elevationPlanActions, aiLearnings, goals as goalsTable, habits as habitsTable, scheduleBlocks as scheduleBlocksTable, shoppingLists as shoppingListsTable, lifeSystems as lifeSystemsTable, routines as routinesTable, calendarEvents as calendarEventsTable, onboardingProfiles as onboardingProfilesTable, aiSyncSessions as aiSyncSessionsTable, aiSyncItems as aiSyncItemsTable, interactionEvents as interactionEventsTable, aiPatternSnapshots as aiPatternSnapshotsTable, userLearningProfile as userLearningProfileTable, returnEvents, todayCheckins, tourProgress } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import * as accountability from "./accountability";
 import { registerRelationshipsRoutes } from "./routes/relationships";
@@ -1255,7 +1255,9 @@ export async function registerRoutes(
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
-    res.json({ user: { id: user.id, email: user.email, username: user.username, firstName: user.firstName, systemName: user.systemName, onboardingCompleted: user.onboardingCompleted, language: user.language ?? null } });
+    // Update last_active_at on every authenticated session ping (best-effort)
+    storage.updateUser(user.id, { lastActiveAt: new Date() }).catch(() => {});
+    res.json({ user: { id: user.id, email: user.email, username: user.username, firstName: user.firstName, systemName: user.systemName, onboardingCompleted: user.onboardingCompleted, language: user.language ?? null, lastActiveAt: user.lastActiveAt ?? null } });
   });
 
   /**
@@ -1303,6 +1305,130 @@ export async function registerRoutes(
   // server/routes/billing.ts and are mounted via registerBillingRoutes above.
   // The previous in-line stubs (simulated upgrade/restore) were removed when
   // the real Stripe paywall shipped.
+
+  // ── Lifecycle: return event logging ──────────────────────────────────────
+  app.post("/api/lifecycle/return-event", requireAuth, async (req, res) => {
+    const parsed = z.object({
+      path: z.enum(["resume", "recalibrate", "start_fresh"]),
+      daysAway: z.number().int().nonnegative().optional(),
+    }).safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error.message });
+    }
+    const { path, daysAway } = parsed.data;
+    try {
+      const [row] = await db.insert(returnEvents).values({
+        userId: req.session.userId!,
+        path,
+        daysAway: daysAway ?? null,
+      }).returning();
+      res.json({ returnEvent: row });
+    } catch (err) {
+      console.error("[lifecycle] Failed to log return event:", err);
+      res.status(500).json({ error: "Failed to log return event" });
+    }
+  });
+
+  // ── Today check-in: upsert capacity + completed actions ──────────────────
+  app.post("/api/today-checkin", requireAuth, async (req, res) => {
+    const parsed = z.object({
+      dateKey: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      capacity: z.enum(["low", "normal", "high"]).optional(),
+      completedActionIds: z.array(z.string()).optional(),
+      microReflection: z.string().max(500).nullable().optional(),
+      minimumDayComplete: z.boolean().optional(),
+    }).safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error.message });
+    }
+    const userId = req.session.userId!;
+    const { dateKey, capacity, completedActionIds, microReflection, minimumDayComplete } = parsed.data;
+    try {
+      const existing = await db.select().from(todayCheckins)
+        .where(eq(todayCheckins.userId, userId)).limit(100);
+      const row = existing.find(r => r.dateKey === dateKey);
+      if (row) {
+        const [updated] = await db.update(todayCheckins)
+          .set({
+            ...(capacity !== undefined ? { capacity } : {}),
+            ...(completedActionIds !== undefined ? { completedActionIds } : {}),
+            ...(microReflection !== undefined ? { microReflection } : {}),
+            ...(minimumDayComplete !== undefined ? { minimumDayComplete } : {}),
+            updatedAt: new Date(),
+          })
+          .where(eq(todayCheckins.id, row.id))
+          .returning();
+        return res.json({ checkin: updated });
+      }
+      const [created] = await db.insert(todayCheckins).values({
+        userId,
+        dateKey,
+        capacity: capacity ?? "normal",
+        completedActionIds: completedActionIds ?? [],
+        microReflection: microReflection ?? null,
+        minimumDayComplete: minimumDayComplete ?? false,
+      }).returning();
+      res.json({ checkin: created });
+    } catch (err) {
+      console.error("[today-checkin] Error:", err);
+      res.status(500).json({ error: "Failed to save check-in" });
+    }
+  });
+
+  app.get("/api/today-checkin/:dateKey", requireAuth, async (req, res) => {
+    const userId = req.session.userId!;
+    const { dateKey } = req.params;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) {
+      return res.status(400).json({ error: "Invalid date key" });
+    }
+    try {
+      const rows = await db.select().from(todayCheckins)
+        .where(eq(todayCheckins.userId, userId));
+      const row = rows.find(r => r.dateKey === dateKey) ?? null;
+      res.json({ checkin: row });
+    } catch {
+      res.status(500).json({ error: "Failed to fetch check-in" });
+    }
+  });
+
+  // ── Tour progress ─────────────────────────────────────────────────────────
+  app.post("/api/tour-progress/:tourId/complete", requireAuth, async (req, res) => {
+    const userId = req.session.userId!;
+    const tourId = req.params.tourId;
+    try {
+      const existing = await db.select().from(tourProgress)
+        .where(eq(tourProgress.userId, userId));
+      const row = existing.find(r => r.tourId === tourId);
+      if (row) {
+        const [updated] = await db.update(tourProgress)
+          .set({ completedAt: new Date(), replayCount: row.replayCount + 1 })
+          .where(eq(tourProgress.id, row.id))
+          .returning();
+        return res.json({ tourProgress: updated });
+      }
+      const [created] = await db.insert(tourProgress).values({
+        userId,
+        tourId,
+        completedAt: new Date(),
+        replayCount: 0,
+      }).returning();
+      res.json({ tourProgress: created });
+    } catch (err) {
+      console.error("[tour-progress] Error:", err);
+      res.status(500).json({ error: "Failed to update tour progress" });
+    }
+  });
+
+  app.get("/api/tour-progress", requireAuth, async (req, res) => {
+    const userId = req.session.userId!;
+    try {
+      const rows = await db.select().from(tourProgress)
+        .where(eq(tourProgress.userId, userId));
+      res.json({ tours: rows });
+    } catch {
+      res.status(500).json({ error: "Failed to fetch tour progress" });
+    }
+  });
 
   app.post("/api/feedback", feedbackLimiter, async (req, res) => {
     try {

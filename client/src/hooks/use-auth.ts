@@ -17,6 +17,8 @@ export interface AuthUser {
    * never picked a language explicitly.
    */
   language?: string | null;
+  /** ISO timestamp of the last time the user was seen active. Used for lifecycle routing. */
+  lastActiveAt?: string | null;
 }
 
 export interface AuthData {

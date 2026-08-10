@@ -19,6 +19,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { isDemoMode, exitDemoMode } from "@/lib/demo-mode";
 import { deepLinkService } from "@/lib/deep-link-service";
 import { isOnboardingComplete, AUTH_ONBOARDING_PAGES } from "@/lib/onboarding";
+import { computeLifecycleState } from "@/lib/lifecycle";
 import { InteractiveTourProvider, useInteractiveTour } from "@/components/interactive-tour-context";
 import { InteractiveTour } from "@/components/interactive-tour";
 import { ReminderBanner } from "@/components/reminder-banner";
@@ -130,6 +131,7 @@ const SettingsPage = lazy(() =>
   import("@/pages/settings").then((m) => ({ default: m.SettingsPage })),
 );
 const AppTourPage = lazy(() => import("@/pages/app-tour"));
+const ToursHubPage = lazy(() => import("@/pages/tours-hub"));
 import { TasksPage } from "@/pages/tasks";
 import PlansPage from "@/pages/plans";
 import ProjectsPage from "@/pages/projects";
@@ -193,6 +195,7 @@ const MyLifePage = lazy(() => import("@/pages/my-life"));
 const GuidancePage = lazy(() => import("@/pages/guidance"));
 const GuidanceConversationsPage = lazy(() => import("@/pages/guidance-conversations"));
 const ToolsPage = lazy(() => import("@/pages/tools"));
+const WelcomeBackPage = lazy(() => import("@/pages/welcome-back"));
 
 function isReturningUser(): boolean {
   try {
@@ -276,7 +279,21 @@ function getLastRoute(): string | null {
 }
 
 function HomeRedirect() {
+  const { user } = useAuth();
+
   if (!isOnboardingComplete()) return <Redirect to="/voice-onboarding" />;
+
+  // Lifecycle routing: long-away users go to welcome-back screen
+  if (user) {
+    const state = computeLifecycleState(
+      !!(user as any).onboardingCompleted,
+      (user as any).lastActiveAt,
+    );
+    if (state === "long_away") {
+      return <Redirect to="/welcome-back" />;
+    }
+  }
+
   const last = getLastRoute();
   return <Redirect to={last ?? "/command-center"} />;
 }
@@ -295,6 +312,7 @@ function Router() {
       <Route path="/account/delete" component={AccountDeletePage} />
       <Route path="/welcome"><Redirect to="/voice-onboarding" /></Route>
       <Route path="/voice-onboarding" component={VoiceOnboardingPage} />
+      <Route path="/welcome-back" component={WelcomeBackPage} />
       <Route path="/role-map" component={RoleMapPage} />
       <Route path="/community" component={CommunityPage} />
       <Route path="/community/b/:slug" component={CommunityPage} />
@@ -398,6 +416,7 @@ function Router() {
       {isRouteEnabled("/settings") && <Route path="/settings" component={SettingsPage} />}
       {/* /support/report — single declaration further below; the gated alias was duplicate. */}
       {isRouteEnabled("/app-tour") && <Route path="/app-tour" component={AppTourPage} />}
+      <Route path="/tours-hub" component={ToursHubPage} />
       
       {isRouteEnabled("/plans") && <Route path="/plans" component={PlansPage} />}
       {isRouteEnabled("/plans") && <Route path="/plans/:planId" component={PlanDetailPage} />}

@@ -24,6 +24,8 @@ export const users = pgTable("users", {
   onboardingCompleted: boolean("onboarding_completed").default(false),
   trialStartAt: timestamp("trial_start_at"),
   createdAt: timestamp("created_at").defaultNow(),
+  /** Last time the user was seen active in the app. Used for lifecycle routing. */
+  lastActiveAt: timestamp("last_active_at"),
   oauthProvider: text("oauth_provider"),
   oauthId: text("oauth_id"),
   coachingMode: text("coaching_mode").default("gentle").$type<CoachingMode>(),
@@ -4672,3 +4674,80 @@ export const growthSnapshots = pgTable(
 );
 
 export type GrowthSnapshot = typeof growthSnapshots.$inferSelect;
+
+// ─── Lifecycle State ──────────────────────────────────────────────────────────
+// Tracks user lifecycle on each app open so the router can decide which
+// screen to show: new / recent / long_away.
+
+export const lifecycleStateEnum = ["new", "recent", "long_away"] as const;
+export type LifecycleState = typeof lifecycleStateEnum[number];
+
+// ─── Today Check-ins ──────────────────────────────────────────────────────────
+// One row per user per calendar day. Captures capacity selection and
+// a list of action ids the user marked done.
+
+export const capacityLevelEnum = ["low", "normal", "high"] as const;
+export type CapacityLevel = typeof capacityLevelEnum[number];
+
+export const todayCheckins = pgTable(
+  "today_checkins",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    /** UTC date key "YYYY-MM-DD". */
+    dateKey: text("date_key").notNull(),
+    /** Capacity level the user selected for this day. */
+    capacity: text("capacity").notNull().default("normal").$type<CapacityLevel>(),
+    /** Ids of actions marked complete today. */
+    completedActionIds: text("completed_action_ids").array().default(sql`'{}'::text[]`),
+    /** Optional one-tap micro-reflection ("what helped?"). */
+    microReflection: text("micro_reflection"),
+    /** Whether the user considers this a Minimum Day completion. */
+    minimumDayComplete: boolean("minimum_day_complete").default(false),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (t) => [uniqueIndex("today_checkins_user_date_idx").on(t.userId, t.dateKey)],
+);
+
+export type TodayCheckin = typeof todayCheckins.$inferSelect;
+export type InsertTodayCheckin = typeof todayCheckins.$inferInsert;
+
+// ─── Tour Progress ─────────────────────────────────────────────────────────────
+// Tracks which tours a user has completed so they can be replayed from the
+// Tours Hub and new tours trigger automatically on first visit.
+
+export const tourProgress = pgTable(
+  "tour_progress",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    /** Stable identifier for the tour, e.g. "global", "home", "anchors". */
+    tourId: text("tour_id").notNull(),
+    completedAt: timestamp("completed_at"),
+    /** Number of times this tour has been replayed. */
+    replayCount: integer("replay_count").notNull().default(0),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (t) => [uniqueIndex("tour_progress_user_tour_idx").on(t.userId, t.tourId)],
+);
+
+export type TourProgress = typeof tourProgress.$inferSelect;
+
+// ─── Return Events ─────────────────────────────────────────────────────────────
+// Logs each time a long-away user returns and which re-entry path they chose.
+
+export const returnPathEnum = ["resume", "recalibrate", "start_fresh"] as const;
+export type ReturnPath = typeof returnPathEnum[number];
+
+export const returnEvents = pgTable("return_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  /** Which path the user chose on the Welcome Back screen. */
+  path: text("path").notNull().$type<ReturnPath>(),
+  /** Days since last active at time of return. */
+  daysAway: integer("days_away"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type ReturnEvent = typeof returnEvents.$inferSelect;
