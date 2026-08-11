@@ -582,6 +582,13 @@ export function SettingsPage() {
               Replay tutorials to learn how each screen works.
             </p>
             <div className="flex flex-wrap gap-2">
+              <Link href="/tours-hub">
+                <Button variant="default" data-testid="button-tours-hub">
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Tours Hub
+                  <span className="ml-1 text-xs opacity-70">— view &amp; replay all tours</span>
+                </Button>
+              </Link>
               <Button 
                 variant="default"
                 onClick={handleStartInteractiveTour}

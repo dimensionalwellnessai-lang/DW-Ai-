@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/page-header";
 import { motion } from "framer-motion";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Zap,
   Brain,
@@ -82,6 +82,14 @@ const TIME_OPTIONS: { value: TimeBand; label: string }[] = [
   { value: "small", label: "20-30 min" },
   { value: "medium", label: "45-60 min" },
   { value: "large", label: "90+ min" },
+];
+
+type CapacityLevel = "low" | "normal" | "high";
+
+const CAPACITY_OPTIONS: { value: CapacityLevel; label: string; description: string; icon: typeof Battery }[] = [
+  { value: "low", label: "Low", description: "Minimum day — rest is progress", icon: BatteryLow },
+  { value: "normal", label: "Normal", description: "Steady and manageable", icon: BatteryMedium },
+  { value: "high", label: "High", description: "Feeling strong — full effort", icon: BatteryFull },
 ];
 
 // ─── Mirror Moment prompts (rotate daily) ────────────────────────────────────
@@ -169,6 +177,7 @@ export default function DWHomePage() {
   const elevationPlanEnabled = isFeatureEnabled("ELEVATION_PLAN");
   const weeklyReviewEnabled = isFeatureEnabled("WEEKLY_REVIEW");
   const { activePlan } = useElevationPlan();
+  const qc = useQueryClient();
 
   const { data: insights = [] } = useQuery<any[]>({
     queryKey: ["/api/insights"],
@@ -181,6 +190,45 @@ export default function DWHomePage() {
   });
 
   const onboardingProfile = onboardingData?.profile ?? null;
+
+  // ── Capacity for today ────────────────────────────────────────────────────
+  const todayKey = new Date().toISOString().split("T")[0];
+  const { data: checkinData } = useQuery<{ checkin: { capacity: CapacityLevel } | null }>({
+    queryKey: ["/api/today-checkin", todayKey],
+    queryFn: async () => {
+      const res = await fetch(`/api/today-checkin/${todayKey}`, { credentials: "include" });
+      if (!res.ok) return { checkin: null };
+      return res.json();
+    },
+    staleTime: 60_000,
+  });
+
+  const [capacity, setCapacityLocal] = useState<CapacityLevel>("normal");
+
+  useEffect(() => {
+    if (checkinData?.checkin?.capacity) {
+      setCapacityLocal(checkinData.checkin.capacity as CapacityLevel);
+    }
+  }, [checkinData]);
+
+  const saveCapacity = useMutation({
+    mutationFn: async (level: CapacityLevel) => {
+      const res = await fetch("/api/today-checkin", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dateKey: todayKey, capacity: level }),
+      });
+      if (!res.ok) throw new Error("Failed to save capacity");
+      return res.json();
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/today-checkin", todayKey] }),
+  });
+
+  const handleCapacityChange = useCallback((level: CapacityLevel) => {
+    setCapacityLocal(level);
+    saveCapacity.mutate(level);
+  }, [saveCapacity]);
 
   // Progressive onboarding card — persisted dismiss per question key
   const LS_ONBOARDING_DISMISSED = "dw_onboarding_card_dismissed";
@@ -457,6 +505,52 @@ export default function DWHomePage() {
             </Card>
           </motion.div>
         )}
+
+        {/* Capacity for today */}
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+        >
+          <Card className="card-modern" data-testid="capacity-card">
+            <CardContent className="p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-foreground">Capacity for today</p>
+                {capacity === "low" && (
+                  <span className="text-xs text-muted-foreground">Minimum day counts ✓</span>
+                )}
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {CAPACITY_OPTIONS.map((opt) => {
+                  const Icon = opt.icon;
+                  const isActive = capacity === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      onClick={() => handleCapacityChange(opt.value)}
+                      data-testid={`capacity-${opt.value}`}
+                      className={`flex flex-col items-center gap-1 p-2.5 rounded-xl border-2 transition-all text-center ${
+                        isActive
+                          ? "border-primary bg-primary/5"
+                          : "border-border hover:border-primary/40"
+                      }`}
+                    >
+                      <Icon className={`h-4 w-4 ${isActive ? "text-primary" : "text-muted-foreground"}`} />
+                      <span className={`text-xs font-medium ${isActive ? "text-primary" : "text-muted-foreground"}`}>
+                        {opt.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              {capacity === "low" && (
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Rest, recovery, and showing up at all — that's a full day.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
 
         <motion.div
           initial={{ opacity: 0, y: -10 }}
