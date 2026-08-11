@@ -59,6 +59,8 @@ integrations = ["javascript_database:1.0.0", "javascript_openai_ai_integrations:
 APP_BASE_URL = "https://dimensionalwellnessai.com"
 OAUTH_REDIRECT_BASE_URL = "https://dimensionalwellnessai.com"
 RESEND_FROM_EMAIL = "no-reply@send.dimensionalwellnessai.com"
+STRIPE_PRICE_ID_ANNUAL = "price_1U3LWWGu1VkwMXarTdheLekJ"
+STRIPE_PRICE_ID_MONTHLY = "price_1U3LU4Gu1VkwMXargXkPJRX7"
 
 [postMerge]
 path = "scripts/post-merge.sh"
