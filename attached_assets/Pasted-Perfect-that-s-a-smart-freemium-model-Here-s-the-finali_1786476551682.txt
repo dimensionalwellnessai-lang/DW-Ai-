@@ -1,0 +1,86 @@
+Perfect — that’s a smart freemium model.  
+Here’s the **finalized tier design** based on your direction.
+
+## Final Product Rules
+
+### Core principle
+✅ **Personalized recommendations are FREE**  
+(so users feel real value and keep using the app)
+
+### Free includes
+- Personalized recommendations (basic depth)
+- Basic wellness insights
+- Build a simple schedule
+- Use app daily with limits
+- Ads shown in free tier
+
+### Pro includes
+- Deeper insights + advanced planning tools
+- More automation/smart adjustments
+- No ads
+- Higher/unlimited usage
+- Full history + export
+- Priority support + early features
+
+---
+
+## Final Tier Table (launch-ready)
+
+| Feature | Free | Pro |
+|---|---|---|
+| Personalized recommendations | ✅ Yes (basic) | ✅ Yes (advanced/deeper) |
+| Wellness insights | ✅ Basic | ✅ Advanced trend insights |
+| Schedule builder | ✅ Basic schedule creation | ✅ Advanced adaptive scheduling |
+| Daily usage | ✅ Generous capped usage | ✅ Unlimited / high cap |
+| History | 14 days | Full history |
+| Exports | ❌ | ✅ |
+| Ads | ✅ Yes | ❌ No ads |
+| Early access features | ❌ | ✅ |
+| Support | Standard | Priority |
+
+---
+
+## Suggested usage limits
+To keep app useful but encourage upgrades:
+- **Free:** 7 core actions/day, 50/month  
+- **Pro:** unlimited (or fair-use cap)
+
+---
+
+## Ads policy (important UX rule)
+Free can have ads, but:
+1. Never show ads during critical flows (onboarding, payment, recovery)
+2. Keep ad frequency moderate (don’t overwhelm)
+3. Show clear “Go Pro to remove ads”
+
+Recommended:
+- Banner ads on non-critical screens
+- Optional rewarded ad for bonus free actions (optional)
+
+---
+
+## Pricing (unchanged)
+- **Pro Monthly:** $14.99
+- **Pro Yearly:** $89.99
+- **Trial:** 7-day trial on yearly (recommended)
+
+---
+
+## Paywall message aligned to this model
+
+**Title:** Keep your momentum with Pro  
+**Subtitle:** Free gives you personalized recommendations, insights, and scheduling.  
+Upgrade for deeper guidance, no ads, and unlimited access.
+
+**Bullets:**
+- Deeper personalized insights
+- Advanced adaptive scheduling
+- Unlimited usage
+- Ad-free experience
+- Full history + exports
+
+---
+
+If you want, I can now give you:
+1) **exact screen copy** for “Free vs Pro” compare page, and  
+2) **exact ad placement rules** page so your team implements ads without hurting user trust.
