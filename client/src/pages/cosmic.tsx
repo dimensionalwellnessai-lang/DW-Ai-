@@ -27,6 +27,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
+import { CosmicCalendarView } from "@/components/cosmic-calendar-view";
 import { useCosmicConsent, loadConsent, saveConsent } from "@/hooks/use-cosmic-consent";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -319,13 +320,6 @@ function saveNumerologyData(data: NumerologyData) {
   }
 }
 
-/** Format an ISO date string (YYYY-MM-DD) as a human-readable short date */
-function formatEventDate(isoDate: string): string {
-  return new Date(isoDate + "T12:00:00").toLocaleDateString("en-US", {
-    weekday: "short", month: "short", day: "numeric",
-  });
-}
-
 // ─── Sub-components ────────────────────────────────────────────────────────────
 
 // Types matching the /api/cosmic/* response shapes
@@ -351,64 +345,11 @@ interface CosmicTodaySnapshot {
   personalReading?: string | null;
 }
 
-function eventBadgeVariant(type: string): "secondary" | "destructive" | "outline" {
-  if (type === "new_moon" || type === "full_moon" || type === "first_quarter" || type === "last_quarter") return "secondary";
-  if (type === "retrograde_start") return "destructive";
-  return "outline";
-}
-
-function eventBadgeLabel(type: string): string {
-  const MAP: Record<string, string> = {
-    new_moon: "moon", full_moon: "moon", first_quarter: "moon", last_quarter: "moon",
-    retrograde_start: "retrograde", retrograde_end: "direct",
-    ingress: "ingress", major_aspect: "aspect", season: "season",
-  };
-  return MAP[type] ?? type;
-}
-
 export function CalendarTab() {
-  const [view, setView] = useState<"day" | "week" | "month">("week");
-
-  // Use local date parts to avoid UTC day-shift (same pattern as parseLocalDate)
-  const now = new Date();
-  const pad = (n: number) => String(n).padStart(2, "0");
-  const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-  // Last day of next month (local)
-  const monthEndDate = new Date(now.getFullYear(), now.getMonth() + 2, 0);
-  const monthEnd = `${monthEndDate.getFullYear()}-${pad(monthEndDate.getMonth() + 1)}-${pad(monthEndDate.getDate())}`;
-
   const { data: todayData, isLoading: todayLoading } = useQuery<CosmicTodaySnapshot>({
     queryKey: ["/api/cosmic/today"],
     staleTime: 30 * 60 * 1000,
   });
-
-  const { data: calData, isLoading: calLoading, isError: calError, refetch } = useQuery<{ events: CosmicCalendarEvent[] }>({
-    queryKey: ["/api/cosmic/calendar", todayStr, monthEnd],
-    queryFn: async () => {
-      const res = await apiRequest("GET", `/api/cosmic/calendar?start=${todayStr}&end=${monthEnd}`);
-      return res.json();
-    },
-    staleTime: 60 * 60 * 1000,
-    retry: 2,
-  });
-
-  const allEvents = calData?.events ?? [];
-
-  const filtered = (() => {
-    if (view === "day") {
-      const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-      const tomorrowStr = `${tomorrow.getFullYear()}-${pad(tomorrow.getMonth() + 1)}-${pad(tomorrow.getDate())}`;
-      return allEvents.filter(e => e.date <= tomorrowStr);
-    }
-    if (view === "week") {
-      const weekEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 7);
-      const weekEndStr = `${weekEnd.getFullYear()}-${pad(weekEnd.getMonth() + 1)}-${pad(weekEnd.getDate())}`;
-      return allEvents.filter(e => e.date <= weekEndStr);
-    }
-    return allEvents;
-  })();
-
-  const isLoading = todayLoading || calLoading;
 
   return (
     <div className="space-y-4">
@@ -444,61 +385,8 @@ export function CalendarTab() {
         </Card>
       )}
 
-      {/* View toggle */}
-      <div className="flex items-center gap-2">
-        <div className="flex gap-1 flex-1" role="group" aria-label="Calendar view">
-          {(["day", "week", "month"] as const).map(v => (
-            <Button
-              key={v}
-              variant={view === v ? "default" : "outline"}
-              size="sm"
-              onClick={() => setView(v)}
-              className="capitalize"
-              aria-pressed={view === v}
-            >
-              {v}
-            </Button>
-          ))}
-        </div>
-        <Button variant="ghost" size="icon" onClick={() => void refetch()} aria-label="Refresh calendar events">
-          <RefreshCw className="h-4 w-4" />
-        </Button>
-      </div>
-
-      {isLoading ? (
-        <div className="space-y-3">
-          {[1, 2, 3].map(n => <Skeleton key={n} className="h-24 w-full rounded-xl" />)}
-        </div>
-      ) : calError ? (
-        <div className="text-center py-6 space-y-2">
-          <p className="text-sm text-muted-foreground">Could not load celestial events.</p>
-          <Button variant="outline" size="sm" onClick={() => void refetch()}>
-            <RefreshCw className="h-3 w-3 mr-1" /> Try again
-          </Button>
-        </div>
-      ) : filtered.length === 0 ? (
-        <p className="text-sm text-muted-foreground text-center py-6">No major events in this window.</p>
-      ) : (
-        <div className="space-y-3" role="list" aria-label="Planetary events">
-          {filtered.map((evt) => (
-            <Card key={`${evt.date}-${evt.type}-${evt.planet ?? ""}-${evt.label}`} role="listitem">
-              <CardContent className="p-4 space-y-1">
-                <div className="flex items-center justify-between">
-                  <p className="font-semibold text-sm">{evt.label}</p>
-                  <Badge variant={eventBadgeVariant(evt.type)} className="text-xs capitalize">
-                    {eventBadgeLabel(evt.type)}
-                  </Badge>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {formatEventDate(evt.date)}
-                </p>
-                <p className="text-xs">{evt.description}</p>
-                <p className="text-xs text-primary italic">✦ {evt.prompt}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+      {/* Real day/week/month calendar with moon phases + celestial events */}
+      <CosmicCalendarView />
     </div>
   );
 }

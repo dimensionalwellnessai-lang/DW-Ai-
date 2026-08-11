@@ -18,7 +18,7 @@ import {
 } from "@shared/schema";
 import { aiCall } from "../ai-engine";
 import { openai } from "../openai";
-import { computeTodaySnapshot, computeCalendarEvents, currentTransits, withCache } from "../ephemeris";
+import { computeTodaySnapshot, computeCalendarEvents, currentTransits, moonPhaseInfo, withCache } from "../ephemeris";
 import { birthCharts } from "@shared/schema";
 
 // In-memory cache of TTS-generated meditation audio, keyed by slug.
@@ -740,7 +740,32 @@ export function registerSpiritualRoutes(app: Express): void {
         60 * 60 * 1000,
         () => computeCalendarEvents(start, end),
       );
-      res.json({ start, end, events });
+      // Per-day moon phase so clients can render a moon icon on every
+      // calendar day, not just lunation event days. Optional `tz` (minutes,
+      // JS getTimezoneOffset semantics: UTC = local + tz) shifts sampling to
+      // the viewer's local noon so the phase matches their calendar day.
+      const tzRaw = typeof req.query.tz === "string" ? Number(req.query.tz) : 0;
+      const tz = Number.isFinite(tzRaw) && Math.abs(tzRaw) <= 900 ? Math.round(tzRaw) : 0;
+      const days = withCache(
+        `cosmic:calendar:days:${start}:${end}:${tz}`,
+        60 * 60 * 1000,
+        () => {
+          const out: { date: string; phase: string; emoji: string; illumination: number }[] = [];
+          for (let t = startDate.getTime(); t <= endDate.getTime(); t += 86400000) {
+            const d = new Date(t);
+            // Local noon for this calendar day, as a UTC instant
+            const info = moonPhaseInfo(new Date(t + 12 * 3600000 + tz * 60000));
+            out.push({
+              date: d.toISOString().slice(0, 10),
+              phase: info.name,
+              emoji: info.emoji,
+              illumination: info.illumination,
+            });
+          }
+          return out;
+        },
+      );
+      res.json({ start, end, events, days });
     } catch (err) {
       console.error("[spiritual] /api/cosmic/calendar error:", err);
       res.status(500).json({ error: "Failed to load calendar" });

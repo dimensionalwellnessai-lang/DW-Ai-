@@ -31,7 +31,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { CosmicCalendar } from "@/components/cosmic-calendar";
+import { CosmicCalendarView } from "@/components/cosmic-calendar-view";
 
 interface AstrologyNote {
   id: string;
@@ -1246,11 +1246,7 @@ ${voiceRules}`;
             </TabsContent>
             
             <TabsContent value="calendar" className="mt-6 space-y-6">
-              <CosmicCalendar birthChart={birthChart ? {
-                sunSign: birthChart.sunSign,
-                moonSign: birthChart.moonSign,
-                risingSign: birthChart.risingSign,
-              } : undefined} />
+              <CosmicCalendarView />
             </TabsContent>
             
             <TabsContent value="journal" className="mt-6 space-y-6">
