@@ -50,7 +50,15 @@ export function computeLifecycleState(
 /** Days-away threshold for "long away" classification (Welcome Back flow). */
 export const LONG_AWAY_THRESHOLD_DAYS = 21;
 
-/** Days-away threshold for "recent" classification (direct-to-Home routing). */
+/**
+ * Days-away threshold that marks the boundary of the "recent" band.
+ * Users last active within this many days are considered recent and route
+ * directly to Home without any re-entry flow.  Users in the 7–21 day middle
+ * band also route to Home (not Welcome Back); Welcome Back is only triggered
+ * at LONG_AWAY_THRESHOLD_DAYS (21 days).  This constant is informational and
+ * may be used by callers to render different copy for very-recent vs.
+ * middle-band users.
+ */
 export const RECENT_THRESHOLD_DAYS = 7;
 
 /**

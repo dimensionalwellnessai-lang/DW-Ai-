@@ -4819,4 +4819,4 @@ export const insertEnergyPracticeSchema = createInsertSchema(energyPractices).om
 });
 
 export type EnergyPractice = typeof energyPractices.$inferSelect;
-export type InsertEnergyPractice = typeof energyPractices.$inferInsert;
+export type InsertEnergyPractice = z.infer<typeof insertEnergyPracticeSchema>;
