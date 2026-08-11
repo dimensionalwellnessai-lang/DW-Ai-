@@ -26,7 +26,9 @@ function getStripe(): StripeConfig | null {
     return null;
   }
   stripeSingleton = {
-    client: new Stripe(key, { apiVersion: "2024-10-28.acacia" as Stripe.LatestApiVersion }),
+    // The account uses Stripe Managed Payments, which requires API version
+    // 2025-03-31.basil or newer.
+    client: new Stripe(key, { apiVersion: "2025-03-31.basil" as Stripe.LatestApiVersion }),
     webhookSecret,
     priceMonthly,
     priceAnnual,
