@@ -2,4 +2,5 @@
 - [Billing architecture (Stripe)](billing-architecture.md) — backend is real Stripe via env vars (not the connector); client must use /api/billing/checkout, never grant entitlement locally.
 - [Helmet CSP must match external assets](csp-helmet.md) — strict CSP blocks any unlisted host; whitelist new external assets in server entry; SW must never cache /api/.
 - [CSRF setup pitfalls](csrf-setup.md) — cookie-parser must precede csrf middleware; never bind tokens to sessionID; client uses one global fetch interceptor, no sendBeacon to /api.
+- [Resend email config](resend-email-config.md) — RESEND_API_KEY secret beats the connector; from-address must be on the verified send. subdomain; forgot-password hides send failures.
 - [Playwright testing gates](playwright-app-gates.md) — seed dw_terms_accepted/dw_splash_shown/dw_onboarding_completed in localStorage + API login via ctx.request, or UI tests never reach the page.
