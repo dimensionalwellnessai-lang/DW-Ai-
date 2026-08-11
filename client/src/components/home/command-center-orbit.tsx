@@ -42,11 +42,8 @@ export function CommandCenterOrbit({ size = 280, className }: CommandCenterOrbit
   const radius = size / 2 - iconSize / 2 - 6;
 
   return (
-    <div
-      className={cn("relative", className)}
-      style={{ width: size, height: size }}
-      data-testid="command-center-orbit"
-    >
+    <div className={cn("flex flex-col items-center", className)} data-testid="command-center-orbit">
+      <div className="relative" style={{ width: size, height: size }}>
       <div
         className="absolute rounded-full border border-border/30"
         style={{ inset: iconSize / 2 + 2 }}
@@ -92,12 +89,13 @@ export function CommandCenterOrbit({ size = 280, className }: CommandCenterOrbit
         );
       })}
 
-      <div className="absolute inset-x-0 -bottom-6 flex justify-center">
-        <div className="grid grid-cols-3 gap-x-6 gap-y-1 text-[10px] text-muted-foreground/70 text-center max-w-[260px]">
-          {MODULES.map((m) => (
-            <span key={m.id} className="truncate">{m.label}</span>
-          ))}
-        </div>
+      </div>
+
+      {/* Module labels — in normal flow below the orbit so nothing overlaps */}
+      <div className="mt-3 grid grid-cols-3 gap-x-6 gap-y-1 text-[10px] text-muted-foreground/70 text-center max-w-[260px]">
+        {MODULES.map((m) => (
+          <span key={m.id} className="truncate">{m.label}</span>
+        ))}
       </div>
     </div>
   );

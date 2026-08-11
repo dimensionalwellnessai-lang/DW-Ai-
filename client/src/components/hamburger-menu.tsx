@@ -177,7 +177,7 @@ export function HamburgerMenu({ open, onClose }: HamburgerMenuProps) {
       onClose={onClose}
       title=""
     >
-      <div className="flex flex-col h-full">
+      <div className="flex flex-col min-h-full">
         {/* Header with greeting */}
         <div className="mb-3">
           <div className="flex items-center gap-3 mb-3">
@@ -266,7 +266,7 @@ export function HamburgerMenu({ open, onClose }: HamburgerMenuProps) {
         <Separator className="mb-1" />
 
         {/* Dimension sections - collapsible */}
-        <div className="flex-1 overflow-y-auto min-h-0 space-y-0.5">
+        <div className="flex-1 space-y-0.5">
           {DIMENSION_SECTIONS.map((section) => (
             <Collapsible
               key={section.title}
