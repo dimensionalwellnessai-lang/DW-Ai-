@@ -881,6 +881,10 @@ export default function VoiceOnboardingPage() {
     setIsSubmittingSuggestions(true);
     try {
       await persistFoundationSnapshot();
+    } catch {
+      // Non-fatal
+    }
+    try {
       await apiRequest("POST", "/api/onboarding/accept-suggestions", { suggestions });
     } catch {
       // Non-fatal
@@ -902,6 +906,10 @@ export default function VoiceOnboardingPage() {
     setIsSubmittingSuggestions(true);
     try {
       await persistFoundationSnapshot();
+    } catch {
+      // Non-fatal
+    }
+    try {
       await apiRequest("POST", "/api/onboarding/accept-suggestions", { suggestions: deferred });
     } catch {
       // Non-fatal — navigate home even if persist fails

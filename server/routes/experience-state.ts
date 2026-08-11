@@ -24,7 +24,7 @@ function inferRoute(type: string, category?: string | null): string | null {
 }
 
 export function registerExperienceStateRoutes(app: Express): void {
-  app.get("/api/feed", requireAuth, async (req, res) => {
+  app.get("/api/feed", async (req, res) => {
     const querySchema = z.object({
       search: z.string().optional(),
       filter: z.string().optional(),
@@ -33,16 +33,22 @@ export function registerExperienceStateRoutes(app: Express): void {
 
     try {
       const { search = "", filter = "all", sort = "relevant" } = querySchema.parse(req.query);
-      const userId = req.session.userId!;
+      const userId = req.session.userId;
       const [wellness, interactions, savedContent] = await Promise.all([
         storage.getWellnessContent(),
-        storage.getFeedInteractions(userId, ["like", "favorite", "save", "hide", "not_interested"]),
-        storage.getSavedContent(userId),
+        userId
+          ? storage.getFeedInteractions(userId, ["like", "favorite", "save", "hide", "not_interested"])
+          : Promise.resolve([]),
+        userId ? storage.getSavedContent(userId) : Promise.resolve([]),
       ]);
 
       const latestActions = new Map<string, Set<string>>();
+      const latestActionStates = new Set<string>();
       for (const row of interactions) {
         const itemKey = row.contentId ?? row.contentUrl ?? row.contentTitle ?? row.id;
+        const actionStateKey = `${itemKey}:${row.action}`;
+        if (latestActionStates.has(actionStateKey)) continue;
+        latestActionStates.add(actionStateKey);
         const actions = latestActions.get(itemKey) ?? new Set<string>();
         if (row.state === "active") actions.add(row.action);
         latestActions.set(itemKey, actions);
@@ -245,7 +251,7 @@ export function registerExperienceStateRoutes(app: Express): void {
       const progress = await storage.upsertTourProgress(req.session.userId!, req.params.tourId, {
         lastStep: body.lastStep,
         totalSteps: body.totalSteps,
-        completedAt: body.complete ? new Date() : undefined,
+        completedAt: body.complete === undefined ? undefined : body.complete ? new Date() : null,
       });
       res.json({ progress });
     } catch (error) {

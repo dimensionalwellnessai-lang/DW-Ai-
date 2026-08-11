@@ -139,6 +139,18 @@ export default function WelcomeBackPage() {
                       <p className="text-sm text-foreground">{profileQuery.data.profile.generatedDirection}</p>
                     </div>
                   )}
+                  {lifestyleQuery.data?.anchors && (
+                    <div>
+                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Anchors</p>
+                      <p className="text-sm text-foreground">{lifestyleQuery.data.anchors}</p>
+                    </div>
+                  )}
+                  {lifestyleQuery.data?.standards && (
+                    <div>
+                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Standards</p>
+                      <p className="text-sm text-foreground">{lifestyleQuery.data.standards}</p>
+                    </div>
+                  )}
                   {lifestyleQuery.data?.minimumDay && (
                     <div>
                       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Minimum Day</p>

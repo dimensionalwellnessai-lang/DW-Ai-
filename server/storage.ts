@@ -4003,31 +4003,27 @@ export class DatabaseStorage implements IStorage {
     tourId: string,
     patch: { lastStep?: number; totalSteps?: number | null; completedAt?: Date | null },
   ): Promise<TourProgress> {
-    const existing = await this.getTourProgress(userId, tourId);
     const now = new Date();
-    const [current] = existing;
-    if (current) {
-      const [updated] = await db.update(tourProgress)
-        .set({
+    const [upserted] = await db.insert(tourProgress)
+      .values({
+        userId,
+        tourId,
+        lastStep: patch.lastStep ?? 0,
+        totalSteps: patch.totalSteps ?? null,
+        completedAt: patch.completedAt ?? null,
+        updatedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: [tourProgress.userId, tourProgress.tourId],
+        set: {
           ...(patch.lastStep !== undefined ? { lastStep: patch.lastStep } : {}),
           ...(patch.totalSteps !== undefined ? { totalSteps: patch.totalSteps } : {}),
           ...(patch.completedAt !== undefined ? { completedAt: patch.completedAt } : {}),
           updatedAt: now,
-        })
-        .where(eq(tourProgress.id, current.id))
-        .returning();
-      return updated;
-    }
-
-    const [created] = await db.insert(tourProgress).values({
-      userId,
-      tourId,
-      lastStep: patch.lastStep ?? 0,
-      totalSteps: patch.totalSteps ?? null,
-      completedAt: patch.completedAt ?? null,
-      updatedAt: now,
-    }).returning();
-    return created;
+        },
+      })
+      .returning();
+    return upserted;
   }
 
   async getWhatsNewSeen(userId: string, version: string): Promise<WhatsNewSeen | undefined> {
@@ -4038,17 +4034,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async markWhatsNewSeen(entry: InsertWhatsNewSeen): Promise<WhatsNewSeen> {
-    const existing = await this.getWhatsNewSeen(entry.userId, entry.version);
-    if (existing) {
-      const [updated] = await db.update(whatsNewSeen)
-        .set({ seenAt: new Date() })
-        .where(eq(whatsNewSeen.id, existing.id))
-        .returning();
-      return updated;
-    }
-
-    const [created] = await db.insert(whatsNewSeen).values(entry).returning();
-    return created;
+    const [upserted] = await db.insert(whatsNewSeen)
+      .values(entry)
+      .onConflictDoUpdate({
+        target: [whatsNewSeen.userId, whatsNewSeen.version],
+        set: { seenAt: new Date() },
+      })
+      .returning();
+    return upserted;
   }
 
   // ── Learning Profile (PR #8) ──────────────────────────────────────────────

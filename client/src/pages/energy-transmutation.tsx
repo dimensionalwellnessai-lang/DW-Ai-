@@ -2,12 +2,13 @@ import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageHeader } from "@/components/page-header";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { apiRequest, parseApiError } from "@/lib/queryClient";
-import { BookmarkPlus, CalendarPlus, Loader2, Sparkles } from "lucide-react";
+import { BookmarkPlus, CalendarPlus, Loader2, Repeat, Sparkles } from "lucide-react";
 
 interface TransmutationResponse {
   practiceId?: string;
@@ -22,6 +23,7 @@ export default function EnergyTransmutationPage() {
   const { toast } = useToast();
   const [situation, setSituation] = useState("");
   const [result, setResult] = useState<TransmutationResponse | null>(null);
+  const [routineCadence, setRoutineCadence] = useState<"daily" | "weekly" | "as_needed">("weekly");
 
   const generateMutation = useMutation({
     mutationFn: async () => {
@@ -75,6 +77,18 @@ export default function EnergyTransmutationPage() {
     },
     onSuccess: () => toast({ title: "Saved", description: "Your reframe is waiting in your saved content." }),
     onError: (error) => toast({ title: "Couldn't save that yet", description: parseApiError(error), variant: "destructive" }),
+  });
+
+  const addToRoutineMutation = useMutation({
+    mutationFn: async () => {
+      if (!result?.practiceId) throw new Error("No transmutation practice to add yet");
+      await apiRequest("PATCH", `/api/energy-practices/${result.practiceId}`, {
+        action: "add_to_routine",
+        routineCadence,
+      });
+    },
+    onSuccess: () => toast({ title: "Added to routines", description: "You can find this in your routines list." }),
+    onError: (error) => toast({ title: "Couldn't add to routine yet", description: parseApiError(error), variant: "destructive" }),
   });
 
   return (
@@ -138,6 +152,26 @@ export default function EnergyTransmutationPage() {
                 <Button variant="outline" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
                   {saveMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <BookmarkPlus className="mr-2 h-4 w-4" />}
                   Save reframe
+                </Button>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+                <Select value={routineCadence} onValueChange={(value: "daily" | "weekly" | "as_needed") => setRoutineCadence(value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose cadence" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="daily">Daily</SelectItem>
+                    <SelectItem value="weekly">Weekly</SelectItem>
+                    <SelectItem value="as_needed">As needed</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="outline"
+                  onClick={() => addToRoutineMutation.mutate()}
+                  disabled={addToRoutineMutation.isPending || !result.practiceId}
+                >
+                  {addToRoutineMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Repeat className="mr-2 h-4 w-4" />}
+                  Add to routine
                 </Button>
               </div>
             </CardContent>

@@ -435,7 +435,7 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
     icon: "sparkles",
     type: "page",
     description: "Reframe charged moments into grounded next steps",
-    showInMenu: false,
+    showInMenu: true,
     menuSection: "more",
     menuOrder: 46,
     enabled: true,

@@ -5,6 +5,12 @@ import { db } from "../db";
 import { energyPractices } from "@shared/schema";
 import { requireAuth } from "./_shared";
 import { openai } from "../openai";
+import { storage } from "../storage";
+
+const transmutationResponseSchema = z.object({
+  reframe: z.string().min(1),
+  exercise: z.string().min(1),
+});
 
 export function registerEnergyTransmutationRoutes(app: Express): void {
   /** GET /api/energy-practices — return the user's recent practices */
@@ -53,9 +59,13 @@ Respond with ONLY valid JSON in exactly this shape:
       let reframe = "";
       let exercise = "";
       try {
-        const parsed = JSON.parse(raw);
-        reframe = parsed.reframe ?? "";
-        exercise = parsed.exercise ?? "";
+        const parsed = transmutationResponseSchema.safeParse(JSON.parse(raw));
+        if (parsed.success) {
+          reframe = parsed.data.reframe;
+          exercise = parsed.data.exercise;
+        } else {
+          throw new Error("Invalid transmutation payload");
+        }
       } catch {
         // fallback
         reframe = "Sometimes stepping back gives us room to see things differently.";
@@ -78,7 +88,7 @@ Respond with ONLY valid JSON in exactly this shape:
   app.patch("/api/energy-practices/:id", requireAuth, async (req, res) => {
     const schema = z.object({
       action: z.enum(["save", "add_to_today", "add_to_routine"]),
-      routineCadence: z.string().optional(),
+      routineCadence: z.enum(["daily", "weekly", "as_needed"]).optional(),
     });
     const parsed = schema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: "Invalid action" });
@@ -93,12 +103,30 @@ Respond with ONLY valid JSON in exactly this shape:
       if (action === "add_to_today") updates.addedToToday = true;
       if (action === "add_to_routine") updates.routineCadence = routineCadence ?? "weekly";
 
-      await db
+      const [practice] = await db
         .update(energyPractices)
         .set({ ...updates, updatedAt: new Date() })
-        .where(and(eq(energyPractices.id, id), eq(energyPractices.userId, userId)));
+        .where(and(eq(energyPractices.id, id), eq(energyPractices.userId, userId)))
+        .returning();
 
-      res.json({ ok: true });
+      if (!practice) {
+        return res.status(404).json({ error: "Practice not found" });
+      }
+
+      if (action === "add_to_routine") {
+        await storage.createRoutine({
+          userId,
+          name: "Energy transmutation practice",
+          dimensionTags: ["emotional"],
+          steps: [
+            { title: "Perspective reframe", description: practice.reframe ?? "" },
+            { title: "Transmutation exercise", description: practice.exercise ?? "" },
+          ],
+          scheduleOptions: { cadence: practice.routineCadence ?? "weekly" },
+        });
+      }
+
+      res.json({ ok: true, practice });
     } catch (err) {
       console.error("[energy-practices] PATCH error", err);
       res.status(500).json({ error: "Update failed" });

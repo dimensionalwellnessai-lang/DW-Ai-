@@ -12,7 +12,7 @@ const GUEST_KEY = `dw:whats-new:${APP_VERSION}`;
 
 export function WhatsNewModal() {
   const [location] = useLocation();
-  const { user } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
   const [open, setOpen] = useState(false);
 
   const hiddenForPath = useMemo(
@@ -46,17 +46,16 @@ export function WhatsNewModal() {
       return;
     }
 
+    if (isAuthLoading) return;
+
     if (user) {
-      if (!stateQuery.isLoading && stateQuery.data && !stateQuery.data.seen) {
-        setOpen(true);
-      }
+      if (stateQuery.isLoading || !stateQuery.data) return;
+      setOpen(!stateQuery.data.seen);
       return;
     }
 
-    if (localStorage.getItem(GUEST_KEY) !== "seen") {
-      setOpen(true);
-    }
-  }, [hiddenForPath, stateQuery.data, stateQuery.isLoading, user]);
+    setOpen(localStorage.getItem(GUEST_KEY) !== "seen");
+  }, [hiddenForPath, isAuthLoading, stateQuery.data, stateQuery.isLoading, user]);
 
   const close = async () => {
     setOpen(false);

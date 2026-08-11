@@ -13,3 +13,6 @@ CREATE TABLE IF NOT EXISTS energy_practices (
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
 );
+
+CREATE INDEX IF NOT EXISTS energy_practices_user_created_at_idx
+  ON energy_practices (user_id, created_at DESC);
