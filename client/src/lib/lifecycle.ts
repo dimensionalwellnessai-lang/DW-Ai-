@@ -6,14 +6,24 @@
  * three lifecycle states so the app can route them to the right screen:
  *
  *   new        → no completed onboarding, go to /voice-onboarding
- *   recent     → last active within 21 days, go to /command-center (home)
+ *   recent     → last active within 7 days, go to /command-center (home)
  *   long_away  → last active 21+ days ago, go to /welcome-back
+ *
+ * The band between 7 and 21 days also routes to /command-center (home).
+ * Welcome Back is reserved for users away 21 or more days.
  */
 
 export type LifecycleState = "new" | "recent" | "long_away";
 
 /**
  * Compute lifecycle state from `lastActiveAt`.
+ *
+ * Three-band classification:
+ *   - new:       onboarding not completed
+ *   - recent:    last active ≤ 7 days ago   → route to Home
+ *   - long_away: last active ≥ 21 days ago  → route to Welcome Back
+ *
+ * Users in the 7–21 day band are treated as "recent" (route to Home).
  *
  * @param onboardingCompleted - whether the user finished onboarding
  * @param lastActiveAt        - ISO string or Date of last activity, or null
@@ -33,15 +43,15 @@ export function computeLifecycleState(
   const last = typeof lastActiveAt === "string" ? new Date(lastActiveAt) : lastActiveAt;
   const daysAway = (Date.now() - last.getTime()) / (1000 * 60 * 60 * 24);
 
-  if (daysAway >= 21) return "long_away";
+  if (daysAway >= LONG_AWAY_THRESHOLD_DAYS) return "long_away";
   return "recent";
 }
 
-/** Days-away threshold for "long away" classification. */
+/** Days-away threshold for "long away" classification (Welcome Back flow). */
 export const LONG_AWAY_THRESHOLD_DAYS = 21;
 
-/** Max days away still considered "recent". */
-export const RECENT_THRESHOLD_DAYS = 21;
+/** Days-away threshold for "recent" classification (direct-to-Home routing). */
+export const RECENT_THRESHOLD_DAYS = 7;
 
 /**
  * Returns a human-readable summary of days away, e.g. "3 weeks" or "45 days".

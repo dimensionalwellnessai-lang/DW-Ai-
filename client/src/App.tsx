@@ -27,6 +27,7 @@ import { UsernameSetupModal } from "@/components/username-setup-modal";
 import { useAuth } from "@/hooks/use-auth";
 import { hydrateLanguageFromServer } from "@/lib/i18n";
 import { AccountabilityCheckIn } from "@/components/accountability-check-in";
+import { WhatsNewModal } from "@/components/whats-new-modal";
 
 // ── Page-level ErrorBoundary ──────────────────────────────────────────────────
 // Catches rendering exceptions inside any page component and shows a calm
@@ -113,7 +114,8 @@ const RecoveryPage = lazy(() =>
 );
 const SpiritualPage = lazy(() => import("@/pages/spiritual"));
 const AstrologyPage = lazy(() => import("@/pages/astrology"));
-const BrowsePage = lazy(() => import("@/pages/browse"));
+const FeedPage = lazy(() => import("@/pages/feed"));
+const EnergyTransmutationPage = lazy(() => import("@/pages/energy-transmutation"));
 const ChallengesPage = lazy(() =>
   import("@/pages/challenges").then((m) => ({ default: m.ChallengesPage })),
 );
@@ -396,7 +398,9 @@ function Router() {
       {isRouteEnabled("/cosmic-insights") && <Route path="/cosmic-insights" component={AstrologyPage} />}
       <Route path="/astrology"><Redirect to="/cosmic-insights" /></Route>
       <Route path="/cosmic" component={CosmicHubPage} />
-      {isRouteEnabled("/browse") && <Route path="/browse" component={BrowsePage} />}
+      {isRouteEnabled("/feed") && <Route path="/feed" component={FeedPage} />}
+      {isRouteEnabled("/browse") && <Route path="/browse"><Redirect to="/feed" /></Route>}
+      {isRouteEnabled("/energy-transmutation") && <Route path="/energy-transmutation" component={EnergyTransmutationPage} />}
       {isRouteEnabled("/library") && <Route path="/library" component={LibraryPage} />}
       {isRouteEnabled("/relationships") && <Route path="/relationships" component={RelationshipsPage} />}
       
@@ -547,7 +551,7 @@ function AppContent() {
     if (!user) return;
     const hasUsername = !!(user as any).username;
     if (hasUsername) return;
-    const socialPaths = ["/browse"];
+    const socialPaths = ["/browse", "/feed"];
     const isSocialPage = socialPaths.some(p => location.startsWith(p));
     if (!isSocialPage) return;
     const shownKey = "dw_username_prompt_shown";
@@ -602,6 +606,7 @@ function AppContent() {
       <SyncTray />
       <FloatingAIWidget />
       <ReminderBanner />
+      <WhatsNewModal />
       <AccountabilityCheckIn />
       <UsernameSetupModal
         open={usernameModalOpen}

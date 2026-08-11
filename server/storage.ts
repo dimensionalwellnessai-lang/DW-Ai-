@@ -292,8 +292,13 @@ import {
   type ElevationPlanAction,
   type InsertElevationPlanAction,
   reminders,
+  tourProgress,
+  whatsNewSeen,
   type Reminder,
   type InsertReminder,
+  type TourProgress,
+  type WhatsNewSeen,
+  type InsertWhatsNewSeen,
   userLearningProfile,
   type UserLearningProfile,
   type InsertUserLearningProfile,
@@ -542,6 +547,7 @@ export interface IStorage {
   deleteSavedContent(id: string, userId: string): Promise<boolean>;
 
   createFeedInteraction(data: InsertFeedInteraction): Promise<FeedInteraction>;
+  getFeedInteractions(userId: string, actions?: string[]): Promise<FeedInteraction[]>;
   getFeedInteractionsByAction(userId: string, action: string): Promise<FeedInteraction[]>;
 
   getChallenges(userId: string): Promise<Challenge[]>;
@@ -844,8 +850,12 @@ export interface IStorage {
   getReminders(userId: string, status?: string): Promise<Reminder[]>;
   getDueReminders(userId: string, before: Date): Promise<Reminder[]>;
   createReminder(reminder: InsertReminder): Promise<Reminder>;
-  updateReminder(id: string, userId: string, fields: Partial<Pick<Reminder, "status" | "scheduledAt" | "title" | "body">>): Promise<Reminder | undefined>;
+  updateReminder(id: string, userId: string, fields: Partial<Pick<Reminder, "status" | "responseState" | "scheduledAt" | "snoozedUntil" | "completedAt" | "skippedAt" | "noResponseAt" | "title" | "body">>): Promise<Reminder | undefined>;
   cancelRemindersBySource(userId: string, sourceEntityType: string, sourceEntityId: string): Promise<void>;
+  getTourProgress(userId: string, tourId?: string): Promise<TourProgress[]>;
+  upsertTourProgress(userId: string, tourId: string, patch: { lastStep?: number; totalSteps?: number | null; completedAt?: Date | null }): Promise<TourProgress>;
+  getWhatsNewSeen(userId: string, version: string): Promise<WhatsNewSeen | undefined>;
+  markWhatsNewSeen(entry: InsertWhatsNewSeen): Promise<WhatsNewSeen>;
 
   // Learning profile (PR #8)
   getLearningProfile(userId: string): Promise<UserLearningProfile | undefined>;
@@ -2019,6 +2029,15 @@ export class DatabaseStorage implements IStorage {
   async createFeedInteraction(data: InsertFeedInteraction): Promise<FeedInteraction> {
     const [created] = await db.insert(feedInteractions).values(data).returning();
     return created;
+  }
+
+  async getFeedInteractions(userId: string, actions?: string[]): Promise<FeedInteraction[]> {
+    const whereClause = actions && actions.length > 0
+      ? and(eq(feedInteractions.userId, userId), inArray(feedInteractions.action, actions))
+      : eq(feedInteractions.userId, userId);
+    return db.select().from(feedInteractions)
+      .where(whereClause)
+      .orderBy(desc(feedInteractions.createdAt));
   }
 
   async getFeedInteractionsByAction(userId: string, action: string): Promise<FeedInteraction[]> {
@@ -3949,7 +3968,7 @@ export class DatabaseStorage implements IStorage {
     return created;
   }
 
-  async updateReminder(id: string, userId: string, fields: Partial<Pick<Reminder, "status" | "scheduledAt" | "title" | "body">>): Promise<Reminder | undefined> {
+  async updateReminder(id: string, userId: string, fields: Partial<Pick<Reminder, "status" | "responseState" | "scheduledAt" | "snoozedUntil" | "completedAt" | "skippedAt" | "noResponseAt" | "title" | "body">>): Promise<Reminder | undefined> {
     const [updated] = await db.update(reminders)
       .set({ ...fields, updatedAt: new Date() })
       .where(and(eq(reminders.id, id), eq(reminders.userId, userId)))
@@ -3968,6 +3987,68 @@ export class DatabaseStorage implements IStorage {
           eq(reminders.status, "scheduled"),
         )
       );
+  }
+
+  async getTourProgress(userId: string, tourId?: string): Promise<TourProgress[]> {
+    const whereClause = tourId
+      ? and(eq(tourProgress.userId, userId), eq(tourProgress.tourId, tourId))
+      : eq(tourProgress.userId, userId);
+    return db.select().from(tourProgress)
+      .where(whereClause)
+      .orderBy(desc(tourProgress.updatedAt), desc(tourProgress.createdAt));
+  }
+
+  async upsertTourProgress(
+    userId: string,
+    tourId: string,
+    patch: { lastStep?: number; totalSteps?: number | null; completedAt?: Date | null },
+  ): Promise<TourProgress> {
+    const existing = await this.getTourProgress(userId, tourId);
+    const now = new Date();
+    const [current] = existing;
+    if (current) {
+      const [updated] = await db.update(tourProgress)
+        .set({
+          ...(patch.lastStep !== undefined ? { lastStep: patch.lastStep } : {}),
+          ...(patch.totalSteps !== undefined ? { totalSteps: patch.totalSteps } : {}),
+          ...(patch.completedAt !== undefined ? { completedAt: patch.completedAt } : {}),
+          updatedAt: now,
+        })
+        .where(eq(tourProgress.id, current.id))
+        .returning();
+      return updated;
+    }
+
+    const [created] = await db.insert(tourProgress).values({
+      userId,
+      tourId,
+      lastStep: patch.lastStep ?? 0,
+      totalSteps: patch.totalSteps ?? null,
+      completedAt: patch.completedAt ?? null,
+      updatedAt: now,
+    }).returning();
+    return created;
+  }
+
+  async getWhatsNewSeen(userId: string, version: string): Promise<WhatsNewSeen | undefined> {
+    const [row] = await db.select().from(whatsNewSeen)
+      .where(and(eq(whatsNewSeen.userId, userId), eq(whatsNewSeen.version, version)))
+      .limit(1);
+    return row;
+  }
+
+  async markWhatsNewSeen(entry: InsertWhatsNewSeen): Promise<WhatsNewSeen> {
+    const existing = await this.getWhatsNewSeen(entry.userId, entry.version);
+    if (existing) {
+      const [updated] = await db.update(whatsNewSeen)
+        .set({ seenAt: new Date() })
+        .where(eq(whatsNewSeen.id, existing.id))
+        .returning();
+      return updated;
+    }
+
+    const [created] = await db.insert(whatsNewSeen).values(entry).returning();
+    return created;
   }
 
   // ── Learning Profile (PR #8) ──────────────────────────────────────────────
