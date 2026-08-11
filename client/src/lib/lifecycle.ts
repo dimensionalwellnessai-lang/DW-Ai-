@@ -6,7 +6,7 @@
  * three lifecycle states so the app can route them to the right screen:
  *
  *   new        → no completed onboarding, go to /voice-onboarding
- *   recent     → last active within 7 days, go to /command-center (home)
+ *   recent     → last active within 21 days, go to /command-center (home)
  *   long_away  → last active 21+ days ago, go to /welcome-back
  */
 
@@ -40,8 +40,8 @@ export function computeLifecycleState(
 /** Days-away threshold for "long away" classification. */
 export const LONG_AWAY_THRESHOLD_DAYS = 21;
 
-/** Days-away threshold for "recent" classification. */
-export const RECENT_THRESHOLD_DAYS = 7;
+/** Max days away still considered "recent". */
+export const RECENT_THRESHOLD_DAYS = 21;
 
 /**
  * Returns a human-readable summary of days away, e.g. "3 weeks" or "45 days".

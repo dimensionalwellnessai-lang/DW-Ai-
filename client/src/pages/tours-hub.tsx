@@ -85,7 +85,7 @@ export default function ToursHubPage() {
       <PageHeader title="Tours & Help" showBack />
       <div className="p-4 pb-24 space-y-4 max-w-lg mx-auto">
         <p className="text-sm text-muted-foreground">
-          Replay any tour at any time, or reset your progress to see it again as a first-time experience.
+          Replay any tour at any time to refresh your memory on how each area works.
         </p>
 
         {TOURS.map((tour) => {

@@ -21,7 +21,7 @@ import { storage } from "./storage";
 import { pool } from "./db";
 import { db } from "./db";
 import { elevationPlans, elevationPlanDays, elevationPlanActions, aiLearnings, goals as goalsTable, habits as habitsTable, scheduleBlocks as scheduleBlocksTable, shoppingLists as shoppingListsTable, lifeSystems as lifeSystemsTable, routines as routinesTable, calendarEvents as calendarEventsTable, onboardingProfiles as onboardingProfilesTable, aiSyncSessions as aiSyncSessionsTable, aiSyncItems as aiSyncItemsTable, interactionEvents as interactionEventsTable, aiPatternSnapshots as aiPatternSnapshotsTable, userLearningProfile as userLearningProfileTable, returnEvents, todayCheckins, tourProgress } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import * as accountability from "./accountability";
 import { registerRelationshipsRoutes } from "./routes/relationships";
 import { registerAccountabilityRoutes } from "./routes/accountability-routes";
@@ -1344,9 +1344,9 @@ export async function registerRoutes(
     const userId = req.session.userId!;
     const { dateKey, capacity, completedActionIds, microReflection, minimumDayComplete } = parsed.data;
     try {
-      const existing = await db.select().from(todayCheckins)
-        .where(eq(todayCheckins.userId, userId)).limit(100);
-      const row = existing.find(r => r.dateKey === dateKey);
+      const [row] = await db.select().from(todayCheckins)
+        .where(and(eq(todayCheckins.userId, userId), eq(todayCheckins.dateKey, dateKey)))
+        .limit(1);
       if (row) {
         const [updated] = await db.update(todayCheckins)
           .set({
@@ -1382,9 +1382,9 @@ export async function registerRoutes(
       return res.status(400).json({ error: "Invalid date key" });
     }
     try {
-      const rows = await db.select().from(todayCheckins)
-        .where(eq(todayCheckins.userId, userId));
-      const row = rows.find(r => r.dateKey === dateKey) ?? null;
+      const [row] = await db.select().from(todayCheckins)
+        .where(and(eq(todayCheckins.userId, userId), eq(todayCheckins.dateKey, dateKey)))
+        .limit(1);
       res.json({ checkin: row });
     } catch {
       res.status(500).json({ error: "Failed to fetch check-in" });
@@ -1396,12 +1396,12 @@ export async function registerRoutes(
     const userId = req.session.userId!;
     const tourId = req.params.tourId;
     try {
-      const existing = await db.select().from(tourProgress)
-        .where(eq(tourProgress.userId, userId));
-      const row = existing.find(r => r.tourId === tourId);
+      const [row] = await db.select().from(tourProgress)
+        .where(and(eq(tourProgress.userId, userId), eq(tourProgress.tourId, tourId)))
+        .limit(1);
       if (row) {
         const [updated] = await db.update(tourProgress)
-          .set({ completedAt: new Date(), replayCount: row.replayCount + 1 })
+          .set({ completedAt: new Date(), replayCount: sql`${tourProgress.replayCount} + 1` })
           .where(eq(tourProgress.id, row.id))
           .returning();
         return res.json({ tourProgress: updated });

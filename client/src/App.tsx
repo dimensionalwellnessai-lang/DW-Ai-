@@ -286,8 +286,8 @@ function HomeRedirect() {
   // Lifecycle routing: long-away users go to welcome-back screen
   if (user) {
     const state = computeLifecycleState(
-      !!(user as any).onboardingCompleted,
-      (user as any).lastActiveAt,
+      !!user.onboardingCompleted,
+      user.lastActiveAt,
     );
     if (state === "long_away") {
       return <Redirect to="/welcome-back" />;

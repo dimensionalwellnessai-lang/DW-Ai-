@@ -1,18 +1,19 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
+import type { ElementType } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { apiRequest } from "@/lib/queryClient";
 import { formatDaysAway } from "@/lib/lifecycle";
 import { useAuth } from "@/hooks/use-auth";
-import { ArrowRight, RotateCcw, RefreshCw, Sparkles } from "lucide-react";
+import { ArrowRight, RefreshCw, Sparkles } from "lucide-react";
 
 type ReturnPath = "resume" | "recalibrate" | "start_fresh";
 
 interface PathOption {
   id: ReturnPath;
-  icon: React.ElementType;
+  icon: ElementType;
   title: string;
   subtitle: string;
 }
@@ -43,11 +44,17 @@ export default function WelcomeBackPage() {
   const { user } = useAuth();
   const [selected, setSelected] = useState<ReturnPath | null>(null);
 
-  const daysAway = formatDaysAway((user as any)?.lastActiveAt);
+  const lastActiveAt = user?.lastActiveAt;
+  const daysAway = formatDaysAway(lastActiveAt);
 
   const logReturn = useMutation({
     mutationFn: (path: ReturnPath) =>
-      apiRequest("POST", "/api/lifecycle/return-event", { path }),
+      apiRequest("POST", "/api/lifecycle/return-event", {
+        path,
+        daysAway: lastActiveAt
+          ? Math.max(0, Math.floor((Date.now() - new Date(lastActiveAt).getTime()) / 86_400_000))
+          : undefined,
+      }),
   });
 
   const handleContinue = () => {
