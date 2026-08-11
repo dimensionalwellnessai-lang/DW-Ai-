@@ -85,17 +85,13 @@ export function CommandCenterOrbit({ size = 280, className }: CommandCenterOrbit
             >
               <Icon className={cn("h-4 w-4", mod.color)} />
             </span>
+            <span className="absolute top-full mt-0.5 text-[10px] leading-none text-muted-foreground whitespace-nowrap">
+              {mod.label}
+            </span>
           </button>
         );
       })}
 
-      </div>
-
-      {/* Module labels — in normal flow below the orbit so nothing overlaps */}
-      <div className="mt-3 grid grid-cols-3 gap-x-6 gap-y-1 text-[10px] text-muted-foreground/70 text-center max-w-[260px]">
-        {MODULES.map((m) => (
-          <span key={m.id} className="truncate">{m.label}</span>
-        ))}
       </div>
     </div>
   );

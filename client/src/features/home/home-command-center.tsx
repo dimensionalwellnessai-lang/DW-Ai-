@@ -411,7 +411,7 @@ export default function HomeCommandCenter() {
       <div className="flex-1 flex flex-col overflow-y-auto">
         {/* ── Hero: calm command-center orb ─────────────────────────────── */}
         <div
-          className="flex flex-col items-center justify-center px-4 pt-4 pb-4 shrink-0"
+          className="flex flex-col items-center justify-center px-4 pt-4 pb-7 shrink-0"
           data-testid="section-orbit-hero"
         >
           <div className="relative flex items-center justify-center">
@@ -419,9 +419,6 @@ export default function HomeCommandCenter() {
             <div className="absolute rounded-full bg-primary/10 blur-2xl" style={{ width: 120, height: 120 }} aria-hidden="true" />
             <CommandCenterOrbit size={280} className="relative z-10" />
           </div>
-          <p className="text-[11px] text-muted-foreground tracking-wide mt-2" data-testid="text-protocol-hint">
-            Pause · Name · Flip · Choose
-          </p>
         </div>
 
         {/* ── Gentle feeling check ──────────────────────────────────────── */}
