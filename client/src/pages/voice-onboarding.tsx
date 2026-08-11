@@ -517,6 +517,10 @@ export default function VoiceOnboardingPage() {
   const [directionText, setDirectionText] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<OnboardingSuggestion[]>([]);
   const [isSubmittingSuggestions, setIsSubmittingSuggestions] = useState(false);
+  const [identityDirection, setIdentityDirection] = useState("");
+  const [standardsText, setStandardsText] = useState("");
+  const [anchorsText, setAnchorsText] = useState("");
+  const [minimumDayText, setMinimumDayText] = useState("");
 
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -546,6 +550,10 @@ export default function VoiceOnboardingPage() {
     queryKey: ["/api/onboarding/profile"],
     retry: false,
   });
+  const { data: lifestylePreferences } = useQuery<Record<string, string>>({
+    queryKey: ["/api/profile/lifestyle-preferences"],
+    retry: false,
+  });
   useEffect(() => {
     if (phase !== "intro" && phase !== "thread") return;
     const profile = profileData?.profile;
@@ -560,6 +568,14 @@ export default function VoiceOnboardingPage() {
       setPhase("summary");
     }
   }, [profileData, phase, suggestions.length]);
+
+  useEffect(() => {
+    if (!lifestylePreferences) return;
+    setIdentityDirection((current) => current || lifestylePreferences.identityVision || "");
+    setStandardsText((current) => current || lifestylePreferences.standards || "");
+    setAnchorsText((current) => current || lifestylePreferences.anchors || "");
+    setMinimumDayText((current) => current || lifestylePreferences.minimumDay || "");
+  }, [lifestylePreferences]);
 
   // ── Check voice support ──
   useEffect(() => {
@@ -844,9 +860,30 @@ export default function VoiceOnboardingPage() {
     }
   }, [thread, setLocation]);
 
+  const persistFoundationSnapshot = useCallback(async () => {
+    const payload = {
+      ...(lifestylePreferences ?? {}),
+      identityVision: identityDirection.trim(),
+      standards: standardsText.trim(),
+      anchors: anchorsText.trim(),
+      minimumDay: minimumDayText.trim(),
+    };
+
+    if (!payload.identityVision && !payload.standards && !payload.anchors && !payload.minimumDay) {
+      return;
+    }
+
+    await apiRequest("POST", "/api/profile/lifestyle-preferences", payload);
+  }, [anchorsText, identityDirection, lifestylePreferences, minimumDayText, standardsText]);
+
   // ── Accept/defer suggestions and populate My Life ──
   const handleAcceptSuggestions = useCallback(async () => {
     setIsSubmittingSuggestions(true);
+    try {
+      await persistFoundationSnapshot();
+    } catch {
+      // Non-fatal
+    }
     try {
       await apiRequest("POST", "/api/onboarding/accept-suggestions", { suggestions });
     } catch {
@@ -855,7 +892,7 @@ export default function VoiceOnboardingPage() {
     setIsSubmittingSuggestions(false);
     markOnboardingComplete();
     setLocation("/my-life");
-  }, [suggestions, setLocation]);
+  }, [persistFoundationSnapshot, suggestions, setLocation]);
 
   // ── Update a single suggestion status ──
   const updateSuggestion = useCallback((id: string, patch: Partial<OnboardingSuggestion>) => {
@@ -868,6 +905,11 @@ export default function VoiceOnboardingPage() {
     setSuggestions(deferred);
     setIsSubmittingSuggestions(true);
     try {
+      await persistFoundationSnapshot();
+    } catch {
+      // Non-fatal
+    }
+    try {
       await apiRequest("POST", "/api/onboarding/accept-suggestions", { suggestions: deferred });
     } catch {
       // Non-fatal — navigate home even if persist fails
@@ -875,14 +917,12 @@ export default function VoiceOnboardingPage() {
     setIsSubmittingSuggestions(false);
     markOnboardingComplete();
     setLocation("/");
-  }, [suggestions, setLocation]);
+  }, [persistFoundationSnapshot, suggestions, setLocation]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // Render: Summary phase — "What I'm hearing" + editable AI suggestions
   // ─────────────────────────────────────────────────────────────────────────
   if (phase === "summary") {
-    const pendingCount = suggestions.filter((s) => s.status === "pending" || s.status === "accepted").length;
-
     return (
       <div className="flex flex-col min-h-screen bg-background" data-testid="voice-onboarding-summary">
         <header className="flex items-center justify-between px-4 py-3 border-b bg-background/95 backdrop-blur-sm">
@@ -895,7 +935,12 @@ export default function VoiceOnboardingPage() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => { markOnboardingComplete(); setLocation("/"); }}
+            onClick={() => {
+              void persistFoundationSnapshot().finally(() => {
+                markOnboardingComplete();
+                setLocation("/");
+              });
+            }}
             className="text-muted-foreground text-xs"
             data-testid="button-skip-summary"
           >
@@ -929,6 +974,60 @@ export default function VoiceOnboardingPage() {
             >
               <h2 className="text-sm font-semibold text-foreground">Based on our conversation, I'd like to suggest a starting structure for your life.</h2>
               <p className="text-xs text-muted-foreground">Accept, rename, or set aside anything that doesn't feel right. This is yours to shape.</p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2 }}
+              className="rounded-2xl border bg-card p-4 space-y-4"
+            >
+              <div className="space-y-1">
+                <h2 className="text-sm font-semibold text-foreground">A few foundation notes to carry forward</h2>
+                <p className="text-xs text-muted-foreground">These can stay simple. You can refine them later.</p>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Identity direction</p>
+                <Textarea
+                  value={identityDirection}
+                  onChange={(event) => setIdentityDirection(event.target.value)}
+                  placeholder="Who are you becoming in this season?"
+                  rows={2}
+                  className="min-h-[64px]"
+                />
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Standards</p>
+                  <Textarea
+                    value={standardsText}
+                    onChange={(event) => setStandardsText(event.target.value)}
+                    placeholder="What are the ways you want to carry yourself?"
+                    rows={4}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Anchors</p>
+                  <Textarea
+                    value={anchorsText}
+                    onChange={(event) => setAnchorsText(event.target.value)}
+                    placeholder="What rhythms help you stay steady?"
+                    rows={4}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Minimum Day</p>
+                <Textarea
+                  value={minimumDayText}
+                  onChange={(event) => setMinimumDayText(event.target.value)}
+                  placeholder="What counts as enough on a hard day?"
+                  rows={3}
+                />
+              </div>
             </motion.div>
 
             {/* Suggestion cards */}

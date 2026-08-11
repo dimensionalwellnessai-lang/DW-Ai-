@@ -764,12 +764,16 @@ export const savedContentRelations = relations(savedContent, ({ one }) => ({
 export const feedInteractions = pgTable("feed_interactions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id),
+  contentId: text("content_id"),
   contentType: text("content_type"), // video, article, exercise, blog
   contentTitle: text("content_title"),
   contentUrl: text("content_url"),
-  action: text("action").notNull(), // "not_interested" | "saved" | "scheduled"
+  action: text("action").notNull(), // "like" | "favorite" | "save" | "hide" | "not_interested" | "scheduled"
+  collectionKey: text("collection_key"),
+  state: text("state").notNull().default("active"),
   topic: text("topic"), // topic/category for personalization learning
   createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const feedInteractionsRelations = relations(feedInteractions, ({ one }) => ({
@@ -1585,6 +1589,7 @@ export const insertSavedContentSchema = createInsertSchema(savedContent).omit({
 export const insertFeedInteractionSchema = createInsertSchema(feedInteractions).omit({
   id: true,
   createdAt: true,
+  updatedAt: true,
 });
 
 export const insertChallengeSchema = createInsertSchema(challenges).omit({
@@ -3280,6 +3285,9 @@ export type ReminderType = typeof reminderTypeEnum[number];
 export const reminderStatusEnum = ["scheduled", "sent", "dismissed", "cancelled"] as const;
 export type ReminderStatus = typeof reminderStatusEnum[number];
 
+export const reminderResponseStateEnum = ["pending", "completed", "snoozed", "skipped", "no_response"] as const;
+export type ReminderResponseState = typeof reminderResponseStateEnum[number];
+
 export const reminders = pgTable("reminders", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").references(() => users.id),
@@ -3288,6 +3296,11 @@ export const reminders = pgTable("reminders", {
   body: text("body"),
   scheduledAt: timestamp("scheduled_at").notNull(),
   status: text("status").notNull().default("scheduled").$type<ReminderStatus>(),
+  responseState: text("response_state").notNull().default("pending").$type<ReminderResponseState>(),
+  completedAt: timestamp("completed_at"),
+  snoozedUntil: timestamp("snoozed_until"),
+  skippedAt: timestamp("skipped_at"),
+  noResponseAt: timestamp("no_response_at"),
   /** Optional reference to a source entity (followup, plan, etc.) */
   sourceEntityType: text("source_entity_type"),
   sourceEntityId: varchar("source_entity_id"),
@@ -4724,15 +4737,40 @@ export const tourProgress = pgTable(
     userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
     /** Stable identifier for the tour, e.g. "global", "home", "anchors". */
     tourId: text("tour_id").notNull(),
+    startedAt: timestamp("started_at").defaultNow(),
+    lastStep: integer("last_step").notNull().default(0),
+    totalSteps: integer("total_steps"),
     completedAt: timestamp("completed_at"),
     /** Number of times this tour has been replayed. */
     replayCount: integer("replay_count").notNull().default(0),
     createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
   },
   (t) => [uniqueIndex("tour_progress_user_tour_idx").on(t.userId, t.tourId)],
 );
 
 export type TourProgress = typeof tourProgress.$inferSelect;
+
+export const whatsNewSeen = pgTable(
+  "whats_new_seen",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    version: text("version").notNull(),
+    seenAt: timestamp("seen_at").defaultNow(),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (t) => [uniqueIndex("whats_new_seen_user_version_idx").on(t.userId, t.version)],
+);
+
+export const insertWhatsNewSeenSchema = createInsertSchema(whatsNewSeen).omit({
+  id: true,
+  seenAt: true,
+  createdAt: true,
+});
+
+export type WhatsNewSeen = typeof whatsNewSeen.$inferSelect;
+export type InsertWhatsNewSeen = z.infer<typeof insertWhatsNewSeenSchema>;
 
 // ─── Return Events ─────────────────────────────────────────────────────────────
 // Logs each time a long-away user returns and which re-entry path they chose.
@@ -4751,3 +4789,34 @@ export const returnEvents = pgTable("return_events", {
 });
 
 export type ReturnEvent = typeof returnEvents.$inferSelect;
+
+// ─── Energy Transmutation Practices ───────────────────────────────────────────
+// Each row captures a situation the user shared + the AI reframe and practice.
+
+export const energyPractices = pgTable("energy_practices", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  /** The raw situation text the user shared. */
+  situation: text("situation").notNull(),
+  /** AI-generated perspective reframe. */
+  reframe: text("reframe"),
+  /** AI-generated transmutation exercise. */
+  exercise: text("exercise"),
+  /** Whether the user added this practice to their Today plan. */
+  addedToToday: boolean("added_to_today").default(false),
+  /** Whether the user saved this reframe for future reference. */
+  saved: boolean("saved").default(false),
+  /** Optional recurring routine cadence, e.g. "daily", "weekly". */
+  routineCadence: text("routine_cadence"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertEnergyPracticeSchema = createInsertSchema(energyPractices).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type EnergyPractice = typeof energyPractices.$inferSelect;
+export type InsertEnergyPractice = z.infer<typeof insertEnergyPracticeSchema>;

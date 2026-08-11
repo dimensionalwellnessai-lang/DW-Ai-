@@ -51,6 +51,8 @@ import { registerCommunityRoutes } from "./routes/community";
 import { registerGroupChallengeRoutes } from "./routes/group-challenges";
 import { registerLevelProgressRoutes } from "./routes/level-progress";
 import { registerLearningThreadRoutes } from "./routes/learning-threads";
+import { registerExperienceStateRoutes } from "./routes/experience-state";
+import { registerEnergyTransmutationRoutes } from "./routes/energy-transmutation";
 import { sendPasswordResetEmail, sendFeedbackEmail, sendAccountDeletionEmail, sendSupportReportEmail, sendWelcomeEmail } from "./email";
 import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, detectIntentAndRespondStreaming, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument, generateInteractionInsights, generateContextualSearch, generateIngredientSubstitutes, processConversationIntoInsights, generateElevationPlanStructure, openai, getAiConfigStatus, generateDiscoverRandomContent, enforceOneQuestion, type SearchCategory } from "./openai";
 import { generateProactiveNudges, generateMorningBriefing } from "./proactive";
@@ -608,6 +610,8 @@ export async function registerRoutes(
 
   // Learning Threads — Spec 13 PR C: save coaching conversations as reusable learning threads
   registerLearningThreadRoutes(app);
+  registerExperienceStateRoutes(app);
+  registerEnergyTransmutationRoutes(app);
 
   // Spiritual workspace: meditation library/sessions, prayer journal, cosmic feed
   registerSpiritualRoutes(app);
