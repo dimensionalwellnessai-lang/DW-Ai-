@@ -282,7 +282,7 @@ export function registerBillingRoutes(app: Express): void {
       }
       const user = await storage.getUser(req.session.userId);
       if (user?.subscriptionTier === "plus") {
-        return res.json({ success: true, tier: "plus", message: "DW Plus restored successfully" });
+        return res.json({ success: true, tier: "plus", message: "DW Pro restored successfully" });
       }
       return res.json({ success: false, tier: "free", message: "No active subscription found" });
     } catch (err) {

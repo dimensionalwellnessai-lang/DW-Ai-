@@ -15,7 +15,7 @@ interface BillingStatus {
 }
 
 /**
- * DW Plus paywall — shown once after onboarding (soft paywall) and also when
+ * DW Pro paywall — shown once after onboarding (soft paywall) and also when
  * free-tier limits are reached. Design: calm, minimal, consistent with app.
  *
  * Purchase simulation: on web/Replit, tapping "Start Free Trial" immediately
@@ -118,7 +118,7 @@ export default function PaywallPage() {
       if (result.success) {
         toast({
           title: "Purchase restored",
-          description: "DW Plus has been restored to your account.",
+          description: "DW Pro has been restored to your account.",
         });
         setLocation("/");
       } else {
@@ -149,23 +149,26 @@ export default function PaywallPage() {
         {/* Header */}
         <div className="text-center space-y-2">
           <p className="text-xs uppercase tracking-widest text-muted-foreground font-medium">
-            DW Plus
+            DW Pro
           </p>
           <h1 className="text-2xl font-display font-semibold text-foreground">
-            Unlimited clarity,<br />every day.
+            Keep your momentum<br />with Pro.
           </h1>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Remove daily limits and unlock the full DW experience.
+            Free gives you personalized recommendations, insights, and scheduling.
+            Upgrade for deeper guidance, no ads, and unlimited access.
           </p>
         </div>
 
         {/* Benefits */}
         <ul className="space-y-3">
           {[
-            { emoji: "∞", text: "Unlimited daily messages" },
-            { emoji: "∞", text: "Unlimited chat sessions" },
-            { emoji: "📂", text: "Full conversation history" },
-            { emoji: "🧠", text: "Long-term memory across sessions" },
+            { emoji: "🎯", text: "Advanced personalized insights" },
+            { emoji: "📅", text: "Adaptive scheduling tools" },
+            { emoji: "∞", text: "Unlimited daily usage" },
+            { emoji: "📂", text: "Full history + export" },
+            { emoji: "🚫", text: "Ad-free experience" },
+            { emoji: "⚡", text: "Early access to new features" },
           ].map((item) => (
             <li key={item.text} className="flex items-center gap-3 text-sm">
               <span className="w-6 text-center text-base shrink-0" aria-hidden="true">
@@ -176,11 +179,11 @@ export default function PaywallPage() {
           ))}
         </ul>
 
-        {/* Plus members see a manage-subscription panel instead of pricing */}
+        {/* Pro members see a manage-subscription panel instead of pricing */}
         {isPlus ? (
           <div className="space-y-3" data-testid="panel-already-plus">
             <div className="rounded-xl border border-border p-4 text-center space-y-1">
-              <p className="text-sm font-medium text-foreground">You're on DW Plus</p>
+              <p className="text-sm font-medium text-foreground">You're on DW Pro</p>
               {status?.periodEnd && (
                 <p className="text-xs text-muted-foreground">
                   Renews {new Date(status.periodEnd).toLocaleDateString()}
@@ -213,12 +216,20 @@ export default function PaywallPage() {
               {checkingOut === "annual" ? (
                 <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" />Redirecting…</span>
               ) : (
-                "Start annual plan"
+                "Start 7-day free trial"
               )}
             </Button>
-            <p className="text-center text-xs text-muted-foreground">
-              Cancel anytime&nbsp;•&nbsp;Secure checkout via Stripe
-            </p>
+            <div className="text-center space-y-0.5">
+              <p className="text-xs text-muted-foreground">
+                Pro Yearly — $89.99/yr <span className="text-primary font-medium">(Best Value)</span>
+              </p>
+              <p className="text-xs text-muted-foreground">
+                7 days free, then $89.99/year&nbsp;•&nbsp;Cancel before trial ends to avoid charges
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Secure checkout via Stripe
+              </p>
+            </div>
             {!billingConfigured && (
               <p className="text-center text-xs text-destructive" data-testid="text-billing-unavailable">
                 Subscriptions aren't available on this server yet.
@@ -247,9 +258,11 @@ export default function PaywallPage() {
           {showOtherPlans && (
             <div className="rounded-xl border border-border p-4 space-y-3" data-testid="panel-other-plans">
               <div className="space-y-1">
-                <p className="text-sm font-medium text-foreground">Monthly</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium text-foreground">Monthly</p>
+                </div>
                 <p className="text-xs text-muted-foreground">
-                  $9.99/month&nbsp;•&nbsp;No trial&nbsp;•&nbsp;Cancel anytime
+                  $14.99/month&nbsp;•&nbsp;No trial&nbsp;•&nbsp;Cancel anytime
                 </p>
               </div>
               <Button
