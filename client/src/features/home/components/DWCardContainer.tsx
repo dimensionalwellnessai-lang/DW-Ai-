@@ -2,7 +2,7 @@
  * DWCardContainer – shared card shell for all Home Command Center cards.
  *
  * Provides consistent padding, border, rounded corners, and an optional
- * "Chat with DW about this" secondary action that routes to /talk with prefill.
+ * "Talk to DW about this" secondary action that routes to /talk with prefill.
  */
 
 import { useLocation } from "wouter";
@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 interface DWCardContainerProps {
   children: React.ReactNode;
   className?: string;
-  /** If provided, clicking "Chat with DW about this" navigates to /talk with this prefill text. */
+  /** If provided, clicking "Talk to DW about this" navigates to /talk with this prefill text. */
   chatPrefill?: string;
 }
 
@@ -42,7 +42,7 @@ export function DWCardContainer({ children, className, chatPrefill }: DWCardCont
             className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
           >
             <MessageCircle className="h-3.5 w-3.5 flex-shrink-0" />
-            <span>Chat with DW about this</span>
+            <span>Talk to DW about this</span>
           </button>
         )}
       </CardContent>

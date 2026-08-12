@@ -35,7 +35,7 @@ const TOURS: TourDefinition[] = [
   },
   {
     id: "talk",
-    label: "DW Chat",
+    label: "Talk to DW",
     description: "How to use the conversation space effectively — prompts, mood tracking, and insights.",
   },
   {

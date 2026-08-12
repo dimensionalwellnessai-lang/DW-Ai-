@@ -181,9 +181,9 @@ describe("FollowUpCard – active AI follow-up", () => {
     expect(screen.getByText(/take action/i)).toBeTruthy();
   });
 
-  it("renders 'Chat with DW' button", () => {
+  it("renders 'Talk to DW' button", () => {
     renderWithFollowUp();
-    expect(screen.getByText(/chat with dw/i)).toBeTruthy();
+    expect(screen.getByText(/talk to dw/i)).toBeTruthy();
   });
 
   it("navigates to /action-center on 'Take action' click", () => {
@@ -192,9 +192,9 @@ describe("FollowUpCard – active AI follow-up", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/action-center");
   });
 
-  it("navigates to /talk with the follow-up prompt as prefill on 'Chat with DW' click", () => {
+  it("navigates to /talk with the follow-up prompt as prefill on 'Talk to DW' click", () => {
     renderWithFollowUp();
-    fireEvent.click(screen.getByText(/chat with dw/i));
+    fireEvent.click(screen.getByText(/talk to dw/i));
     expect(mockNavigate).toHaveBeenCalledOnce();
     const url: string = mockNavigate.mock.calls[0][0];
     expect(url).toContain("/talk");

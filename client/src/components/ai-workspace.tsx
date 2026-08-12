@@ -177,7 +177,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 export function AIWorkspace() {
-  usePageMeta("DW Chat", "Talk with your AI wellness coach for guidance, planning, and support.");
+  usePageMeta("Talk to DW", "Talk with your AI wellness coach for guidance, planning, and support.");
   const { toast } = useToast();
   const { logout } = useAuth();
   const [location, setLocation] = useLocation();

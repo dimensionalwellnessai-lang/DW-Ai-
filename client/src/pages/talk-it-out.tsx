@@ -200,7 +200,7 @@ Guidelines:
 Start by simply being present and inviting them to share.`;
 
 export function TalkItOutPage() {
-  usePageMeta("Talk It Out", "Process emotions and find clarity through a guided conversation with DW.");
+  usePageMeta("Talk to DW", "Process emotions and find clarity through a guided conversation with DW.");
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const { user } = useAuth();

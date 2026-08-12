@@ -130,7 +130,7 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
   {
     id: "life-dashboard",
     path: "/life-dashboard",
-    label: "Life Dashboard",
+    label: "Life Blueprint",
     icon: "layout-grid",
     type: "page",
     description: "Your wellness hub",
@@ -207,8 +207,8 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
   {
     id: "command-center",
     path: "/command-center",
-    label: "Today",
-    navLabel: "Home",
+    label: "Command Center",
+    navLabel: "Command Center",
     icon: "sun",
     type: "page",
     description: "Your daily hub — schedule, routines, and energy",
@@ -626,7 +626,7 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
   {
     id: "talk",
     path: "/talk",
-    label: "Talk It Out",
+    label: "Talk to DW",
     navLabel: "DW",
     icon: "message-circle",
     type: "page",

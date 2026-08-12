@@ -158,8 +158,8 @@ function getNowOrNext(
 
 export default function HomeCommandCenter() {
   usePageMeta(
-    "Home",
-    "Your Life System at a glance — Core, Expression, and Creation in one orbit.",
+    "Command Center",
+    "Your Life Blueprint at a glance — Core, Expression, and Creation in one orbit.",
   );
   const summary = useHomeSummary();
   const [, navigate] = useLocation();

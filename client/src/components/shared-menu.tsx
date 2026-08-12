@@ -77,8 +77,8 @@ interface MenuSection {
 const MENU_SECTIONS: MenuSection[] = [
   {
     items: [
-      { id: "command-center", name: "⭐ Life Command Center", path: "/command-center", icon: Zap },
-      { id: "calendar", name: "📅 Life Timeline", path: "/calendar", icon: Calendar },
+      { id: "command-center", name: "⭐ Command Center", path: "/command-center", icon: Zap },
+      { id: "calendar", name: "📅 Calendar", path: "/calendar", icon: Calendar },
     ]
   },
   {
@@ -157,7 +157,7 @@ const MENU_SECTIONS: MenuSection[] = [
     items: [
       { id: "life-blueprint", name: "📜 Life Blueprint", path: "/life-blueprint", icon: BookOpen, dimension: "identity" },
       { id: "cosmic", name: "🌌 Cosmic Hub", path: "/cosmic", icon: Sparkles, dimension: "identity" },
-      { id: "life-timeline", name: "📅 Life Timeline", path: "/calendar", icon: Calendar, dimension: "identity" },
+      { id: "life-timeline", name: "📅 Calendar", path: "/calendar", icon: Calendar, dimension: "identity" },
     ]
   },
   {

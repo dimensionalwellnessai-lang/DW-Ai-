@@ -2,7 +2,7 @@
  * TodayCard – always-expanded anchor card on the Home Command Center.
  *
  * Shows today's date, the next calendar event (or mock placeholder),
- * and two primary CTAs: "Open Calendar" and "Chat with DW".
+ * and two primary CTAs: "Open Calendar" and "Talk to DW".
  *
  * This card is NEVER collapsed; it is always the top card on Home.
  */
@@ -93,7 +93,7 @@ export function TodayCard({ summary }: TodayCardProps) {
           onClick={handleChatWithDW}
           className="flex-1 text-center rounded-lg bg-muted/60 text-foreground/70 text-xs font-medium px-3 py-2 hover:bg-muted transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
-          Chat with DW
+          Talk to DW
         </button>
       </div>
     </DWCardContainer>

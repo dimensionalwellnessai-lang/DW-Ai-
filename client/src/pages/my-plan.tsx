@@ -210,7 +210,7 @@ function PlanSkeleton() {
 }
 
 export default function MyPlanPage() {
-  usePageMeta({ title: "My DW Plan — Dimensional Wellness AI" });
+  usePageMeta({ title: "My Plan — Dimensional Wellness AI" });
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [bodyScanOpen, setBodyScanOpen] = useState(false);
@@ -244,7 +244,7 @@ export default function MyPlanPage() {
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <PageHeader
-        title="My DW Plan"
+        title="My Plan"
         subtitle="Your unified weekly system"
         actions={
           hasPlan ? (

@@ -60,7 +60,7 @@ interface Goal {
 }
 
 export default function LifeBlueprintV2() {
-  usePageMeta("Life Blueprint v2", "Explore your next-generation life blueprint.");
+  usePageMeta("Life Blueprint", "Explore your next-generation life blueprint.");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [viewMode, setViewMode] = useState<ViewMode>("overview");

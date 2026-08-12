@@ -176,6 +176,8 @@ export default function MyLifePage() {
     id: string; type: string; title: string; status: string;
   }>;
   const hasPendingSuggestions = pendingSuggestions.some((s) => s.status === "pending");
+  const hasOnlyDeferredSuggestions =
+    !hasPendingSuggestions && pendingSuggestions.some((s) => s.status === "deferred");
 
   const activeGoals = goals.filter((g) => g.status !== "completed").length;
   const activeHabits = habits.filter((h) => h.isActive !== false).length;
@@ -190,7 +192,7 @@ export default function MyLifePage() {
         <div className="flex items-center gap-2 pt-1">
           <Sparkles className="h-4 w-4 text-primary flex-shrink-0" aria-hidden="true" />
           <p className="text-sm text-muted-foreground">
-            Your life system — built from your patterns and shaped by your choices.
+            Your Life Blueprint — built from your patterns and shaped by your choices.
           </p>
         </div>
 
@@ -206,7 +208,7 @@ export default function MyLifePage() {
                   <p className="text-sm font-semibold text-foreground">DW has suggestions for you</p>
                   <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
                     Based on your onboarding conversation, DW generated{" "}
-                    {pendingSuggestions.filter((s) => s.status === "pending").length} suggestions for your life system.
+                    {pendingSuggestions.filter((s) => s.status === "pending").length} suggestions for your Life Blueprint.
                     Review and accept what fits.
                   </p>
                 </div>
@@ -214,8 +216,38 @@ export default function MyLifePage() {
               <Button
                 size="sm"
                 className="w-full text-xs"
-                onClick={() => setLocation("/voice-onboarding")}
+                onClick={() => setLocation("/voice-onboarding?review=1")}
                 data-testid="button-review-suggestions"
+              >
+                Review suggestions
+                <ArrowRight className="h-3 w-3 ml-1.5" />
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Set-aside suggestions banner */}
+        {hasOnlyDeferredSuggestions && (
+          <Card className="border-border bg-muted/40" data-testid="onboarding-deferred-banner">
+            <CardContent className="p-4 space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center shrink-0 mt-0.5">
+                  <Sparkles className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-foreground">Your suggestions are saved</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                    You set aside the suggestions DW built from your conversation. They're here whenever
+                    you're ready to review them.
+                  </p>
+                </div>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full text-xs"
+                onClick={() => setLocation("/voice-onboarding?review=1")}
+                data-testid="button-review-deferred-suggestions"
               >
                 Review suggestions
                 <ArrowRight className="h-3 w-3 ml-1.5" />

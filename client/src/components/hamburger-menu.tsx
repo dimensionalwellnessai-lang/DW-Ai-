@@ -210,19 +210,19 @@ export function HamburgerMenu({ open, onClose }: HamburgerMenuProps) {
           <Link href="/command-center">
             <button
               className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left transition-colors"
-              onClick={() => { addRecentPage({ id: 'command-center', name: '⭐ Life Command Center', path: '/command-center', icon: '⭐' }); onClose(); }}
+              onClick={() => { addRecentPage({ id: 'command-center', name: '⭐ Command Center', path: '/command-center', icon: '⭐' }); onClose(); }}
               data-testid="menu-item-command-center"
             >
-              <span className="text-sm text-foreground">⭐ Life Command Center</span>
+              <span className="text-sm text-foreground">⭐ Command Center</span>
             </button>
           </Link>
           <Link href="/calendar">
             <button
               className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left transition-colors"
-              onClick={() => { addRecentPage({ id: 'calendar', name: '📅 Life Timeline', path: '/calendar', icon: '📅' }); onClose(); }}
+              onClick={() => { addRecentPage({ id: 'calendar', name: '📅 Calendar', path: '/calendar', icon: '📅' }); onClose(); }}
               data-testid="menu-item-calendar"
             >
-              <span className="text-sm text-foreground">📅 Life Timeline</span>
+              <span className="text-sm text-foreground">📅 Calendar</span>
             </button>
           </Link>
           <Link href="/life-system-import">

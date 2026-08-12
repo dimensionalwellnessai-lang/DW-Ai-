@@ -15,7 +15,7 @@ export const ROUTES: RouteConfig[] = [
   { path: "/welcome", name: "Welcome", enabled: true },
   { path: "/subscription", name: "Subscription", enabled: true },
   
-  { path: "/life-dashboard", name: "Life Dashboard", enabled: true },
+  { path: "/life-dashboard", name: "Life Blueprint", enabled: true },
   { path: "/calendar", name: "Calendar", enabled: true },
   { path: "/daily-schedule", name: "Today", enabled: true },
   { path: "/meal-prep", name: "Meal Plans", enabled: true },
@@ -26,7 +26,7 @@ export const ROUTES: RouteConfig[] = [
   { path: "/cosmic-insights", name: "Cosmic Insights", enabled: true },
   { path: "/browse", name: "Browse", enabled: true },
   
-  { path: "/talk", name: "Talk It Out", enabled: true },
+  { path: "/talk", name: "Talk to DW", enabled: true },
   { path: "/challenges", name: "Challenges", enabled: true },
   { path: "/routines/templates/:templateId", name: "Routine Template", enabled: true },
   { path: "/routines/:id", name: "Routine Detail", enabled: true },

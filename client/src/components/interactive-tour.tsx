@@ -75,7 +75,7 @@ const TOUR_STEPS: TourStep[] = [
   },
   {
     id: "home",
-    title: "Life Command Center",
+    title: "Command Center",
     description:
       "Your dashboard tracks everything at a glance — goals, habits, mood, water, calories, and your eight wellness dimensions. Tap any card to go deeper into that area. The Command Center updates as DW learns more about your system.",
     icon: TrendingUp,

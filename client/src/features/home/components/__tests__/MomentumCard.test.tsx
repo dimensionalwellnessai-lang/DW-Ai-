@@ -7,7 +7,7 @@
  *    loading state, checkNow button, suggestions
  *  - Guest mode (no habits / goals)
  *  - "View habits" navigation button
- *  - "Chat with DW about this" prefill routing
+ *  - "Talk to DW about this" prefill routing
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -153,9 +153,9 @@ describe("MomentumCard – legacy mode (no Elevation Engine)", () => {
     expect(screen.queryByLabelText(/view habits/i)).toBeNull();
   });
 
-  it("renders 'Chat with DW about this' button (chatPrefill provided)", () => {
+  it("renders 'Talk to DW about this' button (chatPrefill provided)", () => {
     render(<MomentumCard summary={makeSummary()} />);
-    expect(screen.getByText(/chat with dw about this/i)).toBeTruthy();
+    expect(screen.getByText(/talk to dw about this/i)).toBeTruthy();
   });
 });
 

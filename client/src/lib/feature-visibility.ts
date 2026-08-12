@@ -14,7 +14,7 @@ export interface FeatureConfig {
 
 export const FEATURE_VISIBILITY: FeatureConfig[] = [
   // MY IDENTITY section
-  { id: "command-center", name: "⭐ Life Command Center", path: "/", visibility: "primary", description: "Your wellness dashboard", enabled: true },
+  { id: "command-center", name: "⭐ Command Center", path: "/", visibility: "primary", description: "Your wellness dashboard", enabled: true },
   { id: "life-blueprint", name: "📜 Life Blueprint", path: "/life-blueprint", visibility: "primary", description: "Define your values", enabled: true },
   { id: "goals", name: "🎯 My Goals", path: "/goals", visibility: "primary", description: "Track your goals", enabled: true },
   { id: "habits", name: "✅ My Habits", path: "/habits", visibility: "primary", description: "Daily habits", enabled: true },
@@ -50,14 +50,14 @@ export const FEATURE_VISIBILITY: FeatureConfig[] = [
   
   // Hidden in menu but accessible via bottom nav
   { id: "talk", name: "💬 Talk to DW", path: "/talk", visibility: "primary", description: "AI assistant", enabled: true },
-  { id: "calendar", name: "📅 Life Timeline", path: "/calendar", visibility: "primary", description: "Full schedule", enabled: true },
+  { id: "calendar", name: "📅 Calendar", path: "/calendar", visibility: "primary", description: "Full schedule", enabled: true },
   { id: "tracking", name: "📊 Tracking", path: "/tracking", visibility: "primary", description: "Track daily metrics", enabled: true },
   { id: "daily-schedule", name: "Today", path: "/command-center", visibility: "primary", description: "Your day at a glance", enabled: true, group: "calendar" },
   
   // More/dormant features
-  { id: "life-dashboard", name: "Life Dashboard", path: "/life-dashboard", visibility: "more", description: "Your wellness hub", enabled: true },
+  { id: "life-dashboard", name: "Life Blueprint", path: "/life-dashboard", visibility: "more", description: "Your wellness hub", enabled: true },
   { id: "weekly-checkin", name: "Weekly Check-In", path: "/weekly-checkin", visibility: "more", description: "Weekly feedback", enabled: true },
-  { id: "talk-it-out", name: "Talk It Out", path: "/talk", visibility: "more", description: "Process feelings", enabled: true },
+  { id: "talk-it-out", name: "Talk to DW", path: "/talk", visibility: "more", description: "Process feelings", enabled: true },
   
   { id: "body-scan", name: "Body Scan", visibility: "dormant", aiUnlockable: true, description: "Camera features", enabled: false },
   { id: "advanced-challenges", name: "Advanced Challenges", visibility: "dormant", aiUnlockable: true, enabled: false },

@@ -96,7 +96,7 @@ export function FollowUpCard({ summary }: FollowUpCardProps) {
             onClick={handleOpenChat}
             className="flex-1 text-center rounded-lg bg-muted/50 text-foreground/70 text-sm font-medium px-3 py-2 hover:bg-muted transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
-            Chat with DW
+            Talk to DW
           </button>
         </div>
       ) : (

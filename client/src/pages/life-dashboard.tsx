@@ -307,7 +307,7 @@ function MyLifeSystemSection() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-lg font-semibold text-foreground">My Life System</h2>
+        <h2 className="text-lg font-semibold text-foreground">Life Blueprint</h2>
         <div className="flex gap-2">
           {totalCounts.user > 0 && (
             <Badge variant="default" className="text-xs gap-1">
@@ -422,7 +422,7 @@ function MyLifeSystemSection() {
 }
 
 export default function LifeDashboardPage() {
-  usePageMeta("Life Dashboard", "Your all-in-one view of wellness across all 8 life dimensions.");
+  usePageMeta("Life Blueprint", "Your all-in-one view of wellness across all 8 life dimensions.");
   const [bodyProfile] = useState<BodyProfile | null>(getBodyProfile());
   const [mealPrefs] = useState<MealPrepPreferences | null>(getMealPrepPreferences());
   const [financeProfile] = useState<FinanceProfile | null>(getFinanceProfile());
@@ -473,7 +473,7 @@ export default function LifeDashboardPage() {
 
   return (
     <div className="flex flex-col h-full bg-background gradient-bg">
-      <PageHeader title="Life Dashboard" />
+      <PageHeader title="Life Blueprint" />
       
       <div className="flex-1 overflow-auto">
         <div className="p-4 max-w-2xl mx-auto space-y-6 pb-8">

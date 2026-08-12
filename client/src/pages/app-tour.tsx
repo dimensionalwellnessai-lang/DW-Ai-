@@ -52,7 +52,7 @@ const GUIDE_SECTIONS: GuideSection[] = [
   },
   {
     id: "command-center",
-    title: "Life Command Center",
+    title: "Command Center",
     icon: Target,
     description: "Your home base. See everything at a glance — water, calories, goals, habits, and all 9 wellness dimensions.",
     tips: ["Tap any card to dive deeper", "Quick stats show today's progress", "DW proactive nudges live here"],

@@ -558,10 +558,16 @@ export default function VoiceOnboardingPage() {
     if (phase !== "intro" && phase !== "thread") return;
     const profile = profileData?.profile;
     if (!profile) return;
-    const pending = (profile.suggestedStructure ?? []).filter(
-      (s) => s.status === "pending" || s.status === "accepted",
+    const isReview =
+      typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).get("review") === "1";
+    const reviewable = (profile.suggestedStructure ?? []).filter(
+      (s) =>
+        s.status === "pending" ||
+        s.status === "accepted" ||
+        (isReview && s.status === "deferred"),
     );
-    if (pending.length > 0 && suggestions.length === 0) {
+    if (reviewable.length > 0 && suggestions.length === 0) {
       setSummaryText(profile.generatedSummary ?? null);
       setDirectionText(profile.generatedDirection ?? null);
       setSuggestions(profile.suggestedStructure ?? []);
@@ -916,7 +922,9 @@ export default function VoiceOnboardingPage() {
     }
     setIsSubmittingSuggestions(false);
     markOnboardingComplete();
-    setLocation("/");
+    // Land on My Life either way so the user sees what DW gathered,
+    // with set-aside suggestions still reviewable from there.
+    setLocation("/my-life");
   }, [persistFoundationSnapshot, suggestions, setLocation]);
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -938,7 +946,7 @@ export default function VoiceOnboardingPage() {
             onClick={() => {
               void persistFoundationSnapshot().finally(() => {
                 markOnboardingComplete();
-                setLocation("/");
+                setLocation("/my-life");
               });
             }}
             className="text-muted-foreground text-xs"

@@ -89,9 +89,9 @@ describe("PlanInMotionCard – empty state", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/goals");
   });
 
-  it("renders 'Chat with DW about this' footer link", () => {
+  it("renders 'Talk to DW about this' footer link", () => {
     render(<PlanInMotionCard summary={makeSummary()} />);
-    expect(screen.getByText(/chat with dw about this/i)).toBeTruthy();
+    expect(screen.getByText(/talk to dw about this/i)).toBeTruthy();
   });
 });
 

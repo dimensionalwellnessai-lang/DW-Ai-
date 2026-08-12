@@ -100,7 +100,7 @@ function PlanView({ summary, navigate }: ModuleCardProps) {
           onClick={handleChatWithDW}
           className="flex-1 text-center rounded-lg bg-muted/60 text-foreground/70 text-xs font-medium px-3 py-2 hover:bg-muted transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
-          Chat with DW
+          Talk to DW
         </button>
       </div>
     </div>
@@ -153,7 +153,7 @@ function HealthView({ summary, navigate }: ModuleCardProps) {
           onClick={handleChatWithDW}
           className="flex-1 text-center rounded-lg bg-muted/60 text-foreground/70 text-xs font-medium px-3 py-2 hover:bg-muted transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
-          Chat with DW
+          Talk to DW
         </button>
       </div>
     </div>
@@ -194,7 +194,7 @@ function MomentumView({ summary, navigate }: ModuleCardProps) {
           onClick={handleChatWithDW}
           className="flex-1 text-center rounded-lg bg-muted/60 text-foreground/70 text-xs font-medium px-3 py-2 hover:bg-muted transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
-          Chat with DW
+          Talk to DW
         </button>
       </div>
     </div>

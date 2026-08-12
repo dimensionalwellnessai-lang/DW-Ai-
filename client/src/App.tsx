@@ -254,8 +254,14 @@ function FirstRunGuard({ children }: { children: React.ReactNode }) {
     return <Redirect to="/voice-onboarding" />;
   }
 
-  // Setup complete, on any onboarding page -> go to /command-center
-  if (setupComplete && isOnOnboardingRoute) {
+  // Setup complete, on any onboarding page -> go to /command-center.
+  // Exception: /voice-onboarding?review=1 lets a completed user re-open the
+  // summary to review saved (pending or set-aside) suggestions from My Life.
+  const isSuggestionReview =
+    location === "/voice-onboarding" &&
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("review") === "1";
+  if (setupComplete && isOnOnboardingRoute && !isSuggestionReview) {
     return <Redirect to="/command-center" />;
   }
   

@@ -22,7 +22,7 @@ const TUTORIAL_STEPS: MenuTutorialStep[] = [
   },
   {
     id: "dw-chat",
-    title: "DW Chat",
+    title: "Talk to DW",
     description: "Talk to DW for clarity, comfort, or a plan.",
   },
   {

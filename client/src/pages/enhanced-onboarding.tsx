@@ -112,7 +112,7 @@ export default function EnhancedOnboardingPage() {
           sleepTime: data.sleepTime,
           dimensionSnapshot: data.dimensionSnapshot,
         },
-        systemName: `${data.name ?? "My"} Life System`,
+        systemName: data.name ? `${data.name}'s Life Blueprint` : "My Life Blueprint",
       });
     } catch { }
 
