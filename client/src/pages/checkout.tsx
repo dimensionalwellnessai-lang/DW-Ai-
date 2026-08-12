@@ -44,6 +44,7 @@ const PLAN_DETAILS: Record<
     billingPlan: BillingPlan;
     price: string;
     period: string;
+    hasTrial?: boolean;
     trialNote?: string;
     features: string[];
   }
@@ -53,6 +54,7 @@ const PLAN_DETAILS: Record<
     billingPlan: "plus",
     price: "$89.99",
     period: "/ year",
+    hasTrial: true,
     trialNote: "7 days free, then $89.99/year. Cancel before trial ends to avoid charges.",
     features: [
       "Advanced personalized insights",
@@ -68,6 +70,7 @@ const PLAN_DETAILS: Record<
     billingPlan: "plus",
     price: "$14.99",
     period: "/ month",
+    hasTrial: false,
     trialNote: "No trial. Cancel anytime.",
     features: [
       "Advanced personalized insights",
@@ -83,6 +86,7 @@ const PLAN_DETAILS: Record<
     billingPlan: "premium",
     price: "$14.99",
     period: "/ month",
+    hasTrial: false,
     trialNote: "No trial. Cancel anytime.",
     features: [
       "Advanced personalized insights",
@@ -283,7 +287,7 @@ export default function CheckoutPage() {
               ) : plan.billingPlan === "lifetime" ? (
                 `Pay ${plan.price}`
               ) : (
-                plan.trialNote?.startsWith("Includes")
+                plan.hasTrial
                   ? "Start free trial"
                   : "Subscribe now"
               )}
