@@ -55,7 +55,9 @@ export const FEATURE_VISIBILITY: FeatureConfig[] = [
   { id: "daily-schedule", name: "Today", path: "/command-center", visibility: "primary", description: "Your day at a glance", enabled: true, group: "calendar" },
   
   // More/dormant features
-  { id: "life-dashboard", name: "Life Blueprint", path: "/life-dashboard", visibility: "more", description: "Your wellness hub", enabled: true },
+  // (The former "life-dashboard" wellness-hub entry was a duplicate of the
+  //  primary "life-blueprint" entry above; /life-dashboard now redirects to
+  //  /life-blueprint, so the extra menu item was removed to avoid duplicates.)
   { id: "weekly-checkin", name: "Weekly Check-In", path: "/weekly-checkin", visibility: "more", description: "Weekly feedback", enabled: true },
   { id: "talk-it-out", name: "Talk to DW", path: "/talk", visibility: "more", description: "Process feelings", enabled: true },
   

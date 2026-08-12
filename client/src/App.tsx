@@ -97,8 +97,6 @@ const RoleMapPage = lazy(() => import("@/pages/role-map"));
 const CommunityPage = lazy(() => import("@/pages/community"));
 const GroupChallengesPage = lazy(() => import("@/pages/group-challenges"));
 const MyLevelPage = lazy(() => import("@/pages/my-level"));
-const LifeDashboardPage = lazy(() => import("@/pages/life-dashboard"));
-const LifeDimensionsPage = lazy(() => import("@/pages/life-dimensions"));
 const CalendarPlansPage = lazy(() =>
   import("@/pages/calendar-plans").then((m) => ({ default: m.CalendarPlansPage })),
 );
@@ -150,7 +148,6 @@ import LifeSystemImportPage from "@/pages/life-system-import";
 import ExportPage from "@/pages/export";
 import CalendarMonthPage from "@/pages/calendar-month";
 import CalendarSchedulePage from "@/pages/calendar-schedule";
-import SystemsHubPage from "@/pages/systems-hub";
 import { BlueprintPage } from "@/pages/blueprint";
 import TrainingSystemPage from "@/pages/systems/training";
 import WakeUpSystemPage from "@/pages/systems/wake-up";
@@ -158,7 +155,6 @@ import WindDownSystemPage from "@/pages/systems/wind-down";
 import DevRoutesPage from "@/pages/dev-routes";
 import NotFound404Page from "@/pages/not-found-404";
 import PrivacyTermsPage from "@/pages/privacy-terms";
-import LifeSwitchboardPage from "@/pages/life-switchboard";
 import SwitchTrainingPage from "@/pages/switch-training";
 import SwitchboardIntakePage from "@/pages/switchboard-intake";
 const DimensionOverviewPage = lazy(() => import("@/pages/dimension-overview"));
@@ -343,12 +339,16 @@ function Router() {
           values, and inbound links keep working. */}
       <Route path="/life-system"><Redirect to="/life-blueprint" /></Route>
 
-      {isRouteEnabled("/life-dashboard") && <Route path="/life-dashboard" component={LifeDashboardPage} />}
-      <Route path="/life-dimensions" component={LifeDimensionsPage} />
+      {/* /life-dashboard and /life-dimensions were duplicate life-overview
+          surfaces. Their highest-value content (goals/habits/routines
+          summary) now lives on the canonical /life-blueprint page, so both
+          redirect there. */}
+      <Route path="/life-dashboard"><Redirect to="/life-blueprint" /></Route>
+      <Route path="/life-dimensions"><Redirect to="/life-blueprint" /></Route>
+      {/* Sub-routes stay live: they're still linked from active surfaces and
+          must keep working. Only the bare /switchboard parent redirects. */}
       <Route path="/switchboard/intake" component={SwitchboardIntakePage} />
-      {/* `/switchboard` stays registered even when hidden from menus so that
-          back-navigation from /switch/:id and /switchboard/intake doesn't 404. */}
-      <Route path="/switchboard" component={LifeSwitchboardPage} />
+      <Route path="/switchboard"><Redirect to="/life-blueprint" /></Route>
       <Route path="/switch/:id" component={SwitchTrainingPage} />
       <Route path="/dimension/:id" component={DimensionOverviewPage} />
       <Route path="/body"><Redirect to="/habits" /></Route>
@@ -380,7 +380,7 @@ function Router() {
       <Route path="/accountability" component={AccountabilityPage} />
       <Route path="/accountability/settings" component={AccountabilitySettingsPage} />
       <Route path="/accountability/accept-invite/:token" component={AcceptInvitePage} />
-      <Route path="/plan" component={PlanPage} />
+      <Route path="/plan"><Redirect to="/my-plan" /></Route>
       <Route path="/profile/progress" component={MyProgressPage} />
       <Route path="/admin/analytics" component={AdminAnalyticsPage} />
       <Route path="/mood-tracker" component={MoodTrackerPage} />
@@ -431,9 +431,9 @@ function Router() {
       {isRouteEnabled("/plans") && <Route path="/plans" component={PlansPage} />}
       {isRouteEnabled("/plans") && <Route path="/plans/:planId" component={PlanDetailPage} />}
       <Route path="/projects" component={ProjectsPage} />
-      {isRouteEnabled("/plan-builder") && <Route path="/plan-builder" component={PlanBuilderPage} />}
+      <Route path="/plan-builder"><Redirect to="/plans" /></Route>
       {isRouteEnabled("/elevation-plan") && <Route path="/elevation-plan" component={ElevationPlanPage} />}
-      {isRouteEnabled("/plan-history") && <Route path="/plan-history" component={PlanHistoryPage} />}
+      <Route path="/plan-history"><Redirect to="/elevation-plan?tab=history" /></Route>
       {isRouteEnabled("/weekly-review") && <Route path="/weekly-review" component={WeeklyReviewPage} />}
       <Route path="/schedule-review/:draftId" component={ScheduleReviewPage} />
       {isRouteEnabled("/tasks") && <Route path="/tasks" component={TasksPage} />}
@@ -442,7 +442,9 @@ function Router() {
       <Route path="/imports" component={ImportsPage} />
       <Route path="/export/:planId" component={ExportPage} />
       
-      {isRouteEnabled("/systems") && <Route path="/systems" component={SystemsHubPage} />}
+      {/* Bare /systems is a dormant duplicate of the life-overview hub → redirect
+          to the canonical Life Blueprint. The /systems/* detail pages stay live. */}
+      <Route path="/systems"><Redirect to="/life-blueprint" /></Route>
       {isRouteEnabled("/systems/training") && <Route path="/systems/training" component={TrainingSystemPage} />}
       {isRouteEnabled("/systems/wake-up") && <Route path="/systems/wake-up" component={WakeUpSystemPage} />}
       {isRouteEnabled("/systems/wind-down") && <Route path="/systems/wind-down" component={WindDownSystemPage} />}

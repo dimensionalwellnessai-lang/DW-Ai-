@@ -208,7 +208,7 @@ export async function computeGrowthMetrics(userId: string): Promise<GrowthMetric
     detail: activeHabits.length
       ? `${activeHabits.length} active habit${activeHabits.length === 1 ? "" : "s"}, ${habitConsistencyPct}% of possible completions`
       : "No active habits yet",
-    route: "/life-dashboard",
+    route: "/life-blueprint",
   });
   contributions.push({
     key: "goals",
@@ -217,7 +217,7 @@ export async function computeGrowthMetrics(userId: string): Promise<GrowthMetric
     detail: activeGoals.length
       ? `${activeGoals.length} active goal${activeGoals.length === 1 ? "" : "s"}, avg ${goalProgressAvg}%`
       : "No active goals yet",
-    route: "/life-dashboard",
+    route: "/life-blueprint",
   });
   contributions.push({
     key: "challenge",
@@ -365,7 +365,7 @@ export function buildGrowthReview(
       focus = {
         title: "Rebuild your daily habit rhythm",
         reason: `Habit consistency is at ${current.habitConsistencyPct}% — steady reps are what move your milestones.`,
-        route: "/life-dashboard",
+        route: "/life-blueprint",
       };
     } else if (nextUndone) {
       focus = {
@@ -384,7 +384,7 @@ export function buildGrowthReview(
     focus = {
       title: "Tighten habit consistency",
       reason: `You're at ${current.habitConsistencyPct}% this week — one more completed habit per day changes the trend.`,
-      route: "/life-dashboard",
+      route: "/life-blueprint",
     };
   } else if (current.challengeCheckins7d < 3) {
     focus = {

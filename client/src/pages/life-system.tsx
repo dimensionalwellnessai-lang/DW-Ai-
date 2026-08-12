@@ -45,10 +45,13 @@ import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { useQuery } from "@tanstack/react-query";
+import type { Goal, Habit, Routine } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { usePageMeta } from "@/hooks/use-page-meta";
-import { Loader2, FileText, Plus, Trash2, Sparkles, MessageCircle, X } from "lucide-react";
+import { Loader2, FileText, Plus, Trash2, Sparkles, MessageCircle, X, Target, RefreshCw, Clock } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -528,6 +531,71 @@ export default function LifeSystemPage() {
             <Plus className="w-4 h-4 mr-1" /> Add
           </Button>
         </Card>
+      </div>
+
+      {/* ── Your commitments (ported from /life-dashboard) ─────────────── */}
+      <MyItemsSection />
+    </div>
+  );
+}
+
+/**
+ * Ported from the retired /life-dashboard page: a lightweight summary of
+ * the user's Goals, Habits, and Routines so the Life Blueprint surface
+ * reflects the concrete commitments behind the three pillars. Only renders
+ * when the user has at least one item, and links out to the full lists.
+ */
+function MyItemsSection() {
+  const { data: goals = [] } = useQuery<Goal[]>({ queryKey: ["/api/goals"] });
+  const { data: habits = [] } = useQuery<Habit[]>({ queryKey: ["/api/habits"] });
+  const { data: routines = [] } = useQuery<Routine[]>({ queryKey: ["/api/routines"] });
+
+  const hasAnyItems = goals.length > 0 || habits.length > 0 || routines.length > 0;
+  if (!hasAnyItems) return null;
+
+  const groups: { label: string; icon: LucideIcon; count: number; items: string[]; href: string }[] = [
+    { label: "Goals", icon: Target, count: goals.length, items: goals.slice(0, 5).map((g) => g.title), href: "/goals" },
+    { label: "Habits", icon: RefreshCw, count: habits.length, items: habits.slice(0, 5).map((h) => h.title), href: "/habits" },
+    { label: "Routines", icon: Clock, count: routines.length, items: routines.slice(0, 5).map((r) => r.name), href: "/routines" },
+  ];
+
+  return (
+    <div className="space-y-4" data-testid="section-my-items">
+      <div
+        className="flex items-end justify-between gap-3 border-b border-border/60 pb-2"
+      >
+        <div className="space-y-1 min-w-0">
+          <h2 className="text-lg md:text-xl font-semibold">Your commitments</h2>
+          <p className="text-sm text-muted-foreground">
+            The goals, habits, and routines powering your blueprint.
+          </p>
+        </div>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-3">
+        {groups.filter((g) => g.count > 0).map((g) => {
+          const Icon = g.icon;
+          return (
+            <Card key={g.label} className="p-4 space-y-2" data-testid={`card-items-${g.label.toLowerCase()}`}>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 font-medium">
+                  <Icon className="w-4 h-4 text-primary" />
+                  {g.label}
+                </div>
+                <Badge variant="secondary" className="text-xs">{g.count}</Badge>
+              </div>
+              <ul className="text-sm text-muted-foreground space-y-1">
+                {g.items.map((title, i) => (
+                  <li key={i} className="truncate" title={title}>{title}</li>
+                ))}
+              </ul>
+              <Link href={g.href}>
+                <Button variant="ghost" size="sm" className="w-full text-xs" data-testid={`link-view-${g.label.toLowerCase()}`}>
+                  {g.count > g.items.length ? `View all ${g.count}` : `View ${g.label.toLowerCase()}`}
+                </Button>
+              </Link>
+            </Card>
+          );
+        })}
       </div>
     </div>
   );

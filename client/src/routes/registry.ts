@@ -168,12 +168,12 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
   {
     id: "weekly-plan",
     path: "/plan",
-    label: "Weekly Plan",
-    navLabel: "Plan",
+    label: "My Plan",
+    navLabel: "My Plan",
     icon: "list-checks",
     type: "page",
     description: "Your weekly training plan",
-    showInMenu: true,
+    showInMenu: false, // Redirects to /my-plan (plan hub); hidden to avoid duplicate nav
     menuSection: "primary",
     menuOrder: 3,
     enabled: true,

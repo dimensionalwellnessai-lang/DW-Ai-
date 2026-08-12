@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { PlanHubNav } from "@/components/plan-hub-nav";
 import { apiRequest, parseApiError, queryClient } from "@/lib/queryClient";
 import type { Project, ProjectStatus } from "@shared/schema";
 import { PLAN_TEMPLATES } from "@shared/planTemplates";
@@ -127,7 +128,7 @@ export default function PlansPage() {
   return (
     <div className="flex flex-col h-full bg-background">
       <PageHeader
-        title="Plans"
+        title="My Plan"
         rightContent={
           <Button
             size="sm"
@@ -140,6 +141,8 @@ export default function PlansPage() {
           </Button>
         }
       />
+
+      <PlanHubNav />
 
       <div className="flex-1 overflow-auto">
         <div className="p-4 max-w-3xl mx-auto pb-12 space-y-4">

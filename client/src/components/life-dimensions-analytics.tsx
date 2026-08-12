@@ -89,7 +89,7 @@ const DEFAULT_DIMENSIONS: DimensionData[] = [
     trend: "stable",
     insight: "Feed your curiosity",
     action: "Set a learning goal",
-    route: "/life-dashboard",
+    route: "/life-blueprint",
   },
 ];
 
@@ -106,7 +106,7 @@ export function LifeDimensionsAnalytics({
               <TrendingUp className="w-5 h-5" />
               Wellness Dimensions
             </CardTitle>
-            <Link href="/life-dashboard">
+            <Link href="/life-blueprint">
               <Button variant="ghost" size="sm" className="gap-1">
                 View All
                 <ArrowRight className="w-4 h-4" />

@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/page-header";
+import { CalendarViewNav } from "@/components/calendar-view-nav";
 import { 
   Calendar,
   Clock,
@@ -99,7 +100,7 @@ const MIN_DAY_INDEX = 0; // Sunday
 const MAX_DAY_INDEX = 6; // Saturday
 
 export default function DailySchedulePage() {
-  usePageMeta("Daily Schedule", "Your full day schedule and plan.");
+  usePageMeta("Calendar", "Your full day schedule and plan.");
   const [, setLocation] = useLocation();
   const searchParams = useSearch();
   const params = new URLSearchParams(searchParams);
@@ -287,7 +288,7 @@ export default function DailySchedulePage() {
   return (
     <div className="flex flex-col h-full bg-background">
       <PageHeader 
-        title="Daily Schedule" 
+        title="Calendar" 
         rightContent={
           <div className="flex items-center gap-2">
             <Button
@@ -310,6 +311,9 @@ export default function DailySchedulePage() {
           </div>
         }
       />
+      <div className="px-4 py-2 border-b border-border/40">
+        <CalendarViewNav active="day" />
+      </div>
       <ScrollArea className="flex-1 overflow-auto">
         <div className="p-4 max-w-2xl mx-auto space-y-4 pb-8">
 

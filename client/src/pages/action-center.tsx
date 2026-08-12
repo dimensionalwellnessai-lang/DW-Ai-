@@ -19,6 +19,7 @@ import { useLocation } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { MessageCircle, CheckCheck, BellOff, ChevronDown, ChevronUp, Clock, X } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
+import { PlanHubNav } from "@/components/plan-hub-nav";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { isFeatureEnabled } from "@/config/featureFlags";
@@ -420,7 +421,8 @@ export default function ActionCenterPage() {
   if (!featureEnabled) {
     return (
       <div className="flex flex-col h-full bg-background">
-        <PageHeader title="Action Center" />
+        <PageHeader title="My Plan" />
+        <PlanHubNav />
         <div className="flex-1 flex items-center justify-center p-8 text-center">
           <p className="text-sm text-muted-foreground">
             {COPY.actionCenter.featureOff}
@@ -432,7 +434,8 @@ export default function ActionCenterPage() {
 
   return (
     <div className="flex flex-col h-full bg-background">
-      <PageHeader title="Action Center" />
+      <PageHeader title="My Plan" />
+      <PlanHubNav />
 
       <div className="flex-1 overflow-auto">
         <div className="max-w-lg mx-auto px-4 py-4 space-y-6 pb-24">

@@ -45,6 +45,7 @@ import { isFeatureEnabled } from "@/config/featureFlags";
 import { isPlanReviewDue } from "@/hooks/use-weekly-review";
 import { useToast } from "@/hooks/use-toast";
 import { ShareExportSheet } from "@/components/share-export-sheet";
+import { PlanHubNav } from "@/components/plan-hub-nav";
 
 // Helper: cast GuestElevationPlanFull (structurally compatible) to ElevationPlanFull
 function asElevationPlanFull(v: ReturnType<typeof getGuestElevationPlanFull>): ElevationPlanFull | null {
@@ -556,7 +557,8 @@ export default function ElevationPlanPage() {
   if (!enabled) {
     return (
       <div className="bg-background">
-        <PageHeader title="Elevation Plan" />
+        <PageHeader title="My Plan" />
+        <PlanHubNav />
         <div className="p-4 max-w-lg mx-auto text-center">
           <p className="text-muted-foreground">This feature is not yet enabled.</p>
         </div>
@@ -567,7 +569,8 @@ export default function ElevationPlanPage() {
   if (isLoading) {
     return (
       <div className="bg-background">
-        <PageHeader title="Elevation Plan" />
+        <PageHeader title="My Plan" />
+        <PlanHubNav />
         <div className="flex items-center justify-center p-12">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
@@ -579,7 +582,8 @@ export default function ElevationPlanPage() {
   if (!planData) {
     return (
       <div className="bg-background">
-        <PageHeader title="Elevation Plan" />
+        <PageHeader title="My Plan" />
+        <PlanHubNav />
         <div className="p-4 pb-24 max-w-lg mx-auto space-y-4">
           <Tabs value={mainTab} onValueChange={setMainTab}>
             <TabsList className="grid grid-cols-2 h-9 w-full">
@@ -658,7 +662,8 @@ export default function ElevationPlanPage() {
 
   return (
     <div className="bg-background">
-      <PageHeader title="Elevation Plan" />
+      <PageHeader title="My Plan" />
+      <PlanHubNav />
       <div className="p-4 pb-24 max-w-lg mx-auto space-y-4">
 
         {/* Main tab: Plan / History */}

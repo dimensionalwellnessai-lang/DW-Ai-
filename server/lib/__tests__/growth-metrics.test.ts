@@ -304,7 +304,7 @@ describe("buildGrowthReview — focus priority order", () => {
       currentWithRoleMap({ habitConsistencyPct: 20, activeHabitCount: 2 }),
     );
     expect(r.focus?.title).toBe("Rebuild your daily habit rhythm");
-    expect(r.focus?.route).toBe("/life-dashboard");
+    expect(r.focus?.route).toBe("/life-blueprint");
   });
 
   it("healthy habits → next undone milestone", () => {

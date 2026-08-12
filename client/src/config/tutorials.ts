@@ -25,7 +25,7 @@ export const NAVIGATION_TUTORIAL: TutorialStep[] = [
     actionType: "open-menu"
   },
   {
-    targetTestId: "menu-item-life-dashboard",
+    targetTestId: "menu-item-life-blueprint",
     title: "Life Blueprint",
     description: "Your wellness hub. See your energy, habits, and progress at a glance.",
     placement: "right",

@@ -9,6 +9,7 @@ import {
 } from "date-fns";
 import type { CalendarEvent, CalendarEventTask } from "@shared/schema";
 import { PageHeader } from "@/components/page-header";
+import { CalendarViewNav } from "@/components/calendar-view-nav";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -513,21 +514,12 @@ export default function CalendarMonthPage() {
 
       {/* View toggle + nav */}
       <div className="px-4 py-2 flex items-center justify-between gap-2 border-b border-border/40">
-        {/* Segmented control */}
-        <div className="flex bg-muted rounded-lg p-0.5 gap-0.5">
-          {(["day", "week", "month"] as CalendarView[]).map(v => (
-            <button
-              key={v}
-              onClick={() => { setView(v); if (v === "day") { setCurrentDate(new Date()); } }}
-              className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
-                view === v ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
-              }`}
-              data-testid={`toggle-view-${v}`}
-            >
-              {v.charAt(0).toUpperCase() + v.slice(1)}
-            </button>
-          ))}
-        </div>
+        {/* Shared Day | Week | Month switcher — ties the three calendar
+            surfaces together. Day/Week route to the dedicated schedule
+            pages (which keep their full editing feature set); Month stays
+            here. Deep links like /calendar?view=day still render the
+            internal day/week view below for back-compat. */}
+        <CalendarViewNav active={view} />
 
         {/* Month/Week/Day nav */}
         <div className="flex items-center gap-1">

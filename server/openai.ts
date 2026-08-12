@@ -1983,7 +1983,7 @@ Calm over speed.`;
           properties: {
             path: {
               type: "string",
-              enum: ["/habits", "/goals", "/journal", "/mood", "/workout", "/meal-prep", "/schedule", "/daily-schedule", "/life-dimensions", "/life-blueprint", "/cosmic", "/finances", "/accountability", "/routines", "/elevation-plan", "/talk", "/settings", "/profile"],
+              enum: ["/habits", "/goals", "/journal", "/mood", "/workout", "/meal-prep", "/schedule", "/daily-schedule", "/life-blueprint", "/cosmic", "/finances", "/accountability", "/routines", "/elevation-plan", "/talk", "/settings", "/profile"],
               description: "The app path to navigate to"
             },
             reason: { type: "string", description: "Brief reason for navigating here — shown to user as 'Taking you to...'" }
@@ -2961,7 +2961,7 @@ RESPONSE FORMATTING:
           properties: {
             path: {
               type: "string",
-              enum: ["/habits", "/goals", "/journal", "/mood", "/workout", "/meal-prep", "/schedule", "/daily-schedule", "/life-dimensions", "/life-blueprint", "/cosmic", "/finances", "/accountability", "/routines", "/elevation-plan", "/talk", "/settings", "/profile"],
+              enum: ["/habits", "/goals", "/journal", "/mood", "/workout", "/meal-prep", "/schedule", "/daily-schedule", "/life-blueprint", "/cosmic", "/finances", "/accountability", "/routines", "/elevation-plan", "/talk", "/settings", "/profile"],
               description: "The app path to navigate to"
             },
             reason: { type: "string", description: "Brief reason for navigating here" }

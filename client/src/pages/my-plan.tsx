@@ -17,6 +17,7 @@ import {
 import { BodyScanDialog } from "@/components/body-scan-dialog";
 import { hasCompletedBodyScan } from "@/lib/guest-storage";
 import { DWContextPrompt } from "@/components/dw-context-prompt";
+import { PlanHubNav } from "@/components/plan-hub-nav";
 
 const DAY_COLORS: Record<string, string> = {
   Monday:    "from-violet-500/10 to-violet-500/5 border-violet-500/20",
@@ -210,8 +211,7 @@ function PlanSkeleton() {
 }
 
 export default function MyPlanPage() {
-  usePageMeta({ title: "My Plan — Dimensional Wellness AI" });
-  const { toast } = useToast();
+  usePageMeta("My Plan", "Your unified weekly system.");
   const [, setLocation] = useLocation();
   const [bodyScanOpen, setBodyScanOpen] = useState(false);
   const [bodyScanDone, setBodyScanDone] = useState(hasCompletedBodyScan());
@@ -245,8 +245,7 @@ export default function MyPlanPage() {
     <div className="flex flex-col min-h-screen bg-background">
       <PageHeader
         title="My Plan"
-        subtitle="Your unified weekly system"
-        actions={
+        rightContent={
           hasPlan ? (
             <Button
               size="sm"
@@ -264,6 +263,8 @@ export default function MyPlanPage() {
           ) : undefined
         }
       />
+
+      <PlanHubNav />
 
       <ScrollArea className="flex-1">
         <div className="px-4 pt-4">

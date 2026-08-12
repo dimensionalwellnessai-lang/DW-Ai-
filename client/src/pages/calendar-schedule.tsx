@@ -302,7 +302,7 @@ export default function CalendarSchedulePage() {
 
   return (
     <div className="flex flex-col h-full bg-background">
-      <PageHeader title="Schedule" />
+      <PageHeader title="Calendar" />
 
       <ScrollArea className="flex-1 overflow-auto">
         <div className="p-4 max-w-lg mx-auto space-y-4 pb-8">

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { PageHeader } from "@/components/page-header";
+import { CalendarViewNav } from "@/components/calendar-view-nav";
 import {
   Calendar,
   Clock,
@@ -79,7 +80,7 @@ function dateKeyOf(isoOrTime: string): string {
 }
 
 export default function WeekSchedulePage() {
-  usePageMeta("Week View", "View your full weekly schedule.");
+  usePageMeta("Calendar", "View your full weekly schedule.");
   const [, setLocation] = useLocation();
   const [weekStart, setWeekStart] = useState(() =>
     startOfWeek(new Date(), { weekStartsOn: 0 })
@@ -161,13 +162,17 @@ export default function WeekSchedulePage() {
   return (
     <div className="flex flex-col h-full bg-background">
       <PageHeader
-        title="Week Overview"
+        title="Calendar"
         rightContent={
           <Button size="sm" variant="outline" onClick={goToday} data-testid="button-go-today">
             Today
           </Button>
         }
       />
+
+      <div className="px-4 py-2 border-b border-border/40">
+        <CalendarViewNav active="week" />
+      </div>
 
       <ScrollArea className="flex-1 overflow-auto">
         <div className="p-4 max-w-2xl mx-auto space-y-4 pb-8">
