@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Grid3x3, Home, ChevronDown, MessageCircle, Zap, Calendar, BookOpen, Target, CheckSquare, Dumbbell, Utensils, Heart, Feather, Sparkles, Wallet, Users, Search, Award, RefreshCw, BarChart3, FileText, Settings, Map, MessageSquare, Lock, Clock, LayoutDashboard, BarChart2, Activity, Layers, Brain, Sun, type LucideIcon } from 'lucide-react';
+import { ChevronDown, MessageCircle, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { SwipeableDrawer } from '@/components/swipeable-drawer';
@@ -15,120 +15,14 @@ import { useAuth } from '@/hooks/use-auth';
 import { getRecentPages, addRecentPage } from '@/lib/recent-pages';
 import { cn } from '@/lib/utils';
 import { APP_VERSION } from '@/lib/routes';
+import { NAV_SECTIONS, SETTINGS_ITEMS, DIM_COLORS, type NavMenuItem } from '@/config/navigation';
 
 interface HamburgerMenuProps {
   open: boolean;
   onClose: () => void;
 }
 
-const DIM_COLORS: Record<string, string> = {
-  body: "text-green-500",
-  mind: "text-blue-500",
-  time: "text-amber-500",
-  purpose: "text-violet-500",
-  money: "text-emerald-500",
-  relationships: "text-pink-500",
-  environment: "text-cyan-500",
-  identity: "text-indigo-500",
-};
-
-interface MenuItem {
-  id: string;
-  name: string;
-  path: string;
-  icon: LucideIcon;
-  dimension?: string;
-}
-
-interface MenuSection {
-  title?: string;
-  dimensionKey?: string;
-  dwContextLabel?: string;
-  items: MenuItem[];
-}
-
-const DIMENSION_SECTIONS: MenuSection[] = [
-  {
-    title: "BODY",
-    dimensionKey: "body",
-    dwContextLabel: "Body",
-    items: [
-      { id: "workout", name: "🏋️ Workout", path: "/workout", icon: Dumbbell, dimension: "body" },
-      { id: "workout-analytics", name: "📊 Workout Analytics", path: "/workout/analytics", icon: BarChart2, dimension: "body" },
-      { id: "health-data", name: "❤️ Health Data", path: "/health-data", icon: Activity, dimension: "body" },
-      { id: "wearable-manager", name: "⌚ Wearables & Screen Time", path: "/wearable-manager", icon: Activity, dimension: "body" },
-      { id: "meal-prep", name: "🍽️ Meal Prep", path: "/meal-prep", icon: Utensils, dimension: "body" },
-      { id: "body-scan", name: "🔄 Body Scan", path: "/recovery", icon: RefreshCw, dimension: "body" },
-    ]
-  },
-  {
-    title: "MIND",
-    dimensionKey: "mind",
-    dwContextLabel: "Mind",
-    items: [
-      { id: "meditation", name: "🧘 Meditation", path: "/spiritual", icon: Heart, dimension: "mind" },
-      { id: "journal", name: "📓 Journal", path: "/journal", icon: Feather, dimension: "mind" },
-      { id: "insights", name: "💡 Insights", path: "/insights", icon: Brain, dimension: "mind" },
-      { id: "mood", name: "🌤️ Mood", path: "/mood-tracker", icon: Sun, dimension: "mind" },
-    ]
-  },
-  {
-    title: "TIME & SCHEDULE",
-    dimensionKey: "time",
-    dwContextLabel: "Time & Schedule",
-    items: [
-      { id: "calendar-full", name: "📅 Calendar", path: "/calendar", icon: Calendar, dimension: "time" },
-      { id: "daily-schedule", name: "⏰ Daily Schedule", path: "/daily-schedule", icon: Clock, dimension: "time" },
-      { id: "routines", name: "📝 Routines", path: "/routines", icon: FileText, dimension: "time" },
-      { id: "tasks", name: "✅ Tasks", path: "/tasks", icon: CheckSquare, dimension: "time" },
-    ]
-  },
-  {
-    title: "PURPOSE",
-    dimensionKey: "purpose",
-    dwContextLabel: "Purpose",
-    items: [
-      { id: "my-plan", name: "📋 My Plan", path: "/my-plan", icon: LayoutDashboard, dimension: "purpose" },
-      { id: "plans", name: "🗂️ Plans", path: "/plans", icon: LayoutDashboard, dimension: "purpose" },
-      { id: "goals", name: "🎯 Goals", path: "/goals", icon: Target, dimension: "purpose" },
-      { id: "challenges", name: "🏆 Challenges", path: "/challenges", icon: Award, dimension: "purpose" },
-      { id: "habits", name: "✅ Habits", path: "/habits", icon: CheckSquare, dimension: "purpose" },
-    ]
-  },
-  {
-    title: "MONEY",
-    dimensionKey: "money",
-    dwContextLabel: "Money",
-    items: [
-      { id: "finances", name: "💰 Finances", path: "/finances", icon: Wallet, dimension: "money" },
-    ]
-  },
-  {
-    title: "ENVIRONMENT",
-    dimensionKey: "environment",
-    dwContextLabel: "Environment",
-    items: [
-      { id: "browse", name: "🔍 Browse", path: "/browse", icon: Search, dimension: "environment" },
-    ]
-  },
-  {
-    title: "IDENTITY",
-    dimensionKey: "identity",
-    dwContextLabel: "Identity",
-    items: [
-      { id: "life-blueprint", name: "📜 Life Blueprint", path: "/life-blueprint", icon: BookOpen, dimension: "identity" },
-      { id: "cosmic", name: "🌌 Cosmic Hub", path: "/cosmic", icon: Sparkles, dimension: "identity" },
-    ]
-  },
-];
-
-const SETTINGS_ITEMS: MenuItem[] = [
-  { id: "progress", name: "📊 My Progress", path: "/profile/progress", icon: BarChart3 },
-  { id: "settings", name: "⚙️ Settings", path: "/settings", icon: Settings },
-  { id: "app-tour", name: "🗺️ App Tour", path: "/app-tour", icon: Map },
-  { id: "feedback", name: "📋 Feedback", path: "/feedback", icon: MessageSquare },
-  { id: "privacy", name: "🔒 Privacy & Terms", path: "/privacy-terms", icon: Lock },
-];
+const DIMENSION_SECTIONS = NAV_SECTIONS;
 
 export function HamburgerMenu({ open, onClose }: HamburgerMenuProps) {
   const [location, navigate] = useLocation();
@@ -161,7 +55,7 @@ export function HamburgerMenu({ open, onClose }: HamburgerMenuProps) {
     navigate(`/talk?context=dimension:${encodeURIComponent(dimensionLabel)}`);
   };
 
-  const handleNavItem = (item: MenuItem) => {
+  const handleNavItem = (item: NavMenuItem) => {
     addRecentPage({
       id: item.id,
       name: item.name,

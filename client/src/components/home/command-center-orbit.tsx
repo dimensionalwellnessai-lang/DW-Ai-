@@ -1,33 +1,7 @@
 import { useLocation } from "wouter";
 import { DWOrb } from "@/components/dw-orb";
 import { cn } from "@/lib/utils";
-import {
-  BarChart3,
-  Target,
-  CheckCircle2,
-  Brain,
-  Moon,
-  Compass,
-  type LucideIcon,
-} from "lucide-react";
-
-interface OrbitModule {
-  id: string;
-  label: string;
-  href: string;
-  icon: LucideIcon;
-  color: string;
-  bg: string;
-}
-
-const MODULES: OrbitModule[] = [
-  { id: "insights",  label: "Insights",  href: "/insights",       icon: BarChart3,    color: "text-violet-500",  bg: "bg-violet-500/10" },
-  { id: "plan",      label: "Plan",      href: "/plan",           icon: Target,       color: "text-amber-500",   bg: "bg-amber-500/10" },
-  { id: "habits",    label: "Habits",    href: "/habits",         icon: CheckCircle2, color: "text-emerald-500", bg: "bg-emerald-500/10" },
-  { id: "mood",      label: "Mood",      href: "/mood-tracker",   icon: Brain,        color: "text-rose-500",    bg: "bg-rose-500/10" },
-  { id: "cosmic",    label: "Cosmic",    href: "/cosmic",         icon: Moon,         color: "text-indigo-500",  bg: "bg-indigo-500/10" },
-  { id: "blueprint", label: "Blueprint", href: "/life-blueprint", icon: Compass,      color: "text-sky-500",     bg: "bg-sky-500/10" },
-];
+import { ORBIT_MODULES as MODULES } from "@/config/navigation";
 
 interface CommandCenterOrbitProps {
   size?: number;
@@ -55,7 +29,7 @@ export function CommandCenterOrbit({ size = 280, className }: CommandCenterOrbit
           size={Math.round(size * 0.32)}
           state="idle"
           onTap={() => navigate("/talk")}
-          label="Talk with DW"
+          label="Talk to DW"
         />
       </div>
 
