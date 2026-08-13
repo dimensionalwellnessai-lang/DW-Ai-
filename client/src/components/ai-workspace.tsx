@@ -2460,7 +2460,7 @@ export function AIWorkspace() {
                   onClick={() => setLocation("/paywall?ctx=message_limit")}
                   data-testid="button-upgrade-inline"
                 >
-                  DW Plus
+                  DW Pro
                 </Button>
               </div>
             )}

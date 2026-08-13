@@ -44,49 +44,57 @@ const PLAN_DETAILS: Record<
     billingPlan: BillingPlan;
     price: string;
     period: string;
+    hasTrial?: boolean;
     trialNote?: string;
     features: string[];
   }
 > = {
   "plus-yearly": {
-    label: "DW Plus — Yearly",
+    label: "DW Pro — Yearly",
     billingPlan: "plus",
-    price: "$79.99",
+    price: "$89.99",
     period: "/ year",
-    trialNote: "Includes a 7-day free trial. Cancel anytime.",
+    hasTrial: true,
+    trialNote: "7 days free, then $89.99/year. Cancel before trial ends to avoid charges.",
     features: [
-      "Unlimited daily messages",
-      "Unlimited chat sessions",
-      "Full conversation history",
-      "Long-term memory across sessions",
+      "Advanced personalized insights",
+      "Adaptive scheduling tools",
+      "Unlimited daily usage",
+      "Full history + export",
+      "Ad-free experience",
+      "Early access to new features",
     ],
   },
   "plus-monthly": {
-    label: "DW Plus — Monthly",
+    label: "DW Pro — Monthly",
     billingPlan: "plus",
-    price: "$9.99",
+    price: "$14.99",
     period: "/ month",
+    hasTrial: false,
     trialNote: "No trial. Cancel anytime.",
     features: [
-      "Unlimited daily messages",
-      "Unlimited chat sessions",
-      "Full conversation history",
-      "Long-term memory across sessions",
+      "Advanced personalized insights",
+      "Adaptive scheduling tools",
+      "Unlimited daily usage",
+      "Full history + export",
+      "Ad-free experience",
+      "Early access to new features",
     ],
   },
   premium: {
-    label: "DW Premium",
+    label: "DW Pro — Monthly",
     billingPlan: "premium",
-    price: "$9.99",
+    price: "$14.99",
     period: "/ month",
-    trialNote: "Includes a 7-day free trial. Cancel anytime.",
+    hasTrial: false,
+    trialNote: "No trial. Cancel anytime.",
     features: [
-      "Unlimited DW conversations",
-      "All 8 dimensions",
-      "Photo meal logging",
-      "Advanced tracking",
-      "Life Blueprint",
-      "Pattern insights",
+      "Advanced personalized insights",
+      "Adaptive scheduling tools",
+      "Unlimited daily usage",
+      "Full history + export",
+      "Ad-free experience",
+      "Early access to new features",
     ],
   },
   lifetime: {
@@ -95,7 +103,7 @@ const PLAN_DETAILS: Record<
     price: "$99",
     period: "one-time",
     features: [
-      "Everything in Premium",
+      "Everything in Pro",
       "Forever access",
       "All future features",
     ],
@@ -279,7 +287,7 @@ export default function CheckoutPage() {
               ) : plan.billingPlan === "lifetime" ? (
                 `Pay ${plan.price}`
               ) : (
-                plan.trialNote?.startsWith("Includes")
+                plan.hasTrial
                   ? "Start free trial"
                   : "Subscribe now"
               )}

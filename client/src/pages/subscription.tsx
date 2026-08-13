@@ -89,15 +89,19 @@ export default function SubscriptionPage() {
                 <ul className="space-y-3 flex-1">
                   <li className="flex items-start gap-2">
                     <Check className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-                    <span className="text-sm">Talk to DW (limited)</span>
+                    <span className="text-sm">Personalized recommendations (basic)</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <Check className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-                    <span className="text-sm">Basic tracking</span>
+                    <span className="text-sm">Basic wellness insights</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <Check className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-                    <span className="text-sm">1 dimension</span>
+                    <span className="text-sm">Basic schedule creation</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Check className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                    <span className="text-sm">Daily capped usage</span>
                   </li>
                 </ul>
                 <Button
@@ -112,7 +116,7 @@ export default function SubscriptionPage() {
             </Card>
           </motion.div>
 
-          {/* Premium Plan */}
+          {/* Pro Plan */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -123,37 +127,40 @@ export default function SubscriptionPage() {
                 <Badge className="bg-primary">POPULAR</Badge>
               </div>
               <CardHeader>
-                <CardTitle className="text-xl">Premium</CardTitle>
+                <CardTitle className="text-xl">Pro</CardTitle>
                 <div className="mt-2">
-                  <span className="text-4xl font-bold">$9.99</span>
+                  <span className="text-4xl font-bold">$14.99</span>
                   <span className="text-muted-foreground ml-2">/ month</span>
                 </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Or $89.99/yr — 7-day free trial on yearly (Best Value)
+                </p>
               </CardHeader>
               <CardContent className="flex-1 flex flex-col">
                 <ul className="space-y-3 flex-1">
                   <li className="flex items-start gap-2">
                     <Check className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-                    <span className="text-sm">Unlimited DW conversations</span>
+                    <span className="text-sm">Advanced personalized insights</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <Check className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-                    <span className="text-sm">All 8 dimensions</span>
+                    <span className="text-sm">Adaptive scheduling tools</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <Check className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-                    <span className="text-sm">Photo meal logging</span>
+                    <span className="text-sm">Unlimited daily usage</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <Check className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-                    <span className="text-sm">Advanced tracking</span>
+                    <span className="text-sm">Full history + export</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <Check className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-                    <span className="text-sm">Life Blueprint</span>
+                    <span className="text-sm">Ad-free experience</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <Check className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-                    <span className="text-sm">Pattern insights</span>
+                    <span className="text-sm">Early access to new features</span>
                   </li>
                 </ul>
                 <Button
@@ -161,7 +168,7 @@ export default function SubscriptionPage() {
                   className="w-full mt-6"
                   data-testid="button-plan-premium"
                 >
-                  Start Free Trial
+                  Start Pro
                 </Button>
               </CardContent>
             </Card>
@@ -185,7 +192,7 @@ export default function SubscriptionPage() {
                 <ul className="space-y-3 flex-1">
                   <li className="flex items-start gap-2">
                     <Check className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-                    <span className="text-sm">Everything in Premium</span>
+                    <span className="text-sm">Everything in Pro</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <Check className="w-5 h-5 text-primary shrink-0 mt-0.5" />

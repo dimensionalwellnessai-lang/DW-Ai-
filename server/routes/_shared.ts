@@ -89,7 +89,7 @@ export function requirePaidOrQuota(kind: UsageMeterKind, freeQuota?: number) {
           used: usage - 1,
           limit,
           upgradeUrl: "/upgrade",
-          message: `You've hit today's free ${kind === "voice" ? "voice session" : kind} limit. Upgrade to DW Plus for unlimited use.`,
+          message: `You've hit today's free ${kind === "voice" ? "voice session" : kind} limit. Upgrade to DW Pro for unlimited use.`,
         });
       }
       next();

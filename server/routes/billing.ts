@@ -243,7 +243,10 @@ export function registerBillingRoutes(app: Express): void {
         client_reference_id: userId,
         allow_promotion_codes: true,
         metadata: { userId, plan: parsed.data.plan },
-        subscription_data: { metadata: { userId } },
+        subscription_data: {
+          metadata: { userId },
+          ...(parsed.data.plan === "annual" ? { trial_period_days: 7 } : {}),
+        },
       });
       res.json({ url: session.url, id: session.id });
     } catch (err) {
@@ -282,7 +285,7 @@ export function registerBillingRoutes(app: Express): void {
       }
       const user = await storage.getUser(req.session.userId);
       if (user?.subscriptionTier === "plus") {
-        return res.json({ success: true, tier: "plus", message: "DW Plus restored successfully" });
+        return res.json({ success: true, tier: "plus", message: "DW Pro restored successfully" });
       }
       return res.json({ success: false, tier: "free", message: "No active subscription found" });
     } catch (err) {

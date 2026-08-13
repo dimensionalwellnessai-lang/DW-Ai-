@@ -72,7 +72,7 @@ export async function simulateUpgrade(
     // Non-OK HTTP responses are thrown by `postBilling` as plain Error objects
     // (message: "<status>: <body>") and should propagate to the caller.
     if (err instanceof TypeError) {
-      return { success: true, tier: "plus", message: "DW Plus activated" };
+      return { success: true, tier: "plus", message: "DW Pro activated" };
     }
     throw err;
   }
