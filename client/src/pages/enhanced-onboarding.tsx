@@ -4,6 +4,9 @@ import { saveEnhancedOnboarding, isEnhancedOnboardingComplete } from "@/lib/gues
 import { trackEvent, EVENTS, markActivated } from "@/lib/analytics";
 import { useState, useLayoutEffect } from "react";
 import { apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/use-auth";
+import { loadBirthDataFor } from "@/lib/birth-data-storage";
+import { persistBirthData } from "@/lib/birth-data-sync";
 import { usePageMeta } from "@/hooks/use-page-meta";
 
 const GOAL_HABIT_MAP: Record<string, { title: string; frequency: string }> = {
@@ -35,6 +38,7 @@ const GOAL_TITLE_MAP: Record<string, string> = {
 export default function EnhancedOnboardingPage() {
   usePageMeta("Getting Started", "Set up your personalized Dimensional Wellness experience.");
   const [, setLocation] = useLocation();
+  const { user } = useAuth();
   const [redirecting, setRedirecting] = useState(false);
 
   useLayoutEffect(() => {
@@ -49,17 +53,19 @@ export default function EnhancedOnboardingPage() {
   const handleOnboardingComplete = async (data: OnboardingData, _takeTour: boolean) => {
     saveEnhancedOnboarding(data);
 
-    // Bridge birth data → Cosmic page
+    // Bridge birth data → Cosmic page (owner-scoped; synced to the account
+    // when logged in so details follow the user across devices).
     if (data.birthDate) {
-      const existingBirthChart = JSON.parse(localStorage.getItem("dw_birth_chart") || "null");
+      const ownerId = user?.id ?? null;
+      const existingBirthChart = loadBirthDataFor(ownerId);
       if (!existingBirthChart?.birthDate) {
-        localStorage.setItem("dw_birth_chart", JSON.stringify({
+        void persistBirthData({
           birthDate: data.birthDate,
           birthTime: data.birthTime ?? "",
           birthPlace: data.birthLocation ?? "",
           houseSystem: "whole-sign",
           zodiacSystem: "tropical",
-        }));
+        }, ownerId);
       }
       const existingNumerology = JSON.parse(localStorage.getItem("dw_cosmic_numerology") || "null");
       if (!existingNumerology?.birthDate) {

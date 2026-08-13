@@ -4,4 +4,5 @@
 - [CSRF setup pitfalls](csrf-setup.md) — cookie-parser must precede csrf middleware; never bind tokens to sessionID; client uses one global fetch interceptor, no sendBeacon to /api.
 - [Resend email config](resend-email-config.md) — RESEND_API_KEY secret beats the connector; from-address must be on the verified send. subdomain; forgot-password hides send failures.
 - [Client route gating trap](route-gating-trap.md) — pages silently never render unless registered `enabled:true` in the client ROUTES list; also wait past the ~5s splash when testing fresh loads.
+- [Duplicate route registrations](duplicate-route-registrations.md) — legacy inline routes in the giant routes.ts shadow modular server/routes/* files whose register fns are never called; grep all registrations first.
 - [Playwright testing gates](playwright-app-gates.md) — seed dw_terms_accepted/dw_splash_shown/dw_onboarding_completed in localStorage + API login via ctx.request, or UI tests never reach the page.

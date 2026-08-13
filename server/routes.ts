@@ -7877,12 +7877,13 @@ Rules:
   app.post("/api/astrology/chart", requireAuth, async (req, res) => {
     try {
       const userId = req.session.userId!;
-      const { 
-        birthDate, 
-        birthTime, 
-        birthCity, 
-        birthState, 
-        birthCountry, 
+      const {
+        birthDate,
+        birthTime,
+        birthPlace,
+        birthCity,
+        birthState,
+        birthCountry,
         timezone,
         latitude,
         longitude,
@@ -7891,16 +7892,40 @@ Rules:
         houseSystem = "placidus"
       } = req.body;
 
-      if (!birthDate || !birthTime || !birthCity || !birthCountry || !timezone) {
-        return res.status(400).json({ error: "Missing required birth data" });
+      // Only the birth date is truly required; everything else refines the
+      // chart. This matches the client's quick-add flow where time/place are
+      // optional.
+      if (!birthDate || typeof birthDate !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(birthDate)) {
+        return res.status(400).json({ error: "A valid birth date (YYYY-MM-DD) is required" });
+      }
+      if (birthTime && !/^\d{1,2}:\d{2}/.test(String(birthTime))) {
+        return res.status(400).json({ error: "Birth time must be in HH:MM format" });
       }
 
-      const lat = latitude || 40.7128;
-      const lng = longitude || -74.0060;
+      // Accept either structured city/country fields or a single free-text
+      // "birthPlace" string (used by the quick-add sheet). If only birthPlace
+      // is given, split on the last comma into city / country.
+      let city = typeof birthCity === "string" ? birthCity.trim() : "";
+      let country = typeof birthCountry === "string" ? birthCountry.trim() : "";
+      if (!city && typeof birthPlace === "string" && birthPlace.trim()) {
+        const parts = birthPlace.split(",").map((p: string) => p.trim()).filter(Boolean);
+        city = parts.slice(0, -1).join(", ") || parts[0] || "";
+        country = parts.length > 1 ? parts[parts.length - 1] : country;
+      }
+
+      // Without a birth time, calculate from solar noon so date-dependent
+      // placements (sun, moon, etc.) are still reasonable.
+      const timeForCalc = birthTime || "12:00";
+
+      // Never silently default coordinates to a specific city. When no
+      // coordinates are known, use 0,0 — location-sensitive angles
+      // (ascendant/MC) will be approximate either way without a real place.
+      const lat = typeof latitude === "number" && Number.isFinite(latitude) ? latitude : 0;
+      const lng = typeof longitude === "number" && Number.isFinite(longitude) ? longitude : 0;
 
       const calculatedChart = calculateBirthChart(
         birthDate,
-        birthTime,
+        timeForCalc,
         lat,
         lng,
         zodiacSystem,
@@ -7910,11 +7935,11 @@ Rules:
       const chartData = {
         userId,
         birthDate,
-        birthTime,
-        birthCity,
-        birthState: birthState || null,
-        birthCountry,
-        timezone,
+        birthTime: birthTime || "",
+        birthCity: city,
+        birthState: (typeof birthState === "string" && birthState.trim()) || null,
+        birthCountry: country,
+        timezone: (typeof timezone === "string" && timezone.trim()) || "",
         daylightSavings,
         zodiacSystem,
         houseSystem,

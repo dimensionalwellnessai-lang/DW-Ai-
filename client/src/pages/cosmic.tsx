@@ -55,11 +55,12 @@ import {
   PERSONAL_DAY_MEANINGS,
 } from "@/lib/numerology";
 import { TTSButton } from "@/components/tts-button";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { loadBirthDataFor, saveBirthDataFor } from "@/lib/birth-data-storage";
+import { persistBirthData } from "@/lib/birth-data-sync";
 
 // ─── Storage keys ──────────────────────────────────────────────────────────────
-// Reuse the same key as /cosmic-insights so both pages share one birth chart record
-const BIRTH_CHART_KEY = "dw_birth_chart";
+// Birth chart storage is owner-scoped and lives in lib/birth-data-storage.
 const NUMEROLOGY_KEY = "dw_cosmic_numerology";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -297,11 +298,6 @@ function getUpcomingEvents(days = 30): PlanetaryEvent[] {
   return events.sort((a, b) => a.date.getTime() - b.date.getTime()).slice(0, 20);
 }
 
-// ─── Local storage helpers ─────────────────────────────────────────────────────
-function loadBirthData(): BirthData | null {
-  try { return JSON.parse(localStorage.getItem(BIRTH_CHART_KEY) ?? "null"); } catch { return null; }
-}
-
 // ─── Date helper (avoids UTC-shift when parsing date-only strings) ─────────────
 function parseLocalDate(dateStr: string): Date | null {
   const parts = dateStr.split("-");
@@ -312,25 +308,104 @@ function parseLocalDate(dateStr: string): Date | null {
   if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return null;
   return new Date(year, month - 1, day);
 }
-function saveBirthData(data: BirthData) {
-  try {
-    localStorage.setItem(BIRTH_CHART_KEY, JSON.stringify(data));
-  } catch {
-    // Storage may be unavailable (quota exceeded, private mode)
-  }
-}
-
 // ─── Shared birth-data hook ────────────────────────────────────────────────────
-// Wraps localStorage load/save behind a single piece of React state so a save in
+// Wraps storage load/save behind a single piece of React state so a save in
 // any tab immediately propagates to every other tab (no remount required).
+// For logged-in users the data persists server-side (birth chart record), so
+// details follow them across devices; guests keep device storage only. All
+// localStorage records are tagged with the owning account id (see
+// lib/birth-data-storage) so one account's details never leak into another.
 type BirthDataSetter = (data: BirthData) => void;
 
-function useBirthData(): [BirthData | null, BirthDataSetter] {
-  const [birthData, setBirthDataState] = useState<BirthData | null>(loadBirthData);
+/** Shape of the server-side birth chart record we hydrate from. */
+interface ServerBirthChart {
+  birthDate: string;
+  birthTime: string | null;
+  birthCity: string | null;
+  birthState: string | null;
+  birthCountry: string | null;
+  zodiacSystem: string | null;
+  houseSystem: string | null;
+}
+
+function serverChartToBirthData(chart: ServerBirthChart): BirthData {
+  const place = [chart.birthCity, chart.birthState, chart.birthCountry]
+    .map(p => (p ?? "").trim())
+    .filter(Boolean)
+    .join(", ");
+  return {
+    birthDate: chart.birthDate,
+    birthTime: chart.birthTime ?? "",
+    birthPlace: place,
+    houseSystem: (chart.houseSystem as HouseSystem) || "whole-sign",
+    zodiacSystem: (chart.zodiacSystem as ZodiacSystem) || "tropical",
+  };
+}
+
+// Exported for tests (auth-transition isolation coverage).
+export function useBirthData(): [BirthData | null, BirthDataSetter] {
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const userId = user?.id ?? null;
+  // State is identity-bound: we keep the owner alongside the data and only
+  // expose it when the owner matches whoever is looking *right now*. This is
+  // a synchronous render-time check, so on any auth transition (guest→A,
+  // A→B, A→guest) the previous identity's record disappears immediately —
+  // no effect timing window where stale data could flash or leak.
+  const [owned, setOwned] = useState<{ ownerId: string | null; data: BirthData | null } | null>(null);
+  const birthData =
+    !authLoading && owned && owned.ownerId === userId ? owned.data : null;
+
+  // Guests hydrate from device storage once auth state is known.
+  useEffect(() => {
+    if (authLoading) return;
+    if (!isAuthenticated) {
+      setOwned({ ownerId: null, data: loadBirthDataFor(null) as BirthData | null });
+    }
+  }, [authLoading, isAuthenticated]);
+
+  // Logged-in users hydrate from the account so details follow them across
+  // devices. 404 (no chart yet) and 401 both resolve to null.
+  const { data: serverChart } = useQuery<ServerBirthChart | null>({
+    queryKey: ["/api/astrology/chart", userId],
+    enabled: isAuthenticated && !!userId,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const res = await fetch("/api/astrology/chart", { credentials: "include" });
+      if (res.status === 404 || res.status === 401) return null;
+      if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+      return res.json();
+    },
+  });
+
+  // Tracks which user we already re-synced local data for, so the one-time
+  // upload below never fires twice or for a different account.
+  const syncedForUserRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!isAuthenticated || !userId || serverChart === undefined) return;
+    if (serverChart?.birthDate) {
+      const fromServer = serverChartToBirthData(serverChart);
+      saveBirthDataFor(fromServer, userId); // offline cache, scoped to this account
+      setOwned({ ownerId: userId, data: fromServer });
+      return;
+    }
+    // No server chart yet. Only reuse a local record this same account saved
+    // earlier (e.g. before server sync existed on this device) — never guest
+    // data or another account's record — and push it up once.
+    const ownLocal = loadBirthDataFor(userId) as BirthData | null;
+    setOwned({ ownerId: userId, data: ownLocal });
+    if (ownLocal?.birthDate && syncedForUserRef.current !== userId) {
+      syncedForUserRef.current = userId;
+      apiRequest("POST", "/api/astrology/chart", ownLocal).catch(err => {
+        console.error("Failed to sync birth details to account:", err);
+      });
+    }
+  }, [serverChart, isAuthenticated, userId]);
+
   const setBirthData = useCallback<BirthDataSetter>((data) => {
-    saveBirthData(data);
-    setBirthDataState(data);
-  }, []);
+    setOwned({ ownerId: userId, data });
+    // Owner-scoped device save + background account sync for logged-in users.
+    void persistBirthData(data, userId);
+  }, [userId]);
   return [birthData, setBirthData];
 }
 

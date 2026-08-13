@@ -1,4 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useAuth } from "@/hooks/use-auth";
+import { loadBirthDataFor, saveBirthDataFor } from "@/lib/birth-data-storage";
+import { persistBirthData } from "@/lib/birth-data-sync";
 import { useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -67,7 +70,6 @@ interface CosmicEvent {
 }
 
 const NOTES_KEY = "dw_astrology_notes";
-const BIRTH_CHART_KEY = "dw_birth_chart";
 
 function getStoredNotes(): AstrologyNote[] {
   try {
@@ -82,19 +84,6 @@ function saveNote(note: AstrologyNote): void {
   const notes = getStoredNotes();
   notes.unshift(note);
   localStorage.setItem(NOTES_KEY, JSON.stringify(notes.slice(0, 30)));
-}
-
-function getBirthChart(): BirthChart | null {
-  try {
-    const stored = localStorage.getItem(BIRTH_CHART_KEY);
-    return stored ? JSON.parse(stored) : null;
-  } catch {
-    return null;
-  }
-}
-
-function saveBirthChart(chart: BirthChart): void {
-  localStorage.setItem(BIRTH_CHART_KEY, JSON.stringify(chart));
 }
 
 function getMoonPhase(): string {
@@ -703,12 +692,58 @@ export default function AstrologyPage() {
   useTutorialStart("astrology", 1000);
   const [notes, setNotes] = useState<AstrologyNote[]>(getStoredNotes);
   const [newNote, setNewNote] = useState("");
-  const [birthChart, setBirthChart] = useState<BirthChart | null>(getBirthChart);
+  const { user, isLoading: authLoading } = useAuth();
+  const userId = user?.id ?? null;
+  // Identity-bound chart state: the record is kept alongside its owner and
+  // only rendered when the owner matches the current identity, so one
+  // account's (or a guest's) details never show for anyone else.
+  const [ownedChart, setOwnedChart] = useState<{ ownerId: string | null; chart: BirthChart | null } | null>(null);
+  const birthChart = !authLoading && ownedChart && ownedChart.ownerId === userId ? ownedChart.chart : null;
+  const setBirthChart = (chart: BirthChart) => setOwnedChart({ ownerId: userId, chart });
   const [chartDialogOpen, setChartDialogOpen] = useState(false);
   const [birthDate, setBirthDate] = useState("");
   const [birthTime, setBirthTime] = useState("");
   const [birthPlace, setBirthPlace] = useState("");
-  const [zodiacSystem, setZodiacSystem] = useState<ZodiacSystem>(birthChart?.zodiacSystem || "tropical");
+  const [zodiacSystem, setZodiacSystem] = useState<ZodiacSystem>("tropical");
+
+  // Hydrate once auth state is known: owner-scoped device cache first, then
+  // (for logged-in users) the account's server-side chart so details follow
+  // the user across devices.
+  useEffect(() => {
+    if (authLoading) return;
+    const local = loadBirthDataFor(userId) as BirthChart | null;
+    if (local?.birthDate) {
+      setOwnedChart({ ownerId: userId, chart: local });
+      if (local.zodiacSystem) setZodiacSystem(local.zodiacSystem);
+      return;
+    }
+    if (!userId) {
+      setOwnedChart({ ownerId: null, chart: null });
+      return;
+    }
+    let cancelled = false;
+    fetch("/api/astrology/chart", { credentials: "include" })
+      .then(async res => {
+        if (!res.ok || cancelled) return;
+        const server = await res.json();
+        if (!server?.birthDate || cancelled) return;
+        const zs: ZodiacSystem = server.zodiacSystem === "sidereal" ? "sidereal" : "tropical";
+        const chart: BirthChart = {
+          birthDate: server.birthDate,
+          birthTime: server.birthTime ?? "",
+          birthPlace: [server.birthCity, server.birthState, server.birthCountry]
+            .filter(Boolean).join(", "),
+          zodiacSystem: zs,
+          sunSign: getSunSign(server.birthDate, zs),
+          placements: calculatePlacements(server.birthDate, server.birthTime ?? "", zs),
+        };
+        saveBirthDataFor(chart, userId);
+        setOwnedChart({ ownerId: userId, chart });
+        setZodiacSystem(zs);
+      })
+      .catch(() => { /* offline / no chart — page works without one */ });
+    return () => { cancelled = true; };
+  }, [authLoading, userId]);
   const [aiReading, setAiReading] = useState<string | null>(null);
   const [readingType, setReadingType] = useState<"day" | "chart" | "pattern">("day");
   
@@ -758,10 +793,9 @@ ${voiceRules}`;
   });
   
   const handleOpenDialog = () => {
-    const savedChart = getBirthChart();
-    setBirthDate(savedChart?.birthDate || "");
-    setBirthTime(savedChart?.birthTime || "");
-    setBirthPlace(savedChart?.birthPlace || "");
+    setBirthDate(birthChart?.birthDate || "");
+    setBirthTime(birthChart?.birthTime || "");
+    setBirthPlace(birthChart?.birthPlace || "");
     setChartDialogOpen(true);
   };
   
@@ -775,8 +809,8 @@ ${voiceRules}`;
         sunSign: getSunSign(birthChart.birthDate, system),
         placements,
       };
-      saveBirthChart(updatedChart);
       setBirthChart(updatedChart);
+      void persistBirthData(updatedChart, userId);
     }
   };
   
@@ -816,8 +850,8 @@ ${voiceRules}`;
       placements,
     };
     
-    saveBirthChart(chart);
     setBirthChart(chart);
+    void persistBirthData(chart, userId);
     setChartDialogOpen(false);
   };
 
