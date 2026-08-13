@@ -5,7 +5,7 @@ import { storage } from "../storage";
 
 import { requireAuth } from "./_shared";
 
-import { insertLifeDimensionAssessmentSchema, insertDimensionSystemSchema, insertWellnessPreferencesSchema, insertUserValuesRulesSchema, insertFeatureSettingsSchema } from "@shared/schema";
+import { insertLifeDimensionAssessmentSchema, insertDimensionSystemSchema, insertWellnessPreferencesSchema, insertUserValuesRulesSchema, insertFeatureSettingsSchema, insertPillarCheckinSchema } from "@shared/schema";
 export function registerDimensionsConfigRoutes(app: Express): void {
   app.get("/api/life-dimension-assessments", requireAuth, async (req, res) => {
     try {
@@ -281,6 +281,36 @@ export function registerDimensionsConfigRoutes(app: Express): void {
     } catch (error) {
       console.error("Update feature settings error:", error);
       res.status(500).json({ error: "Failed to update feature settings" });
+    }
+  });
+
+  // Pillar Check-ins
+  app.get("/api/pillar-checkins", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const pillarId = req.query.pillarId as string | undefined;
+      const checkins = await storage.getPillarCheckins(userId, pillarId);
+      res.json(checkins);
+    } catch (error) {
+      console.error("Get pillar checkins error:", error);
+      res.status(500).json({ error: "Failed to get pillar check-ins" });
+    }
+  });
+
+  app.post("/api/pillar-checkins", requireAuth, async (req, res) => {
+    try {
+      const data = insertPillarCheckinSchema.parse({
+        ...req.body,
+        userId: req.session.userId!,
+      });
+      const checkin = await storage.createPillarCheckin(data);
+      res.status(201).json(checkin);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      console.error("Create pillar checkin error:", error);
+      res.status(500).json({ error: "Failed to save pillar check-in" });
     }
   });
 

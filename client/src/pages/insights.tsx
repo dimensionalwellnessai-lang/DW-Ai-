@@ -38,12 +38,21 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { ReadingCard, type ReadingCardData } from "@/features/home/components/ReadingCard";
-import { LIFE_DIMENSIONS, getDimensionById, ASSESSMENT_QUESTIONS, type LifeDimension } from "@/lib/life-dimensions";
+import { PILLARS, PILLAR_BY_ID, LEGACY_TO_PILLAR_MAP, type PillarDefinition } from "../../../shared/lifeSystemTaxonomy";
 import { format, startOfWeek, endOfWeek } from "date-fns";
 import { useTrackFeature } from "@/hooks/use-ai-learning";
 import { isFeatureEnabled } from "@/config/featureFlags";
 import { useAuth } from "@/hooks/use-auth";
 import { getQueryFn } from "@/lib/queryClient";
+
+/** Resolve a stored assessment `dimension` (may be legacy or canonical) to a pillar id. */
+function toPillarId(dim: string): string {
+  return LEGACY_TO_PILLAR_MAP[dim] ?? dim;
+}
+
+// Use PillarDefinition as the local dimension type
+type LifeDimension = PillarDefinition;
+const LIFE_DIMENSIONS = PILLARS;
 import { COPY } from "@/copy/en";
 import { MilestoneMoment } from "@/components/milestone-moment";
 import { insightMilestoneKey, hasMilestoneSeen, markMilestoneSeen } from "@/lib/milestone-storage";
@@ -94,7 +103,7 @@ export default function InsightsDashboard() {
   const dwInsightJournalEnabled = isFeatureEnabled("DW_INSIGHT_JOURNAL");
   const { user } = useAuth();
   const isLoggedIn = Boolean(user);
-  const [selectedDimension, setSelectedDimension] = useState<LifeDimension | null>(null);
+  const [selectedDimension, setSelectedDimension] = useState<PillarDefinition | null>(null);
   const [, navigate] = useLocation();
 
   // Fetch dimension assessments
@@ -142,13 +151,14 @@ export default function InsightsDashboard() {
     setInsightMilestoneDismissed(true);
   };
 
-  // Calculate overall balance
+  // Calculate overall balance — normalize legacy dimension ids to pillar ids
   const getLatestAssessmentByDimension = () => {
     const latestByDimension: Record<string, DimensionAssessment> = {};
     assessments.forEach(assessment => {
-      if (!latestByDimension[assessment.dimension] ||
-          new Date(assessment.assessedAt) > new Date(latestByDimension[assessment.dimension].assessedAt)) {
-        latestByDimension[assessment.dimension] = assessment;
+      const key = toPillarId(assessment.dimension);
+      if (!latestByDimension[key] ||
+          new Date(assessment.assessedAt) > new Date(latestByDimension[key].assessedAt)) {
+        latestByDimension[key] = assessment;
       }
     });
     return latestByDimension;
@@ -162,12 +172,12 @@ export default function InsightsDashboard() {
 
   // Calculate trend (compare to previous assessment)
   const getTrend = () => {
-    // Simple implementation - check if more dimensions improved than declined
     let improved = 0;
     let declined = 0;
     
     LIFE_DIMENSIONS.forEach(dim => {
-      const dimAssessments = assessments.filter(a => a.dimension === dim.id).sort((a, b) => 
+      // Match assessments by pillar id or legacy id mapping
+      const dimAssessments = assessments.filter(a => toPillarId(a.dimension) === dim.id).sort((a, b) => 
         new Date(b.assessedAt).getTime() - new Date(a.assessedAt).getTime()
       );
       
@@ -231,7 +241,6 @@ export default function InsightsDashboard() {
           {LIFE_DIMENSIONS.map(dimension => {
             const assessment = latestAssessments[dimension.id];
             const score = assessment ? assessment.score : 0;
-            const Icon = dimension.icon;
             const percentage = Math.round(score * 20);
 
             return (
@@ -246,8 +255,16 @@ export default function InsightsDashboard() {
               >
                 <CardContent className="pt-6">
                   <div className="flex flex-col items-center text-center gap-2">
-                    <div className={`p-3 rounded-md ${dimension.bg}`}>
-                      <Icon className={`h-6 w-6 ${dimension.color}`} />
+                    <div
+                      className="p-3 rounded-md"
+                      style={{ background: `hsl(${dimension.color} / 0.12)` }}
+                    >
+                      <span
+                        className="text-lg font-semibold"
+                        style={{ color: `hsl(${dimension.color})` }}
+                      >
+                        {dimension.label.charAt(0)}
+                      </span>
                     </div>
                     <p className="font-medium text-sm">{dimension.label}</p>
                     <div className="text-2xl font-bold">{percentage}%</div>
@@ -266,19 +283,25 @@ export default function InsightsDashboard() {
               const dimAssessment = latestAssessments[selectedDimension.id];
               const dimScore = dimAssessment ? dimAssessment.score : 0;
               const dimPercentage = Math.round(dimScore * 20);
-              const DimIcon = selectedDimension.icon;
-              const questions = ASSESSMENT_QUESTIONS[selectedDimension.id] || [];
 
               return (
                 <>
                   <DialogHeader>
                     <div className="flex items-center gap-3">
-                      <div className={`p-3 rounded-md ${selectedDimension.bg}`}>
-                        <DimIcon className={`h-6 w-6 ${selectedDimension.color}`} />
+                      <div
+                        className="p-3 rounded-md"
+                        style={{ background: `hsl(${selectedDimension.color} / 0.12)` }}
+                      >
+                        <span
+                          className="text-lg font-semibold"
+                          style={{ color: `hsl(${selectedDimension.color})` }}
+                        >
+                          {selectedDimension.label.charAt(0)}
+                        </span>
                       </div>
                       <div>
                         <DialogTitle data-testid="text-dimension-title">{selectedDimension.label}</DialogTitle>
-                        <DialogDescription>{selectedDimension.description}</DialogDescription>
+                        <DialogDescription>{selectedDimension.summary}</DialogDescription>
                       </div>
                     </div>
                   </DialogHeader>
@@ -298,15 +321,10 @@ export default function InsightsDashboard() {
                     </div>
 
                     <div className="space-y-2">
-                      <p className="text-sm font-medium">Assessment Questions</p>
-                      <ul className="space-y-2">
-                        {questions.map((q, i) => (
-                          <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
-                            <CheckCircle2 className="h-4 w-4 mt-0.5 flex-shrink-0 text-muted-foreground/50" />
-                            <span>{q}</span>
-                          </li>
-                        ))}
-                      </ul>
+                      <p className="text-sm font-medium">Reflection</p>
+                      <p className="text-sm text-muted-foreground italic">
+                        "{selectedDimension.openingQuestion}"
+                      </p>
                     </div>
 
                     <Button

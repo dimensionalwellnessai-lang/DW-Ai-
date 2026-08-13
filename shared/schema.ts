@@ -4820,3 +4820,33 @@ export const insertEnergyPracticeSchema = createInsertSchema(energyPractices).om
 
 export type EnergyPractice = typeof energyPractices.$inferSelect;
 export type InsertEnergyPractice = z.infer<typeof insertEnergyPracticeSchema>;
+
+// ── Pillar Check-ins ─────────────────────────────────────────────────────────
+// Replaces the legacy 1-5 quiz with a consent-based reflective check-in per
+// Life System pillar. New check-ins are stored here; legacy assessments remain
+// in `life_dimension_assessments` and are surfaced through LEGACY_TO_PILLAR_MAP.
+export const pillarCheckins = pgTable("pillar_checkins", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  /** Canonical pillar id from shared/lifeSystemTaxonomy.ts */
+  pillarId: text("pillar_id").notNull(),
+  /** One of: "Powered" | "Stable" | "Building" | "Needs Attention" */
+  status: text("status").notNull(),
+  /** The user's free-text reflection note (optional). */
+  note: text("note"),
+  checkedAt: timestamp("checked_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertPillarCheckinSchema = createInsertSchema(pillarCheckins).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const pillarCheckinUpdateSchema = createInsertSchema(pillarCheckins)
+  .omit({ id: true, userId: true, createdAt: true })
+  .partial()
+  .strict();
+
+export type PillarCheckin = typeof pillarCheckins.$inferSelect;
+export type InsertPillarCheckin = z.infer<typeof insertPillarCheckinSchema>;
