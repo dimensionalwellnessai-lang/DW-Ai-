@@ -58,6 +58,7 @@ import type {
   RecoveryReflection,
 } from "@shared/schema";
 import { usePageMeta } from "@/hooks/use-page-meta";
+import { useAuth } from "@/hooks/use-auth";
 
 
 const WELLNESS_DIMENSIONS = [
@@ -1628,6 +1629,8 @@ interface LifestylePreferences {
 
 function FoundationsSection() {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const isAuthenticated = Boolean(user);
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState<LifestylePreferences>({});
   const editRef = useRef<HTMLDivElement>(null);
@@ -1636,6 +1639,7 @@ function FoundationsSection() {
   const { data: serverPrefs, isLoading } = useQuery<LifestylePreferences>({
     queryKey: ["/api/profile/lifestyle-preferences"],
     retry: false,
+    enabled: isAuthenticated,
   });
 
   // Guest-storage foundations as fallback
@@ -1652,11 +1656,15 @@ function FoundationsSection() {
       toast({ title: "Foundations updated", description: "Your foundations have been saved." });
     },
     onError: () => {
-      toast({ title: "Couldn't save", description: "Please try again.", variant: "destructive" });
+      toast({ title: "Couldn't save your foundations", description: "Please try again.", variant: "destructive" });
     },
   });
 
   const startEditing = () => {
+    if (!isAuthenticated) {
+      toast({ title: "Sign in to save your foundations", description: "Create an account or sign in to keep your foundations across devices.", variant: "destructive" });
+      return;
+    }
     setDraft({
       identityVision: serverPrefs?.identityVision || "",
       standards: serverPrefs?.standards || "",
