@@ -368,7 +368,7 @@ export default function CalendarMonthPage() {
   usePageMeta("Calendar", "Plan your month and schedule wellness activities.");
   const [, navigate] = useLocation();
   const { toast } = useToast();
-  const [view, setView] = useState<CalendarView>("week");
+  const [view, setView] = useState<CalendarView>("month");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
