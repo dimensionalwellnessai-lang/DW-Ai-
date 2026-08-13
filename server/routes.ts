@@ -27,6 +27,7 @@ import { registerRelationshipsRoutes } from "./routes/relationships";
 import { registerAccountabilityRoutes } from "./routes/accountability-routes";
 import { registerRealtimeRoutes } from "./routes/realtime";
 import { registerLifeSystemPillarRoutes } from "./routes/life-system-pillars";
+import { registerDimensionsConfigRoutes } from "./routes/dimensions-config";
 import { registerTriggerRoutes } from "./routes/triggers";
 import { registerAdminProgressRoutes } from "./routes/admin-progress";
 import { registerFinancesRoutes } from "./routes/finances";
@@ -13033,6 +13034,14 @@ Return ONLY this JSON:
       res.status(500).json({ error: err.message });
     }
   });
+
+  // Registered LAST on purpose: dimensions-config.ts duplicates several
+  // legacy endpoints defined inline above (dimension systems, wellness
+  // preferences, feature settings, cosmic consent, ...). Express serves the
+  // FIRST matching handler, so registering here keeps the stricter legacy
+  // validation in charge while still adding the endpoints that only exist in
+  // dimensions-config (e.g. /api/pillar-checkins*).
+  registerDimensionsConfigRoutes(app);
 
   return httpServer;
 }

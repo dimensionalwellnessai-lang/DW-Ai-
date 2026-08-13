@@ -345,6 +345,7 @@ import {
   type PillarCheckin,
   type InsertPillarCheckin,
 } from "@shared/schema";
+import { SWITCH_TO_PILLAR, checkinStatusToSwitch } from "@shared/switchPillarMap";
 import { db } from "./db";
 import { eq, and, gte, lte, lt, desc, sql, or, inArray, ne, count, isNull } from "drizzle-orm";
 import { createHash } from "crypto";
@@ -774,6 +775,7 @@ export interface IStorage {
   // Pillar Check-ins (pillar-based reflective check-in, replaces legacy quiz)
   getPillarCheckins(userId: string, pillarId?: string): Promise<PillarCheckin[]>;
   getLatestPillarCheckin(userId: string, pillarId: string): Promise<PillarCheckin | undefined>;
+  getLatestPillarCheckinsMap(userId: string): Promise<Record<string, { status: string; checkedAt: string | null }>>;
   createPillarCheckin(data: InsertPillarCheckin): Promise<PillarCheckin>;
 
   // PR #3: Dimension Systems
@@ -3110,14 +3112,76 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserProgressSwitches(userId: string, range: string): Promise<UserSwitchProgress[]> {
-    const switchIds = ["body", "mind", "time", "purpose", "money", "relationships", "environment", "identity"];
-    
-    return switchIds.map(switchId => ({
-      switchId,
-      status: 'off',
-      lastTrainedAt: null,
-      completedCount: 0,
-    }));
+    // Real data sourced from pillar_checkins. Each of the 8 switches maps to a
+    // canonical pillar id (see shared/switchPillarMap.ts). Per switch we return
+    // the latest status (mapped back to UI values, deliberately all-time so a
+    // quiet stretch doesn't erase where the user last landed), the latest
+    // checkedAt as lastTrainedAt, and the check-in count WITHIN the range.
+    const switchIds = Object.keys(SWITCH_TO_PILLAR) as (keyof typeof SWITCH_TO_PILLAR)[];
+    const pillarIds = switchIds.map((s) => SWITCH_TO_PILLAR[s]);
+
+    // Parse ranges like "21d" / "7d"; default 21 days.
+    const rangeDays = /^(\d+)d$/.test(range) ? parseInt(range, 10) : 21;
+    const cutoff = new Date(Date.now() - rangeDays * 24 * 60 * 60 * 1000);
+
+    const rows = await db
+      .select({
+        pillarId: pillarCheckins.pillarId,
+        status: pillarCheckins.status,
+        checkedAt: pillarCheckins.checkedAt,
+      })
+      .from(pillarCheckins)
+      .where(and(eq(pillarCheckins.userId, userId), inArray(pillarCheckins.pillarId, pillarIds)))
+      .orderBy(desc(pillarCheckins.checkedAt));
+
+    // rows are newest-first; first-seen per pillar is the latest.
+    const latestByPillar = new Map<string, { status: string; checkedAt: Date | null }>();
+    const countByPillar = new Map<string, number>();
+    for (const r of rows) {
+      // Count only check-ins inside the requested range window.
+      if (r.checkedAt && r.checkedAt >= cutoff) {
+        countByPillar.set(r.pillarId, (countByPillar.get(r.pillarId) || 0) + 1);
+      }
+      if (!latestByPillar.has(r.pillarId)) {
+        latestByPillar.set(r.pillarId, { status: r.status, checkedAt: r.checkedAt ?? null });
+      }
+    }
+
+    return switchIds.map((switchId) => {
+      const pillarId = SWITCH_TO_PILLAR[switchId];
+      const latest = latestByPillar.get(pillarId);
+      return {
+        switchId,
+        status: latest ? checkinStatusToSwitch(latest.status) : "off",
+        lastTrainedAt: latest?.checkedAt ? new Date(latest.checkedAt).toISOString() : null,
+        completedCount: countByPillar.get(pillarId) || 0,
+      };
+    });
+  }
+
+  async getLatestPillarCheckinsMap(userId: string): Promise<Record<string, { status: string; checkedAt: string | null }>> {
+    // Latest check-in per pillarId for this user, in a single query. Used by
+    // the Life Blueprint to render an unobtrusive "Last check-in" line.
+    const rows = await db
+      .select({
+        pillarId: pillarCheckins.pillarId,
+        status: pillarCheckins.status,
+        checkedAt: pillarCheckins.checkedAt,
+      })
+      .from(pillarCheckins)
+      .where(eq(pillarCheckins.userId, userId))
+      .orderBy(desc(pillarCheckins.checkedAt));
+
+    const out: Record<string, { status: string; checkedAt: string | null }> = {};
+    for (const r of rows) {
+      if (!out[r.pillarId]) {
+        out[r.pillarId] = {
+          status: r.status,
+          checkedAt: r.checkedAt ? new Date(r.checkedAt).toISOString() : null,
+        };
+      }
+    }
+    return out;
   }
 
   async getUserProgressPatterns(userId: string, range: string): Promise<{ flagKey: string; count: number }[]> {

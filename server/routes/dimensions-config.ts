@@ -6,6 +6,9 @@ import { storage } from "../storage";
 import { requireAuth } from "./_shared";
 
 import { insertLifeDimensionAssessmentSchema, insertDimensionSystemSchema, insertWellnessPreferencesSchema, insertUserValuesRulesSchema, insertFeatureSettingsSchema, insertPillarCheckinSchema } from "@shared/schema";
+import { isValidPillarId } from "@shared/lifeSystemTaxonomy";
+
+const pillarCheckinStatusEnum = z.enum(["Powered", "Stable", "Building", "Needs Attention"]);
 export function registerDimensionsConfigRoutes(app: Express): void {
   app.get("/api/life-dimension-assessments", requireAuth, async (req, res) => {
     try {
@@ -297,12 +300,30 @@ export function registerDimensionsConfigRoutes(app: Express): void {
     }
   });
 
+  // Latest check-in per pillarId (single grouped query). Used by Life Blueprint
+  // to render an unobtrusive "Last check-in: X ago — <status>" line per pillar.
+  app.get("/api/pillar-checkins/latest", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const latest = await storage.getLatestPillarCheckinsMap(userId);
+      res.json(latest);
+    } catch (error) {
+      console.error("Get latest pillar checkins error:", error);
+      res.status(500).json({ error: "Failed to get latest pillar check-ins" });
+    }
+  });
+
   app.post("/api/pillar-checkins", requireAuth, async (req, res) => {
     try {
-      const data = insertPillarCheckinSchema.parse({
-        ...req.body,
-        userId: req.session.userId!,
-      });
+      // Constrain to canonical pillar ids and the four allowed statuses so
+      // malformed writes can't surface arbitrary labels in progress surfaces.
+      const data = insertPillarCheckinSchema
+        .extend({ status: pillarCheckinStatusEnum })
+        .refine((d) => isValidPillarId(d.pillarId), { message: "Unknown pillarId", path: ["pillarId"] })
+        .parse({
+          ...req.body,
+          userId: req.session.userId!,
+        });
       const checkin = await storage.createPillarCheckin(data);
       res.status(201).json(checkin);
     } catch (error) {

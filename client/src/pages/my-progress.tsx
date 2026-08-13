@@ -27,6 +27,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { getSwitchData, type SwitchId, type SwitchStatus } from "@/lib/switch-storage";
+import { useAuth } from "@/hooks/use-auth";
 import { getUserSignals } from "@/lib/user-signals";
 import { SWITCH_COLORS } from "@/lib/switch-colors";
 import { MilestoneMoment } from "@/components/milestone-moment";
@@ -104,7 +105,9 @@ const SWITCH_TITLES: Record<string, string> = {
 export default function MyProgressPage() {
   usePageMeta("My Progress", "See your wellness gains and momentum across all 8 life dimensions.");
   const [range] = useState<"7d" | "14d">("14d");
-  
+  const { user } = useAuth();
+  const isAuthed = !!user;
+
   const localSwitchData = getSwitchData();
   const signals = getUserSignals();
 
@@ -191,21 +194,42 @@ export default function MyProgressPage() {
   const mergedSwitches = switchIds.map(switchId => {
     const serverData = serverSwitches?.switches?.find(s => s.switchId === switchId);
     const localData = localSwitchData[switchId];
-    
-    const lastUpdatedTs = localData?.lastUpdated || null;
-    const lastTrainedAt = lastUpdatedTs ? new Date(lastUpdatedTs).toISOString() : serverData?.lastTrainedAt || null;
 
     const VALID_STATUSES: SwitchStatus[] = ["off", "flickering", "stable", "powered"];
-    const rawStatus = localData?.status || serverData?.status || "off";
+
+    // For authenticated users we PREFER the server (pillar_checkins) values,
+    // falling back to local only when the server has no record for a switch.
+    // Guests have no server data, so local wins for them.
+    const hasServer = isAuthed && !!serverData && (
+      serverData.status !== "off" ||
+      serverData.lastTrainedAt !== null ||
+      (serverData.completedCount21d ?? 0) > 0
+    );
+
+    const localLastTrained = localData?.lastUpdated
+      ? new Date(localData.lastUpdated).toISOString()
+      : null;
+
+    const rawStatus = hasServer
+      ? serverData!.status
+      : (localData?.status || serverData?.status || "off");
     const status: SwitchStatus = VALID_STATUSES.includes(rawStatus as SwitchStatus)
       ? (rawStatus as SwitchStatus)
       : "off";
-    
+
+    const lastTrainedAt = hasServer
+      ? serverData!.lastTrainedAt || localLastTrained
+      : localLastTrained || serverData?.lastTrainedAt || null;
+
+    const completedCount = hasServer
+      ? (serverData!.completedCount21d ?? 0)
+      : (localData?.checkIns || serverData?.completedCount21d || 0);
+
     return {
       switchId,
       status,
       lastTrainedAt,
-      completedCount: localData?.checkIns || serverData?.completedCount21d || 0,
+      completedCount,
     };
   });
 

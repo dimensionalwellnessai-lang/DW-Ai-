@@ -145,6 +145,27 @@ function writeBackfillNote(userId: string, note: StoredBackfillNote): void {
   }
 }
 
+interface LatestCheckin {
+  status: string;
+  checkedAt: string | null;
+}
+
+function LastCheckinLine({ checkin, testId }: { checkin?: LatestCheckin; testId: string }) {
+  if (!checkin) return null;
+  const when = checkin.checkedAt ? relativeTime(checkin.checkedAt) : "";
+  return (
+    <div
+      className="text-xs mt-1.5 text-muted-foreground flex items-center gap-1"
+      data-testid={testId}
+    >
+      <Clock className="w-3 h-3" aria-hidden />
+      <span>
+        Last check-in{when ? ` ${when}` : ""} — {checkin.status}
+      </span>
+    </div>
+  );
+}
+
 export default function LifeSystemPage() {
   usePageMeta(
     "Life Blueprint",
@@ -153,6 +174,14 @@ export default function LifeSystemPage() {
   const { data, isLoading } = useLifeSystem();
   const { user } = useAuth();
   const userId = user?.id;
+
+  // Latest check-in per pillar (from pillar_checkins). Unobtrusive; only shown
+  // for pillars the user has actually checked in on.
+  const { data: latestCheckins } = useQuery<Record<string, LatestCheckin>>({
+    queryKey: ["/api/pillar-checkins/latest"],
+    enabled: !!userId,
+    retry: false,
+  });
   const { toast } = useToast();
   const [adopting, setAdopting] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
@@ -426,6 +455,10 @@ export default function LifeSystemPage() {
                     messages={row?.content?.conversation}
                     testId={`text-conversation-hint-${def.id}`}
                   />
+                  <LastCheckinLine
+                    checkin={latestCheckins?.[def.id]}
+                    testId={`text-last-checkin-${def.id}`}
+                  />
                 </div>
               </Card>
             </Link>
@@ -459,6 +492,10 @@ export default function LifeSystemPage() {
                 <ConversationHint
                   messages={row?.content?.conversation}
                   testId={`text-conversation-hint-${def.id}`}
+                />
+                <LastCheckinLine
+                  checkin={latestCheckins?.[def.id]}
+                  testId={`text-last-checkin-${def.id}`}
                 />
               </Link>
               <Switch
