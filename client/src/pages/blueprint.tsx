@@ -1668,6 +1668,10 @@ function FoundationsSection() {
       toast({ title: "Sign in to save your foundations", description: "Create an account or sign in to keep your foundations across devices.", variant: "destructive" });
       return;
     }
+    if (isError) {
+      toast({ title: "Couldn't load your foundations", description: "Please retry loading before editing.", variant: "destructive" });
+      return;
+    }
     setDraft({
       identityVision: serverPrefs?.identityVision || "",
       standards: serverPrefs?.standards || "",
