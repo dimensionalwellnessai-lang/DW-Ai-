@@ -828,11 +828,11 @@ export default function LifeBlueprintV2() {
                           htmlFor={`q${index}-${value}`}
                           className="text-xs text-center cursor-pointer"
                         >
-                          {value === 1 && "Strongly Disagree"}
-                          {value === 2 && "Disagree"}
-                          {value === 3 && "Neutral"}
-                          {value === 4 && "Agree"}
-                          {value === 5 && "Strongly Agree"}
+                          {value === 1 && "Not at all"}
+                          {value === 2 && "Rarely"}
+                          {value === 3 && "Somewhat"}
+                          {value === 4 && "Mostly"}
+                          {value === 5 && "Fully"}
                         </Label>
                       </div>
                     ))}
@@ -877,7 +877,7 @@ export default function LifeBlueprintV2() {
         <div className="container max-w-7xl mx-auto p-4 sm:p-6 space-y-6">
         <div className="text-center space-y-2 max-w-3xl mx-auto">
           <p className="text-muted-foreground">
-            Assess and optimize your life across 8 key dimensions. Build systems that support your wellbeing.
+            These check-ins help you notice where your Life System feels steady and where it could use some attention. Take what's useful; set aside anything that doesn't fit right now.
           </p>
         </div>
 

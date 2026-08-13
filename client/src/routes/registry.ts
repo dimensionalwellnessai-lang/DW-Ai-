@@ -134,7 +134,7 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
     icon: "layout-grid",
     type: "page",
     description: "Your wellness hub",
-    showInMenu: true,
+    showInMenu: false, // Redirects to /life-blueprint; hidden to avoid duplicate nav entry
     menuSection: "primary",
     menuOrder: 1,
     enabled: true,
