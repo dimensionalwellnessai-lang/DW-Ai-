@@ -1,4 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetFooter,
+  SheetClose,
+} from "@/components/ui/sheet";
+import { useToast } from "@/hooks/use-toast";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { useSearch } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -309,6 +319,21 @@ function saveBirthData(data: BirthData) {
     // Storage may be unavailable (quota exceeded, private mode)
   }
 }
+
+// ─── Shared birth-data hook ────────────────────────────────────────────────────
+// Wraps localStorage load/save behind a single piece of React state so a save in
+// any tab immediately propagates to every other tab (no remount required).
+type BirthDataSetter = (data: BirthData) => void;
+
+function useBirthData(): [BirthData | null, BirthDataSetter] {
+  const [birthData, setBirthDataState] = useState<BirthData | null>(loadBirthData);
+  const setBirthData = useCallback<BirthDataSetter>((data) => {
+    saveBirthData(data);
+    setBirthDataState(data);
+  }, []);
+  return [birthData, setBirthData];
+}
+
 function loadNumerologyData(): NumerologyData | null {
   try { return JSON.parse(localStorage.getItem(NUMEROLOGY_KEY) ?? "null"); } catch { return null; }
 }
@@ -683,9 +708,14 @@ Rules: Max 80 words total. Use words like "notice", "shift", "steady", "grounded
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-function AstrologyProfileTab() {
+function AstrologyProfileTab({
+  birthData,
+  setBirthData,
+}: {
+  birthData: BirthData | null;
+  setBirthData: BirthDataSetter;
+}) {
   const queryClient = useQueryClient();
-  const [birthData, setBirthData] = useState<BirthData | null>(loadBirthData);
   const [editing, setEditing] = useState(!birthData);
 
   // Form state
@@ -695,6 +725,19 @@ function AstrologyProfileTab() {
   const [houseSystem, setHouseSystem] = useState<HouseSystem>(birthData?.houseSystem ?? "whole-sign");
   const [zodiacSystem, setZodiacSystem] = useState<ZodiacSystem>(birthData?.zodiacSystem ?? "tropical");
   const [expandedPlanet, setExpandedPlanet] = useState<string | null>(null);
+
+  // Keep the local edit form + editing state in sync when birthData changes
+  // from elsewhere (e.g. the quick-add sheet on the hub header).
+  useEffect(() => {
+    if (birthData) {
+      setBirthDate(birthData.birthDate);
+      setBirthTime(birthData.birthTime);
+      setBirthPlace(birthData.birthPlace);
+      setHouseSystem(birthData.houseSystem);
+      setZodiacSystem(birthData.zodiacSystem);
+      setEditing(false);
+    }
+  }, [birthData]);
 
   // Persist house system to server for authenticated users
   const houseSystemMutation = useMutation({
@@ -712,9 +755,7 @@ function AstrologyProfileTab() {
     setHouseSystem(hs);
     // Also persist to server if birth data is already saved
     if (birthData) {
-      const updated = { ...birthData, houseSystem: hs };
-      saveBirthData(updated);
-      setBirthData(updated);
+      setBirthData({ ...birthData, houseSystem: hs });
       houseSystemMutation.mutate(hs);
     }
   };
@@ -722,9 +763,10 @@ function AstrologyProfileTab() {
   const handleSave = () => {
     if (!birthDate) return;
     const data: BirthData = { birthDate, birthTime, birthPlace, houseSystem, zodiacSystem };
-    saveBirthData(data);
     setBirthData(data);
     setEditing(false);
+    void queryClient.invalidateQueries({ queryKey: ["/api/cosmic/chart"] });
+    void queryClient.invalidateQueries({ queryKey: ["/api/cosmic/today"] });
   };
 
   const placements = birthData
@@ -1039,11 +1081,25 @@ function NatalChartWheel({ placements }: { placements: PlanetPlacement[] }) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-function NumerologyProfileTab({ onViewInsights }: { onViewInsights?: () => void }) {
+function NumerologyProfileTab({
+  onViewInsights,
+  sharedBirthDate,
+}: {
+  onViewInsights?: () => void;
+  sharedBirthDate?: string;
+}) {
   const [numData, setNumData] = useState<NumerologyData | null>(loadNumerologyData);
   const [editing, setEditing] = useState(!numData);
   const [fullName, setFullName] = useState(numData?.fullName ?? "");
-  const [birthDate, setBirthDate] = useState(numData?.birthDate ?? "");
+  const [birthDate, setBirthDate] = useState(numData?.birthDate ?? sharedBirthDate ?? "");
+
+  // Prefill birth date from the shared cosmic birth data so users don't type it
+  // twice — only when the numerology profile doesn't already have one.
+  useEffect(() => {
+    if (!numData?.birthDate && sharedBirthDate && !birthDate) {
+      setBirthDate(sharedBirthDate);
+    }
+  }, [sharedBirthDate, numData?.birthDate, birthDate]);
 
   const handleSave = () => {
     if (!birthDate) return;
@@ -1816,6 +1872,131 @@ Describe: 1) Where their energies naturally complement or support each other rig
   );
 }
 
+// ─── Quick add birth details (prominent hub entry point) ───────────────────────
+function BirthDetailsQuickAdd({ setBirthData }: { setBirthData: BirthDataSetter }) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+  const [birthDate, setBirthDate] = useState("");
+  const [birthTime, setBirthTime] = useState("");
+  const [birthPlace, setBirthPlace] = useState("");
+
+  const handleSave = () => {
+    if (!birthDate) return;
+    // Keep the same shape as today; zodiac/house stay at existing defaults.
+    setBirthData({
+      birthDate,
+      birthTime,
+      birthPlace,
+      houseSystem: "whole-sign",
+      zodiacSystem: "tropical",
+    });
+    void queryClient.invalidateQueries({ queryKey: ["/api/cosmic/chart"] });
+    void queryClient.invalidateQueries({ queryKey: ["/api/cosmic/today"] });
+    setOpen(false);
+    toast({
+      title: "Birth details saved",
+      description: "Your cosmic insights are now personalised.",
+    });
+  };
+
+  return (
+    <>
+      <Card className="bg-gradient-to-br from-primary/10 to-violet-500/5 border-primary/30">
+        <CardContent className="p-4 flex items-start gap-3">
+          <Sparkles className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-foreground">Personalize your cosmic insights</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Add your birth details to unlock readings, your natal chart, and daily guidance made for you.
+            </p>
+            <Button
+              size="sm"
+              className="mt-3"
+              onClick={() => setOpen(true)}
+              data-testid="button-add-birth-details"
+            >
+              <Sparkles className="h-4 w-4 mr-1" />
+              Add birth details
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetContent side="bottom" className="rounded-t-2xl">
+          <SheetHeader className="text-left">
+            <SheetTitle className="flex items-center gap-2">
+              <Star className="h-4 w-4" />
+              Add your birth details
+            </SheetTitle>
+            <SheetDescription>
+              Only your birth date is required. Add more for more precise readings.
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="quick-birth-date">
+                Birth Date <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="quick-birth-date"
+                type="date"
+                value={birthDate}
+                onChange={e => setBirthDate(e.target.value)}
+                aria-required="true"
+                data-testid="input-quick-birth-date"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="quick-birth-time">
+                Birth Time <span className="text-muted-foreground text-xs">(optional — more precise readings)</span>
+              </Label>
+              <Input
+                id="quick-birth-time"
+                type="time"
+                value={birthTime}
+                onChange={e => setBirthTime(e.target.value)}
+                data-testid="input-quick-birth-time"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="quick-birth-place">
+                Birth Place <span className="text-muted-foreground text-xs">(optional)</span>
+              </Label>
+              <Input
+                id="quick-birth-place"
+                type="text"
+                placeholder="e.g. New York, USA"
+                value={birthPlace}
+                onChange={e => setBirthPlace(e.target.value)}
+                data-testid="input-quick-birth-place"
+              />
+            </div>
+          </div>
+
+          <SheetFooter className="flex-row gap-2">
+            <SheetClose asChild>
+              <Button variant="ghost" className="flex-1" data-testid="button-quick-birth-cancel">
+                Cancel
+              </Button>
+            </SheetClose>
+            <Button
+              className="flex-1"
+              onClick={handleSave}
+              disabled={!birthDate}
+              data-testid="button-quick-birth-save"
+            >
+              Save details
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+    </>
+  );
+}
+
 // ─── Main page ─────────────────────────────────────────────────────────────────
 export default function CosmicHubPage() {
   usePageMeta("Cosmic Hub", "Explore astrology, numerology, and cosmic cycles all in one place.");
@@ -1836,7 +2017,7 @@ export default function CosmicHubPage() {
     }
   }, [searchString]);
 
-  const birthData = loadBirthData();
+  const [birthData, setBirthData] = useBirthData();
   const numerologyData = loadNumerologyData();
 
   return (
@@ -1845,6 +2026,9 @@ export default function CosmicHubPage() {
 
       <ScrollArea className="flex-1">
         <main className="p-4 max-w-2xl mx-auto pb-10 space-y-4">
+          {/* Prominent entry point — visible on all tabs until birth details exist */}
+          {!birthData && <BirthDetailsQuickAdd setBirthData={setBirthData} />}
+
           <Card className="bg-primary/5 border-primary/20">
             <CardContent className="p-4 flex items-start gap-3">
               <Lightbulb className="h-5 w-5 text-primary mt-0.5 shrink-0" />
@@ -1888,12 +2072,15 @@ export default function CosmicHubPage() {
                 numerologyData={numerologyData}
                 onViewNumerologyProfile={() => setActiveTab("numerology")}
               />
-              <AstrologyProfileTab />
+              <AstrologyProfileTab birthData={birthData} setBirthData={setBirthData} />
               <ConsentSection />
             </TabsContent>
 
             <TabsContent value="numerology" className="mt-4 space-y-4">
-              <NumerologyProfileTab onViewInsights={() => setActiveTab("readings")} />
+              <NumerologyProfileTab
+                onViewInsights={() => setActiveTab("readings")}
+                sharedBirthDate={birthData?.birthDate}
+              />
               <ConsentSection />
             </TabsContent>
           </Tabs>
