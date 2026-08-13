@@ -66,6 +66,44 @@ function isConversationalOnboardingSkipped(): boolean {
   }
 }
 
+// ── Ongoing Life Check-in nudges ──────────────────────────────────────────────
+// The "Finish setup" card (for skippers) reappears each day until completed;
+// the staleness "life check-in" card (for established users whose profile is
+// >60 days old) is snoozed for 14 days after a dismiss.
+const LS_FINISH_SETUP_DISMISSED_PREFIX = "dw_finish_setup_dismissed_";
+const LS_LIFE_REFRESH_DISMISSED_AT = "dw_life_refresh_dismissed_at";
+const STALE_PROFILE_DAYS = 60;
+const LIFE_REFRESH_SNOOZE_DAYS = 14;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Local YYYY-MM-DD key used to make the Finish-setup dismissal reset each day. */
+function todayDateKey(): string {
+  const d = new Date();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${m}-${day}`;
+}
+
+function isFinishSetupDismissedToday(): boolean {
+  try {
+    return localStorage.getItem(LS_FINISH_SETUP_DISMISSED_PREFIX + todayDateKey()) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function isLifeRefreshSnoozed(): boolean {
+  try {
+    const raw = localStorage.getItem(LS_LIFE_REFRESH_DISMISSED_AT);
+    if (!raw) return false;
+    const ts = Number(raw);
+    if (!Number.isFinite(ts)) return false;
+    return Date.now() - ts < LIFE_REFRESH_SNOOZE_DAYS * DAY_MS;
+  } catch {
+    return false;
+  }
+}
+
 // Map a quick "how I feel right now" chip to a mood-log payload. The shape
 // matches POST /api/mood (energy/mood/clarity 1-10) so the chip taps feed
 // the same insight pipeline as the full mood tracker.
@@ -225,6 +263,59 @@ export default function HomeCommandCenter() {
 
   // Show the conversational onboarding card when the Spec 13 first-session hasn't been completed or skipped
   const showOnboardingCard = !isConversationalOnboardingDone() && !isConversationalOnboardingSkipped() && !isE2ETestMode();
+
+  // ── Ongoing Life Check-in nudges (Finish setup + staleness re-sync) ──────────
+  // Re-render triggers for the per-day / snooze dismissals (localStorage-backed).
+  const [finishSetupDismissed, setFinishSetupDismissed] = useState(() => isFinishSetupDismissedToday());
+  const [lifeRefreshDismissed, setLifeRefreshDismissed] = useState(() => isLifeRefreshSnoozed());
+
+  // The authed onboarding profile carries completedAt; used both to reinforce the
+  // Finish-setup card (absence of a profile) and to detect a stale profile.
+  const onboardingProfileQ = useQuery<{ profile: { completedAt?: string | null } | null }>({
+    queryKey: ["/api/onboarding/profile"],
+    enabled: !isE2ETestMode(),
+    retry: false,
+    staleTime: 5 * 60 * 1000,
+  });
+  const onboardingProfile = onboardingProfileQ.data?.profile ?? null;
+
+  // "Finish setting up your Life Blueprint" — for users who skipped the first
+  // session. Reappears daily (until completed) unless dismissed for today.
+  const showFinishSetupCard =
+    !isE2ETestMode() &&
+    isConversationalOnboardingSkipped() &&
+    !isConversationalOnboardingDone() &&
+    !finishSetupDismissed;
+
+  // "Time for a life check-in?" — for established users whose saved profile is
+  // older than STALE_PROFILE_DAYS. Never shown alongside the Finish-setup card.
+  const profileIsStale = (() => {
+    const completedAt = onboardingProfile?.completedAt;
+    if (!completedAt) return false;
+    const ts = new Date(completedAt).getTime();
+    if (!Number.isFinite(ts)) return false;
+    return Date.now() - ts > STALE_PROFILE_DAYS * DAY_MS;
+  })();
+  const showLifeRefreshCard =
+    !isE2ETestMode() && !showFinishSetupCard && profileIsStale && !lifeRefreshDismissed;
+
+  const handleDismissFinishSetup = () => {
+    try {
+      localStorage.setItem(LS_FINISH_SETUP_DISMISSED_PREFIX + todayDateKey(), "1");
+    } catch {
+      // Ignore storage errors
+    }
+    setFinishSetupDismissed(true);
+  };
+
+  const handleDismissLifeRefresh = () => {
+    try {
+      localStorage.setItem(LS_LIFE_REFRESH_DISMISSED_AT, String(Date.now()));
+    } catch {
+      // Ignore storage errors
+    }
+    setLifeRefreshDismissed(true);
+  };
 
   // Progressive onboarding follow-up card — shown after first session is complete
   interface ProgressivePrompt { id: string; prompt: string; context: string; }
@@ -526,6 +617,98 @@ export default function HomeCommandCenter() {
                     </div>
                     <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
                   </button>
+                </CarouselItem>
+              )}
+
+              {/* Ongoing Life Check-in — "Finish setting up your Life Blueprint" (skippers) */}
+              {showFinishSetupCard && (
+                <CarouselItem className="pl-2 basis-[85%] h-full">
+                  <div
+                    data-testid="card-finish-setup"
+                    className="w-full h-full rounded-2xl border border-primary/40 bg-gradient-to-br from-primary/8 to-primary/15 px-4 py-3.5 flex flex-col gap-2"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="h-9 w-9 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                        <Compass className="h-4 w-4 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold leading-snug">Finish setting up your Life Blueprint</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          A short conversation with DW shapes your life system.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleDismissFinishSetup}
+                        className="shrink-0 p-1 rounded hover:bg-muted text-muted-foreground"
+                        aria-label="Dismiss for today"
+                        data-testid="btn-dismiss-finish-setup"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                    <div className="flex gap-2 pl-12 mt-1">
+                      <Button
+                        size="sm"
+                        className="h-7 text-xs px-3"
+                        onClick={() => navigate("/voice-onboarding?resume=1")}
+                        data-testid="button-finish-setup"
+                      >
+                        Finish setup
+                        <ChevronRight className="h-3 w-3 ml-1" />
+                      </Button>
+                    </div>
+                  </div>
+                </CarouselItem>
+              )}
+
+              {/* Ongoing Life Check-in — staleness re-sync nudge (established users) */}
+              {showLifeRefreshCard && (
+                <CarouselItem className="pl-2 basis-[85%] h-full">
+                  <div
+                    data-testid="card-life-refresh"
+                    className="w-full h-full rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/5 to-primary/10 px-4 py-3.5 flex flex-col gap-2"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="h-9 w-9 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
+                        <RefreshCw className="h-4 w-4 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold leading-snug">Time for a life check-in?</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          It&apos;s been a while — keep DW in sync with what&apos;s changed.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleDismissLifeRefresh}
+                        className="shrink-0 p-1 rounded hover:bg-muted text-muted-foreground"
+                        aria-label="Dismiss life check-in"
+                        data-testid="btn-dismiss-life-refresh"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                    <div className="flex gap-2 pl-12 mt-1">
+                      <Button
+                        size="sm"
+                        className="h-7 text-xs px-3"
+                        onClick={() => navigate("/voice-onboarding?review=1")}
+                        data-testid="button-life-checkin-quick"
+                      >
+                        Quick update
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 text-xs px-3 text-muted-foreground"
+                        onClick={() => navigate("/voice-onboarding?refresh=1")}
+                        data-testid="button-life-checkin-refresh"
+                      >
+                        Full refresh
+                      </Button>
+                    </div>
+                  </div>
                 </CarouselItem>
               )}
 

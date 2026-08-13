@@ -131,7 +131,8 @@ export function registerOnboardingRoutes(app: Express): void {
   app.post("/api/onboarding/voice-complete", requireAuth, async (req, res) => {
     try {
       const userId = req.session.userId!;
-      const { messages } = req.body as { messages?: Array<{ role: string; content: string }> };
+      const { messages, mode } = req.body as { messages?: Array<{ role: string; content: string }>; mode?: string };
+      const isRefresh = mode === "refresh";
 
       if (!messages || !Array.isArray(messages) || messages.length === 0) {
         await storage.updateUser(userId, { onboardingCompleted: true });
@@ -226,7 +227,42 @@ Return only valid JSON. Do not guess at things not mentioned. Keep suggestions r
           completedAt: new Date(),
         };
 
-        if (existingOnboarding) {
+        if (existingOnboarding && isRefresh) {
+          // "Full life refresh": merge-preserving update. A short refresh
+          // conversation must never clobber an established profile with
+          // empty/default extraction values — keep prior data wherever the
+          // new extraction came back empty, and union array fields.
+          const unionArr = (prev: unknown, next: unknown): string[] => {
+            const p = Array.isArray(prev) ? (prev as string[]) : [];
+            const n = Array.isArray(next) ? (next as string[]) : [];
+            return Array.from(new Set([...p, ...n]));
+          };
+          const preferNew = <T,>(next: T | null | undefined, prev: T | null | undefined): T | null =>
+            next !== null && next !== undefined && next !== ("" as unknown as T) ? next : (prev ?? null);
+
+          const merged: Partial<OnboardingProfile> = {
+            wellnessFocus: (profileData.wellnessFocus as string[])?.length ? profileData.wellnessFocus : existingOnboarding.wellnessFocus,
+            shortTermGoals: preferNew(profileData.shortTermGoals, existingOnboarding.shortTermGoals) ?? "",
+            conversationData: profileData.conversationData,
+            desiredFeelings: unionArr(existingOnboarding.desiredFeelings, profileData.desiredFeelings),
+            currentStateTags: unionArr(existingOnboarding.currentStateTags, profileData.currentStateTags),
+            activeLifeAreas: unionArr(existingOnboarding.activeLifeAreas, profileData.activeLifeAreas),
+            barrierTags: unionArr(existingOnboarding.barrierTags, profileData.barrierTags),
+            supportNeeds: unionArr(existingOnboarding.supportNeeds, profileData.supportNeeds),
+            curiosityTopics: unionArr(existingOnboarding.curiosityTopics, profileData.curiosityTopics),
+            generatedSummary: preferNew(profileData.generatedSummary, existingOnboarding.generatedSummary),
+            generatedDirection: preferNew(profileData.generatedDirection, existingOnboarding.generatedDirection),
+            currentCapacity: preferNew(profileData.currentCapacity, existingOnboarding.currentCapacity),
+            tonePreference: preferNew(profileData.tonePreference, existingOnboarding.tonePreference),
+            uncertaintyFlags: (profileData.uncertaintyFlags ?? existingOnboarding.uncertaintyFlags) as OnboardingProfile["uncertaintyFlags"],
+            suggestedStructure: (profileData.suggestedStructure as unknown[])?.length
+              ? profileData.suggestedStructure
+              : existingOnboarding.suggestedStructure,
+            onboardingVersion: profileData.onboardingVersion,
+            completedAt: profileData.completedAt,
+          };
+          await storage.updateOnboardingProfile(existingOnboarding.id, merged);
+        } else if (existingOnboarding) {
           await storage.updateOnboardingProfile(existingOnboarding.id, profileData);
         } else {
           await storage.createOnboardingProfile({

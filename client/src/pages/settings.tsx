@@ -312,6 +312,35 @@ export function SettingsPage() {
           </CardContent>
         </Card>
 
+        {/* ── Life Check-in — keep DW in sync as life changes ──────────────── */}
+        <Card data-testid="card-life-checkin">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <RefreshCw className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <CardTitle className="text-base">Life Check-in</CardTitle>
+                <CardDescription>Life changes. Keep DW in sync.</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setLocation("/voice-onboarding?review=1")}
+              data-testid="button-life-checkin-quick"
+            >
+              Quick update
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setLocation("/voice-onboarding?refresh=1")}
+              data-testid="button-life-checkin-refresh"
+            >
+              Full life refresh
+            </Button>
+          </CardContent>
+        </Card>
+
         {/* ── Cosmic Guidance Consent ───────────────────────────────────────── */}
         <Card>
           <CardHeader>

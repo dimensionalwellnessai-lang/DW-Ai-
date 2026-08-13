@@ -251,13 +251,20 @@ function FirstRunGuard({ children }: { children: React.ReactNode }) {
   }
 
   // Setup complete, on any onboarding page -> go to /command-center.
-  // Exception: /voice-onboarding?review=1 lets a completed user re-open the
-  // summary to review saved (pending or set-aside) suggestions from My Life.
-  const isSuggestionReview =
-    location === "/voice-onboarding" &&
-    typeof window !== "undefined" &&
-    new URLSearchParams(window.location.search).get("review") === "1";
-  if (setupComplete && isOnOnboardingRoute && !isSuggestionReview) {
+  // Exceptions (completed users may stay on /voice-onboarding):
+  //  - ?review=1  : re-open the summary to review saved suggestions from My Life.
+  //  - ?resume=1  : a skipper returns to finish setting up their Life Blueprint.
+  //  - ?refresh=1 : an established user runs a full "life refresh" conversation.
+  const onboardingReentryMode =
+    location === "/voice-onboarding" && typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search)
+      : null;
+  const isOnboardingReentry =
+    onboardingReentryMode !== null &&
+    (onboardingReentryMode.get("review") === "1" ||
+      onboardingReentryMode.get("resume") === "1" ||
+      onboardingReentryMode.get("refresh") === "1");
+  if (setupComplete && isOnOnboardingRoute && !isOnboardingReentry) {
     return <Redirect to="/command-center" />;
   }
   

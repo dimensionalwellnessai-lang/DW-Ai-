@@ -5,7 +5,7 @@ import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mic, MicOff, Send, Keyboard, Loader2, ArrowRight, Pencil, Check, X, Sparkles, ChevronDown, Info } from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { VOICE_SCRIPTS } from "@/config/voiceScripts";
@@ -91,6 +91,12 @@ const START_ONBOARDING_TRIGGER = "[START_ONBOARDING]";
 // How long (ms) to wait after an AI response before automatically restarting
 // the microphone in voice mode. Gives the user a moment to read/hear the reply.
 const VOICE_AUTO_RESTART_DELAY_MS = 600;
+
+// Opening line DW shows when a returning user starts a "Full life refresh"
+// (/voice-onboarding?refresh=1). It reframes the conversation as a re-sync
+// rather than a first-time setup.
+const REFRESH_OPENING_LINE =
+  "Let's take stock — what's changed in your life lately?";
 
 // localStorage keys for tracking onboarding completion state
 const LS_VOICE_ONBOARDING_SKIPPED = "dw_voice_onboarding_skipped";
@@ -501,10 +507,31 @@ export default function VoiceOnboardingPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
+  // Re-entry modes for the ongoing Life Check-in system (read once on mount):
+  //  - resume=1  : a skipper returns to finish setting up their Life Blueprint.
+  //  - refresh=1 : an established user runs a full "life refresh" conversation.
+  // These reuse the normal conversation machinery; they only affect the seed
+  // (opening message) and the localStorage flag cleanup on completion.
+  const [entryMode] = useState<"resume" | "refresh" | null>(() => {
+    if (typeof window === "undefined") return null;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("refresh") === "1") return "refresh";
+    if (params.get("resume") === "1") return "resume";
+    return null;
+  });
+
   // Phase: "value-preview" = show DW value proposition; "intro" = full-screen avatar; "thread" = chat thread view
-  const [phase, setPhase] = useState<OnboardingPhase>(
-    isFeatureEnabled("ONBOARDING_VALUE_PREVIEW") ? "value-preview" : "intro",
-  );
+  // resume/refresh re-entries skip the value preview and land straight on the
+  // intro (resume) or the seeded refresh conversation.
+  const [phase, setPhase] = useState<OnboardingPhase>(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("resume") === "1" || params.get("refresh") === "1") {
+        return "intro";
+      }
+    }
+    return isFeatureEnabled("ONBOARDING_VALUE_PREVIEW") ? "value-preview" : "intro";
+  });
   const [inputMode, setInputMode] = useState<InputMode>("voice");
   const [voiceState, setVoiceState] = useState<VoiceState>("idle");
   const [liveTranscript, setLiveTranscript] = useState("");
@@ -556,6 +583,9 @@ export default function VoiceOnboardingPage() {
   });
   useEffect(() => {
     if (phase !== "intro" && phase !== "thread") return;
+    // resume/refresh re-entries run a fresh conversation — never hijack them into
+    // the saved-summary view even if the user already has stored suggestions.
+    if (entryMode) return;
     const profile = profileData?.profile;
     if (!profile) return;
     const isReview =
@@ -573,7 +603,7 @@ export default function VoiceOnboardingPage() {
       setSuggestions(profile.suggestedStructure ?? []);
       setPhase("summary");
     }
-  }, [profileData, phase, suggestions.length]);
+  }, [profileData, phase, suggestions.length, entryMode]);
 
   useEffect(() => {
     if (!lifestylePreferences) return;
@@ -811,8 +841,21 @@ export default function VoiceOnboardingPage() {
   );
 
   // ── Begin onboarding: trigger first AI greeting ──
+  // In "refresh" mode we seed DW's opening turn locally (a re-sync prompt) so the
+  // returning user immediately answers "what's changed", instead of the generic
+  // first-time greeting the START_ONBOARDING_TRIGGER produces.
   const handleBegin = useCallback(() => {
     setPhase("thread");
+    if (entryMode === "refresh") {
+      setThread([
+        {
+          id: "refresh-open",
+          role: "assistant",
+          content: REFRESH_OPENING_LINE,
+        },
+      ]);
+      return;
+    }
     setIsReplying(true);
     chatMutation.mutate([
       {
@@ -821,7 +864,7 @@ export default function VoiceOnboardingPage() {
         content: START_ONBOARDING_TRIGGER,
       },
     ]);
-  }, [chatMutation]);
+  }, [chatMutation, entryMode]);
 
   // ── Skip to app (persist skip flag so entry point isn't shown repeatedly) ──
   const handleSkip = () => {
@@ -834,19 +877,33 @@ export default function VoiceOnboardingPage() {
     setLocation("/");
   };
 
+  // ── Mark the conversational onboarding fully complete ──
+  // Sets the completed flag and clears any lingering "skipped" flag so the
+  // persistent "Finish setup" nudge (Command Center) stops appearing once a
+  // skipper has actually finished the flow (resume mode) or completed a refresh.
+  const markConversationalComplete = useCallback(() => {
+    try {
+      localStorage.setItem(LS_VOICE_ONBOARDING_COMPLETED, "true");
+      localStorage.removeItem(LS_VOICE_ONBOARDING_SKIPPED);
+    } catch {
+      // Ignore storage errors
+    }
+  }, []);
+
   // ── Done: extract profile from conversation, then show summary ──
   const handleDone = useCallback(async () => {
     setIsReplying(true);
     try {
       const response = await apiRequest("POST", "/api/onboarding/voice-complete", {
         messages: thread.map((m) => ({ role: m.role, content: m.content })),
+        // "refresh" tells the server to merge-preserve the existing profile
+        // instead of overwriting it with a short conversation's extraction.
+        ...(entryMode === "refresh" ? { mode: "refresh" } : {}),
       });
       const data = await response.json();
-      try {
-        localStorage.setItem(LS_VOICE_ONBOARDING_COMPLETED, "true");
-      } catch {
-        // Ignore storage errors
-      }
+      markConversationalComplete();
+      // Keep Command Center's cached profile (staleness card) in sync.
+      queryClient.invalidateQueries({ queryKey: ["/api/onboarding/profile"] });
       if (data.suggestions && data.suggestions.length > 0) {
         setSummaryText(data.summary ?? null);
         setDirectionText(data.direction ?? null);
@@ -864,7 +921,7 @@ export default function VoiceOnboardingPage() {
       setIsReplying(false);
       setLocation("/");
     }
-  }, [thread, setLocation]);
+  }, [thread, setLocation, markConversationalComplete]);
 
   const persistFoundationSnapshot = useCallback(async () => {
     const payload = {
@@ -1125,9 +1182,19 @@ export default function VoiceOnboardingPage() {
           animate={{ opacity: 1, y: 0 }}
           className="text-center space-y-3"
         >
-          <h1 className="text-2xl font-display font-semibold">Meet DW</h1>
+          <h1 className="text-2xl font-display font-semibold">
+            {entryMode === "refresh"
+              ? "Life refresh"
+              : entryMode === "resume"
+                ? "Finish your setup"
+                : "Meet DW"}
+          </h1>
           <p className="text-muted-foreground text-sm max-w-xs mx-auto">
-            Your dimensional wellness companion. Let&apos;s start with a quick conversation.
+            {entryMode === "refresh"
+              ? "Let's take stock of what's changed and re-sync your Life Blueprint."
+              : entryMode === "resume"
+                ? "Pick up where you left off — a short conversation shapes your Life Blueprint."
+                : "Your dimensional wellness companion. Let\u2019s start with a quick conversation."}
           </p>
         </motion.div>
 
