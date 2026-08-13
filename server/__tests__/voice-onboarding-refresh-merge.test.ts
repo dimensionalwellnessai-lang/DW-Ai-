@@ -243,7 +243,7 @@ describe("POST /api/onboarding/voice-complete mode:refresh", () => {
     expect(storageStub.createOnboardingProfile).not.toHaveBeenCalled();
   });
 
-  it("without mode:refresh, an existing profile is overwritten (documents the contrast)", async () => {
+  it("without mode:refresh, an existing profile is still merge-preserved (plain re-run cannot clobber it)", async () => {
     const existing = richProfile();
     storageStub.getOnboardingProfile.mockResolvedValue(existing);
     chatCreate.mockResolvedValue(aiResponse({}));
@@ -251,9 +251,11 @@ describe("POST /api/onboarding/voice-complete mode:refresh", () => {
     await postVoiceComplete({ messages: NEAR_EMPTY_MESSAGES });
 
     const merged = storageStub.updateOnboardingProfile.mock.calls[0][1] as Record<string, unknown>;
-    // Plain (first-run) completion replaces the profile wholesale — this is
-    // exactly why mode:"refresh" exists for re-entries.
-    expect(merged.desiredFeelings).toEqual([]);
-    expect(merged.generatedSummary).toBeNull();
+    // The server defaults to merge-preserving whenever a profile exists, so a
+    // plain (non-refresh) re-run — deep link, stale bookmark, nav bug — can no
+    // longer wipe an established profile with empty extraction values.
+    expect(merged.desiredFeelings).toEqual(existing.desiredFeelings);
+    expect(merged.generatedSummary).toBe(existing.generatedSummary);
+    expect(merged.tonePreference).toBe(existing.tonePreference);
   });
 });

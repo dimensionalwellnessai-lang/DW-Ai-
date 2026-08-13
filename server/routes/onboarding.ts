@@ -131,8 +131,7 @@ export function registerOnboardingRoutes(app: Express): void {
   app.post("/api/onboarding/voice-complete", requireAuth, async (req, res) => {
     try {
       const userId = req.session.userId!;
-      const { messages, mode } = req.body as { messages?: Array<{ role: string; content: string }>; mode?: string };
-      const isRefresh = mode === "refresh";
+      const { messages } = req.body as { messages?: Array<{ role: string; content: string }>; mode?: string };
 
       if (!messages || !Array.isArray(messages) || messages.length === 0) {
         await storage.updateUser(userId, { onboardingCompleted: true });
@@ -227,11 +226,13 @@ Return only valid JSON. Do not guess at things not mentioned. Keep suggestions r
           completedAt: new Date(),
         };
 
-        if (existingOnboarding && isRefresh) {
-          // "Full life refresh": merge-preserving update. A short refresh
-          // conversation must never clobber an established profile with
-          // empty/default extraction values — keep prior data wherever the
-          // new extraction came back empty, and union array fields.
+        if (existingOnboarding) {
+          // Merge-preserving update — applied whenever a profile already
+          // exists, not only when the client sent mode:"refresh". A short
+          // re-run conversation (deep link, stale bookmark, nav bug) must
+          // never clobber an established profile with empty/default
+          // extraction values — keep prior data wherever the new extraction
+          // came back empty, and union array fields.
           const unionArr = (prev: unknown, next: unknown): string[] => {
             const p = Array.isArray(prev) ? (prev as string[]) : [];
             const n = Array.isArray(next) ? (next as string[]) : [];
@@ -262,8 +263,6 @@ Return only valid JSON. Do not guess at things not mentioned. Keep suggestions r
             completedAt: profileData.completedAt,
           };
           await storage.updateOnboardingProfile(existingOnboarding.id, merged);
-        } else if (existingOnboarding) {
-          await storage.updateOnboardingProfile(existingOnboarding.id, profileData);
         } else {
           await storage.createOnboardingProfile({
             userId,
