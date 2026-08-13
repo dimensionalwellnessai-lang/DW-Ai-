@@ -3,10 +3,7 @@ import {
   getDimensionAssessments, 
   saveDimensionAssessment,
   getFoundationsProfile,
-  saveFoundationsProfile,
-  hasFoundations,
   type DimensionAssessment,
-  type FoundationsProfile,
   type WellnessDimension,
 } from "@/lib/guest-storage";
 import { getQuestionsForDimension } from "@/lib/dimension-questions";
@@ -49,7 +46,6 @@ import {
   Briefcase,
   Wallet,
   Sparkles,
-  SkipForward,
   MessageCircle,
   Anchor,
 } from "lucide-react";
@@ -1623,243 +1619,143 @@ function ReflectionSection({ reflections }: { reflections: RecoveryReflection[] 
   );
 }
 
-const FOUNDATIONS_QUESTIONS = [
-  {
-    id: "overall_philosophy",
-    question: "How would you describe how you want to live your life?",
-    subtext: "This is your personal philosophy - there's no right answer",
-    type: "text" as const,
-    field: "overallPhilosophy",
-  },
-  {
-    id: "what_matters",
-    question: "What matters most to you right now?",
-    subtext: "Think about what you'd protect even if it's inconvenient",
-    type: "choice" as const,
-    field: "whatMattersMost",
-    options: [
-      "Peace of mind",
-      "Health and energy",
-      "Meaningful relationships",
-      "Financial security",
-      "Personal growth",
-      "Creative expression",
-      "Making a difference",
-    ],
-  },
-  {
-    id: "core_values",
-    question: "What values guide your decisions?",
-    subtext: "Pick the ones that feel most true to who you are",
-    type: "multi" as const,
-    field: "coreValues",
-    options: [
-      "Authenticity",
-      "Compassion",
-      "Growth",
-      "Balance",
-      "Connection",
-      "Freedom",
-      "Integrity",
-      "Creativity",
-      "Gratitude",
-      "Courage",
-    ],
-  },
-  {
-    id: "non_negotiables",
-    question: "What will you not compromise on?",
-    subtext: "These are your personal boundaries",
-    type: "multi" as const,
-    field: "whatWontCompromise",
-    options: [
-      "My sleep and rest",
-      "Time with loved ones",
-      "My physical health",
-      "My mental peace",
-      "My values and ethics",
-      "My creative time",
-      "My financial boundaries",
-      "My spiritual practices",
-    ],
-  },
-  {
-    id: "misaligned",
-    question: "What currently feels out of alignment for you?",
-    subtext: "Areas where your life doesn't match how you want to live",
-    type: "text" as const,
-    field: "whatFeelsMisaligned",
-  },
-];
+interface LifestylePreferences {
+  identityVision?: string;
+  standards?: string;
+  anchors?: string;
+  minimumDay?: string;
+}
 
 function FoundationsSection() {
   const { toast } = useToast();
-  const [foundations, setFoundations] = useState<FoundationsProfile | null>(getFoundationsProfile());
-  const [isExploring, setIsExploring] = useState(false);
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
-  const [customInput, setCustomInput] = useState("");
-  const [showOther, setShowOther] = useState(false);
-  const questionsRef = useRef<HTMLDivElement>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [draft, setDraft] = useState<LifestylePreferences>({});
+  const editRef = useRef<HTMLDivElement>(null);
 
-  const currentQuestion = FOUNDATIONS_QUESTIONS[currentQuestionIndex];
-  const hasFoundationsData = foundations && foundations.confidence > 0.3;
-  const isLastQuestion = currentQuestionIndex === FOUNDATIONS_QUESTIONS.length - 1;
+  // Fetch server-side lifestyle preferences (same data as onboarding + Welcome Back)
+  const { data: serverPrefs, isLoading } = useQuery<LifestylePreferences>({
+    queryKey: ["/api/profile/lifestyle-preferences"],
+    retry: false,
+  });
 
-  const handleSelect = (value: string) => {
-    if (currentQuestion.type === "multi") {
-      const current = (answers[currentQuestion.field] as string[]) || [];
-      if (current.includes(value)) {
-        setAnswers({ ...answers, [currentQuestion.field]: current.filter(v => v !== value) });
-      } else {
-        setAnswers({ ...answers, [currentQuestion.field]: [...current, value] });
-      }
-    } else {
-      setAnswers({ ...answers, [currentQuestion.field]: value });
-    }
+  // Guest-storage foundations as fallback
+  const guestFoundations = getFoundationsProfile();
+
+  const saveMutation = useMutation({
+    mutationFn: async (prefs: LifestylePreferences) => {
+      const res = await apiRequest("POST", "/api/profile/lifestyle-preferences", prefs);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/profile/lifestyle-preferences"] });
+      setIsEditing(false);
+      toast({ title: "Foundations updated", description: "Your foundations have been saved." });
+    },
+    onError: () => {
+      toast({ title: "Couldn't save", description: "Please try again.", variant: "destructive" });
+    },
+  });
+
+  const startEditing = () => {
+    setDraft({
+      identityVision: serverPrefs?.identityVision || "",
+      standards: serverPrefs?.standards || "",
+      anchors: serverPrefs?.anchors || "",
+      minimumDay: serverPrefs?.minimumDay || "",
+    });
+    setIsEditing(true);
+    scrollToRef(editRef, 150, 'start');
   };
 
-  const handleNext = () => {
-    if (isLastQuestion) {
-      const newProfile: FoundationsProfile = {
-        overallPhilosophy: (answers.overallPhilosophy as string) || "",
-        coreValues: (answers.coreValues as string[]) || [],
-        whatMattersMost: (answers.whatMattersMost as string) || "",
-        whatFeelsMisaligned: (answers.whatFeelsMisaligned as string) || "",
-        whatWontCompromise: (answers.whatWontCompromise as string[]) || [],
-        dimensionFoundations: [],
-        confidence: 0.7,
-        clarifyingPrompts: [],
-        inferredFromConversations: false,
-        updatedAt: Date.now(),
-      };
-      saveFoundationsProfile(newProfile);
-      setFoundations(newProfile);
-      setIsExploring(false);
-      toast({ title: "Foundations saved", description: "Your personal philosophy has been captured." });
-    } else {
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
-      setShowOther(false);
-      setCustomInput("");
-    }
-  };
+  const hasServerData = !!(
+    serverPrefs?.identityVision ||
+    serverPrefs?.standards ||
+    serverPrefs?.anchors ||
+    serverPrefs?.minimumDay
+  );
 
-  const handleSkip = () => {
-    if (isLastQuestion) {
-      handleNext();
-    } else {
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
-      setShowOther(false);
-      setCustomInput("");
-    }
-  };
+  // Fall back to guest-storage foundations for display when server has nothing yet
+  const hasGuestFallback = !hasServerData && guestFoundations && guestFoundations.confidence > 0.3;
 
-  const handleAddOther = () => {
-    if (customInput.trim()) {
-      handleSelect(customInput.trim());
-      setCustomInput("");
-      setShowOther(false);
-    }
-  };
-
-  const startExploring = () => {
-    setIsExploring(true);
-    setCurrentQuestionIndex(0);
-    setAnswers({});
-    // Scroll to questions after they appear using utility function
-    scrollToRef(questionsRef, 150, 'start');
-  };
-
-  if (isExploring) {
+  if (isLoading) {
     return (
-      <div className="space-y-6" ref={questionsRef}>
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (isEditing) {
+    return (
+      <div className="space-y-6" ref={editRef}>
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span>Question {currentQuestionIndex + 1} of {FOUNDATIONS_QUESTIONS.length}</span>
-          </div>
-          <Button variant="ghost" size="sm" onClick={() => setIsExploring(false)} data-testid="button-cancel-foundations">
+          <p className="text-sm text-muted-foreground">
+            Accept, rename, or set aside anything that doesn't feel right.
+          </p>
+          <Button variant="ghost" size="sm" onClick={() => setIsEditing(false)} data-testid="button-cancel-foundations">
             <X className="w-4 h-4 mr-1" />
             Cancel
           </Button>
         </div>
 
-        <div className="h-1 bg-muted rounded-full overflow-hidden">
-          <div 
-            className="h-full bg-amber-500 transition-all duration-300"
-            style={{ width: `${((currentQuestionIndex + 1) / FOUNDATIONS_QUESTIONS.length) * 100}%` }}
-          />
-        </div>
-
         <Card>
-          <CardContent className="p-6 space-y-6">
-            <div className="text-center space-y-2">
-              <h2 className="text-xl font-display font-semibold">{currentQuestion.question}</h2>
-              <p className="text-muted-foreground">{currentQuestion.subtext}</p>
+          <CardContent className="p-6 space-y-5">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Identity direction</label>
+              <p className="text-xs text-muted-foreground">The direction you're heading — who you're becoming</p>
+              <Textarea
+                placeholder="e.g. I'm building a life that feels intentional and calm…"
+                value={draft.identityVision || ""}
+                onChange={(e) => setDraft({ ...draft, identityVision: e.target.value })}
+                className="min-h-[80px]"
+                data-testid="input-identity-vision"
+              />
             </div>
 
-            {currentQuestion.type === "text" && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Standards</label>
+              <p className="text-xs text-muted-foreground">How you want to show up — the bar you hold yourself to</p>
               <Textarea
-                placeholder="Share your thoughts..."
-                value={(answers[currentQuestion.field] as string) || ""}
-                onChange={(e) => setAnswers({ ...answers, [currentQuestion.field]: e.target.value })}
-                className="min-h-[120px]"
-                data-testid={`input-${currentQuestion.id}`}
+                placeholder="e.g. I want to be present, consistent, and honest…"
+                value={draft.standards || ""}
+                onChange={(e) => setDraft({ ...draft, standards: e.target.value })}
+                className="min-h-[80px]"
+                data-testid="input-standards"
               />
-            )}
+            </div>
 
-            {(currentQuestion.type === "choice" || currentQuestion.type === "multi") && (
-              <div className="space-y-3">
-                <div className="grid gap-2">
-                  {currentQuestion.options?.map((option) => {
-                    const isSelected = currentQuestion.type === "multi"
-                      ? ((answers[currentQuestion.field] as string[]) || []).includes(option)
-                      : answers[currentQuestion.field] === option;
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Anchors</label>
+              <p className="text-xs text-muted-foreground">The things that keep you grounded when life gets hard</p>
+              <Textarea
+                placeholder="e.g. Morning walks, my family, music…"
+                value={draft.anchors || ""}
+                onChange={(e) => setDraft({ ...draft, anchors: e.target.value })}
+                className="min-h-[80px]"
+                data-testid="input-anchors"
+              />
+            </div>
 
-                    return (
-                      <Button
-                        key={option}
-                        variant={isSelected ? "default" : "outline"}
-                        className="justify-start text-left h-auto py-3 px-4"
-                        onClick={() => handleSelect(option)}
-                        data-testid={`option-${option.toLowerCase().replace(/\s+/g, "-")}`}
-                      >
-                        {isSelected && <Check className="w-4 h-4 mr-2 flex-shrink-0" />}
-                        {option}
-                      </Button>
-                    );
-                  })}
-                </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Minimum day</label>
+              <p className="text-xs text-muted-foreground">The smallest version of a good day — your non-negotiable baseline</p>
+              <Textarea
+                placeholder="e.g. Sleep, one meal I prepared, 10 minutes outside…"
+                value={draft.minimumDay || ""}
+                onChange={(e) => setDraft({ ...draft, minimumDay: e.target.value })}
+                className="min-h-[80px]"
+                data-testid="input-minimum-day"
+              />
+            </div>
 
-                {!showOther ? (
-                  <Button variant="ghost" size="sm" onClick={() => setShowOther(true)} className="w-full" data-testid="button-show-other">
-                    <Plus className="w-4 h-4 mr-1" />
-                    Add your own
-                  </Button>
-                ) : (
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Type your answer..."
-                      value={customInput}
-                      onChange={(e) => setCustomInput(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && handleAddOther()}
-                      data-testid="input-custom-answer"
-                    />
-                    <Button onClick={handleAddOther} size="icon" data-testid="button-add-custom">
-                      <Plus className="w-4 h-4" />
-                    </Button>
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div className="flex justify-between pt-4">
-              <Button variant="ghost" onClick={handleSkip} data-testid="button-skip-question">
-                <SkipForward className="w-4 h-4 mr-2" />
-                Skip
-              </Button>
-              <Button onClick={handleNext} data-testid="button-next-question">
-                {isLastQuestion ? "Complete" : "Continue"}
-                <ChevronRight className="w-4 h-4 ml-2" />
+            <div className="flex justify-end pt-2">
+              <Button
+                onClick={() => saveMutation.mutate(draft)}
+                disabled={saveMutation.isPending}
+                data-testid="button-save-foundations"
+              >
+                {saveMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
+                Save
               </Button>
             </div>
           </CardContent>
@@ -1877,92 +1773,90 @@ function FoundationsSection() {
             Your Foundations
           </CardTitle>
           <CardDescription>
-            Your personal philosophy, values, and non-negotiables that guide how you want to live
+            Your identity direction, standards, anchors, and minimum day — carried over from your onboarding conversation.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {hasFoundationsData ? (
+          {hasServerData ? (
             <>
-              {foundations.overallPhilosophy && (
+              {serverPrefs?.identityVision && (
+                <div className="space-y-1">
+                  <h4 className="text-sm font-medium text-muted-foreground">Identity direction</h4>
+                  <p className="text-sm">{serverPrefs.identityVision}</p>
+                </div>
+              )}
+
+              {serverPrefs?.standards && (
+                <div className="space-y-1">
+                  <h4 className="text-sm font-medium text-muted-foreground">Standards</h4>
+                  <p className="text-sm">{serverPrefs.standards}</p>
+                </div>
+              )}
+
+              {serverPrefs?.anchors && (
+                <div className="space-y-1">
+                  <h4 className="text-sm font-medium text-muted-foreground">Anchors</h4>
+                  <p className="text-sm">{serverPrefs.anchors}</p>
+                </div>
+              )}
+
+              {serverPrefs?.minimumDay && (
+                <div className="space-y-1">
+                  <h4 className="text-sm font-medium text-muted-foreground">Minimum day</h4>
+                  <p className="text-sm">{serverPrefs.minimumDay}</p>
+                </div>
+              )}
+
+              <div className="flex justify-end pt-4 border-t">
+                <Button variant="ghost" size="sm" onClick={startEditing} data-testid="button-refine-foundations">
+                  <Edit2 className="w-4 h-4 mr-1" />
+                  Update
+                </Button>
+              </div>
+            </>
+          ) : hasGuestFallback ? (
+            // Guest-storage fallback — show what exists and invite migration
+            <>
+              {guestFoundations!.overallPhilosophy && (
                 <div className="space-y-1">
                   <h4 className="text-sm font-medium text-muted-foreground">Philosophy</h4>
-                  <p className="text-sm">{foundations.overallPhilosophy}</p>
+                  <p className="text-sm">{guestFoundations!.overallPhilosophy}</p>
                 </div>
               )}
 
-              {foundations.whatMattersMost && (
+              {guestFoundations!.whatMattersMost && (
                 <div className="space-y-1">
-                  <h4 className="text-sm font-medium text-muted-foreground">What Matters Most</h4>
-                  <Badge variant="secondary">{foundations.whatMattersMost}</Badge>
+                  <h4 className="text-sm font-medium text-muted-foreground">What matters most</h4>
+                  <Badge variant="secondary">{guestFoundations!.whatMattersMost}</Badge>
                 </div>
               )}
 
-              {foundations.coreValues && foundations.coreValues.length > 0 && (
+              {guestFoundations!.coreValues && guestFoundations!.coreValues.length > 0 && (
                 <div className="space-y-1">
-                  <h4 className="text-sm font-medium text-muted-foreground">Core Values</h4>
+                  <h4 className="text-sm font-medium text-muted-foreground">Core values</h4>
                   <div className="flex flex-wrap gap-1">
-                    {foundations.coreValues.map((value, i) => (
+                    {guestFoundations!.coreValues.map((value, i) => (
                       <Badge key={i} variant="outline">{value}</Badge>
                     ))}
                   </div>
                 </div>
               )}
 
-              {foundations.whatWontCompromise && foundations.whatWontCompromise.length > 0 && (
-                <div className="space-y-1">
-                  <h4 className="text-sm font-medium text-muted-foreground">Non-Negotiables</h4>
-                  <div className="flex flex-wrap gap-1">
-                    {foundations.whatWontCompromise.map((item, i) => (
-                      <Badge key={i} className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20">
-                        {item}
-                      </Badge>
-                    ))}
+              <Card className="bg-amber-500/5 border-amber-500/20 mt-2">
+                <CardContent className="p-4 flex items-start gap-3">
+                  <MessageCircle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium mb-1">Move your foundations to your profile</p>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Add your identity direction, standards, anchors, and minimum day so they stay with you across devices.
+                    </p>
+                    <Button size="sm" onClick={startEditing} data-testid="button-clarify-foundations">
+                      <Sparkles className="w-4 h-4 mr-1" />
+                      Add to profile
+                    </Button>
                   </div>
-                </div>
-              )}
-
-              {foundations.whatFeelsMisaligned && (
-                <div className="space-y-1">
-                  <h4 className="text-sm font-medium text-muted-foreground">Feeling Misaligned</h4>
-                  <p className="text-sm text-muted-foreground">{foundations.whatFeelsMisaligned}</p>
-                </div>
-              )}
-
-              <div className="flex items-center justify-between pt-4 border-t">
-                <div className="flex items-center gap-2">
-                  <div className="h-2 w-24 bg-muted rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-amber-500"
-                      style={{ width: `${foundations.confidence * 100}%` }}
-                    />
-                  </div>
-                  <span className="text-xs text-muted-foreground">
-                    {Math.round(foundations.confidence * 100)}% understood
-                  </span>
-                </div>
-                <Button variant="ghost" size="sm" onClick={startExploring} data-testid="button-refine-foundations">
-                  <Edit2 className="w-4 h-4 mr-1" />
-                  Refine
-                </Button>
-              </div>
-
-              {foundations.confidence < 0.7 && (
-                <Card className="bg-amber-500/5 border-amber-500/20">
-                  <CardContent className="p-4 flex items-start gap-3">
-                    <MessageCircle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium mb-2">We'd love to understand you better</p>
-                      <p className="text-sm text-muted-foreground mb-3">
-                        A few more questions would help us give you more aligned suggestions.
-                      </p>
-                      <Button size="sm" onClick={startExploring} data-testid="button-clarify-foundations">
-                        <Sparkles className="w-4 h-4 mr-1" />
-                        Answer a few questions
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+                </CardContent>
+              </Card>
             </>
           ) : (
             <div className="text-center py-8 space-y-4">
@@ -1970,15 +1864,15 @@ function FoundationsSection() {
                 <Anchor className="w-8 h-8 text-amber-500" />
               </div>
               <div>
-                <h3 className="font-semibold mb-1">Discover Your Foundations</h3>
+                <h3 className="font-semibold mb-1">Capture your foundations</h3>
                 <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                  Take a moment to reflect on what matters most to you. This helps us understand how you want to live, 
-                  so we can offer guidance that truly fits.
+                  Your identity direction, standards, anchors, and minimum day — the things that keep you grounded.
+                  If you've already shared these in onboarding, they'll appear here automatically once you sign in.
                 </p>
               </div>
-              <Button onClick={startExploring} data-testid="button-start-foundations">
+              <Button onClick={startEditing} data-testid="button-start-foundations">
                 <Sparkles className="w-4 h-4 mr-2" />
-                Explore My Foundations
+                Add my foundations
               </Button>
             </div>
           )}
