@@ -829,7 +829,7 @@ export default function LifeBlueprintV2() {
                           className="text-xs text-center cursor-pointer"
                         >
                           {value === 1 && "Not at all"}
-                          {value === 2 && "Not quite"}
+                          {value === 2 && "Rarely"}
                           {value === 3 && "Somewhat"}
                           {value === 4 && "Mostly"}
                           {value === 5 && "Fully"}

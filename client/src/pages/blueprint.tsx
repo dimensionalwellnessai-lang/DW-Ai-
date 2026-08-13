@@ -1636,7 +1636,7 @@ function FoundationsSection() {
   const editRef = useRef<HTMLDivElement>(null);
 
   // Fetch server-side lifestyle preferences (same data as onboarding + Welcome Back)
-  const { data: serverPrefs, isLoading } = useQuery<LifestylePreferences>({
+  const { data: serverPrefs, isLoading, isError, refetch } = useQuery<LifestylePreferences>({
     queryKey: ["/api/profile/lifestyle-preferences"],
     retry: false,
     enabled: isAuthenticated,
@@ -1647,7 +1647,10 @@ function FoundationsSection() {
 
   const saveMutation = useMutation({
     mutationFn: async (prefs: LifestylePreferences) => {
-      const res = await apiRequest("POST", "/api/profile/lifestyle-preferences", prefs);
+      // Merge with the full existing preferences so keys like styleLikes,
+      // watchLikes, and musicLikes are preserved.
+      const merged = { ...(serverPrefs as Record<string, unknown> | undefined ?? {}), ...prefs };
+      const res = await apiRequest("POST", "/api/profile/lifestyle-preferences", merged);
       return res.json();
     },
     onSuccess: () => {
@@ -1693,6 +1696,15 @@ function FoundationsSection() {
     );
   }
 
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 gap-4">
+        <p className="text-sm text-muted-foreground">Couldn't load your foundations. Please try again.</p>
+        <Button variant="outline" size="sm" onClick={() => refetch()}>Retry</Button>
+      </div>
+    );
+  }
+
   if (isEditing) {
     return (
       <div className="space-y-6" ref={editRef}>
@@ -1709,9 +1721,10 @@ function FoundationsSection() {
         <Card>
           <CardContent className="p-6 space-y-5">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Identity direction</label>
+              <label htmlFor="foundations-identity-vision" className="text-sm font-medium">Identity direction</label>
               <p className="text-xs text-muted-foreground">The direction you're heading — who you're becoming</p>
               <Textarea
+                id="foundations-identity-vision"
                 placeholder="e.g. I'm building a life that feels intentional and calm…"
                 value={draft.identityVision || ""}
                 onChange={(e) => setDraft({ ...draft, identityVision: e.target.value })}
@@ -1721,9 +1734,10 @@ function FoundationsSection() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Standards</label>
+              <label htmlFor="foundations-standards" className="text-sm font-medium">Standards</label>
               <p className="text-xs text-muted-foreground">How you want to show up — the bar you hold yourself to</p>
               <Textarea
+                id="foundations-standards"
                 placeholder="e.g. I want to be present, consistent, and honest…"
                 value={draft.standards || ""}
                 onChange={(e) => setDraft({ ...draft, standards: e.target.value })}
@@ -1733,9 +1747,10 @@ function FoundationsSection() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Anchors</label>
+              <label htmlFor="foundations-anchors" className="text-sm font-medium">Anchors</label>
               <p className="text-xs text-muted-foreground">The things that keep you grounded when life gets hard</p>
               <Textarea
+                id="foundations-anchors"
                 placeholder="e.g. Morning walks, my family, music…"
                 value={draft.anchors || ""}
                 onChange={(e) => setDraft({ ...draft, anchors: e.target.value })}
@@ -1745,9 +1760,10 @@ function FoundationsSection() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Minimum day</label>
+              <label htmlFor="foundations-minimum-day" className="text-sm font-medium">Minimum day</label>
               <p className="text-xs text-muted-foreground">The smallest version of a good day — your non-negotiable baseline</p>
               <Textarea
+                id="foundations-minimum-day"
                 placeholder="e.g. Sleep, one meal I prepared, 10 minutes outside…"
                 value={draft.minimumDay || ""}
                 onChange={(e) => setDraft({ ...draft, minimumDay: e.target.value })}
