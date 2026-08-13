@@ -340,6 +340,11 @@ import {
   type DwRolePick,
   type InsertDwRolePick,
 } from "@shared/schema";
+import {
+  pillarCheckins,
+  type PillarCheckin,
+  type InsertPillarCheckin,
+} from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, lte, lt, desc, sql, or, inArray, ne, count, isNull } from "drizzle-orm";
 import { createHash } from "crypto";
@@ -765,6 +770,11 @@ export interface IStorage {
   getLifeDimensionAssessments(userId: string, dimension?: string): Promise<LifeDimensionAssessment[]>;
   getLatestDimensionAssessment(userId: string, dimension: string): Promise<LifeDimensionAssessment | undefined>;
   createLifeDimensionAssessment(assessment: InsertLifeDimensionAssessment): Promise<LifeDimensionAssessment>;
+
+  // Pillar Check-ins (pillar-based reflective check-in, replaces legacy quiz)
+  getPillarCheckins(userId: string, pillarId?: string): Promise<PillarCheckin[]>;
+  getLatestPillarCheckin(userId: string, pillarId: string): Promise<PillarCheckin | undefined>;
+  createPillarCheckin(data: InsertPillarCheckin): Promise<PillarCheckin>;
 
   // PR #3: Dimension Systems
   getDimensionSystems(userId: string, dimension?: string): Promise<DimensionSystem[]>;
@@ -3421,6 +3431,32 @@ export class DatabaseStorage implements IStorage {
   async createLifeDimensionAssessment(assessment: InsertLifeDimensionAssessment): Promise<LifeDimensionAssessment> {
     const [newAssessment] = await db.insert(lifeDimensionAssessments).values(assessment).returning();
     return newAssessment;
+  }
+
+  // Pillar Check-ins
+  async getPillarCheckins(userId: string, pillarId?: string): Promise<PillarCheckin[]> {
+    const conditions = [eq(pillarCheckins.userId, userId)];
+    if (pillarId) {
+      conditions.push(eq(pillarCheckins.pillarId, pillarId));
+    }
+    return db.select()
+      .from(pillarCheckins)
+      .where(and(...conditions))
+      .orderBy(desc(pillarCheckins.checkedAt));
+  }
+
+  async getLatestPillarCheckin(userId: string, pillarId: string): Promise<PillarCheckin | undefined> {
+    const [row] = await db.select()
+      .from(pillarCheckins)
+      .where(and(eq(pillarCheckins.userId, userId), eq(pillarCheckins.pillarId, pillarId)))
+      .orderBy(desc(pillarCheckins.checkedAt))
+      .limit(1);
+    return row || undefined;
+  }
+
+  async createPillarCheckin(data: InsertPillarCheckin): Promise<PillarCheckin> {
+    const [row] = await db.insert(pillarCheckins).values(data).returning();
+    return row;
   }
 
   // Dimension Systems

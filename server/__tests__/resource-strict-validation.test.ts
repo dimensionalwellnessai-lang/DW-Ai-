@@ -65,6 +65,7 @@ import {
   elevationPlanUpdateSchema,
   elevationPlanActionUpdateSchema,
   reminderUpdateSchema,
+  pillarCheckinUpdateSchema,
 } from "@shared/schema";
 
 interface SchemaScenario {
@@ -105,6 +106,7 @@ const scenarios: SchemaScenario[] = [
   { label: "shoppingListItemUpdateSchema", schema: shoppingListItemUpdateSchema, routeNote: "PATCH /api/shopping-lists/:listId/items/:itemId", omittedOwnerKey: "listId" },
   { label: "dimensionBlueprintUpdateSchema", schema: dimensionBlueprintUpdateSchema, routeNote: "PATCH /api/dimension-blueprints/:id", omittedOwnerKey: "userId" },
   { label: "resetProtocolUpdateSchema", schema: resetProtocolUpdateSchema, routeNote: "PATCH /api/reset-protocol/:id", omittedOwnerKey: "userId" },
+  { label: "pillarCheckinUpdateSchema", schema: pillarCheckinUpdateSchema, routeNote: "POST /api/pillar-checkins", omittedOwnerKey: "userId" },
   { label: "universalPlanUpdateSchema", schema: universalPlanUpdateSchema, routeNote: "PATCH /api/universal-plans/:id", omittedOwnerKey: "userId" },
   { label: "streakUpdateSchema", schema: streakUpdateSchema, routeNote: "PATCH /api/streaks/:id", omittedOwnerKey: "userId" },
   { label: "mealUpdateSchema", schema: mealUpdateSchema, routeNote: "PATCH /api/meals/:id", omittedOwnerKey: "userId" },

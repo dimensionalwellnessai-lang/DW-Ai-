@@ -290,3 +290,23 @@ export function isValidPillarId(id: string): id is LifeSystemPillarId {
 export function toneForLevel(level: LifeSystemLevel): string {
   return LEVEL_META[level].toneSentence;
 }
+
+/**
+ * Maps legacy 8-dimension wellness IDs (stored in `life_dimension_assessments.dimension`)
+ * to the canonical Life System pillar IDs. Used when reading old assessments so
+ * a returning user's history still shows under the correct pillar.
+ */
+export const LEGACY_TO_PILLAR_MAP: Record<string, LifeSystemPillarId> = {
+  physical: "physical_health",
+  mental: "mental_emotional",
+  social: "social_environment",
+  spiritual: "spiritual",
+  financial: "money",
+  occupational: "work_school",
+  environmental: "physical_environment",
+  intellectual: "growth",
+};
+
+/** Pillar status labels used across the app (replaces numeric scores). */
+export const PILLAR_STATUSES = ["Powered", "Stable", "Building", "Needs Attention"] as const;
+export type PillarStatus = typeof PILLAR_STATUSES[number];
