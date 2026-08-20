@@ -14,7 +14,7 @@ export interface FeatureConfig {
 
 export const FEATURE_VISIBILITY: FeatureConfig[] = [
   // MY IDENTITY section
-  { id: "command-center", name: "⭐ Command Center", path: "/", visibility: "primary", description: "Your wellness dashboard", enabled: true },
+  { id: "command-center", name: "Today", path: "/", visibility: "primary", description: "Your day at a glance", enabled: true },
   { id: "life-blueprint", name: "📜 Life Blueprint", path: "/life-blueprint", visibility: "primary", description: "Define your values", enabled: true },
   { id: "goals", name: "🎯 My Goals", path: "/goals", visibility: "primary", description: "Track your goals", enabled: true },
   { id: "habits", name: "✅ My Habits", path: "/habits", visibility: "primary", description: "Daily habits", enabled: true },

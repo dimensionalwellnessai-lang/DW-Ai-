@@ -8,13 +8,16 @@ import { useTutorial } from "@/contexts/tutorial-context";
 import { useAuth } from "@/hooks/use-auth";
 import { getRecentPages, addRecentPage } from "@/lib/recent-pages";
 import {
-  Zap,
   Calendar,
   ChevronDown,
   Clock,
+  Home,
+  Import,
+  Map,
   MessageCircle,
 } from "lucide-react";
 import {
+  BOTTOM_NAV_ITEMS,
   NAV_SECTIONS,
   SETTINGS_ITEMS,
   DIM_COLORS,
@@ -33,12 +36,17 @@ interface MenuSection {
   dwContextLabel?: string;
 }
 
+const PRIMARY_MENU_ITEMS: MenuItem[] = [
+  { id: "command-center", name: "Today", path: "/command-center", icon: Home },
+  { id: "talk", name: "Talk to DW", path: "/talk", icon: MessageCircle },
+  { id: "my-life", name: "My Life", path: "/my-life", icon: Map },
+  { id: "calendar", name: "Calendar", path: "/calendar", icon: Calendar },
+  { id: "smart-import", name: "Smart Import", path: "/life-system-import", icon: Import },
+];
+
 const MENU_SECTIONS: MenuSection[] = [
   {
-    items: [
-      { id: "command-center", name: "⭐ Command Center", path: "/command-center", icon: Zap },
-      { id: "calendar", name: "📅 Calendar", path: "/calendar", icon: Calendar },
-    ],
+    items: PRIMARY_MENU_ITEMS,
   },
   ...NAV_SECTIONS.map((section): MenuSection => ({
     title: section.title,
@@ -60,7 +68,7 @@ interface SharedMenuProps {
 }
 
 export function SharedMenu({ open, onClose, elevated }: SharedMenuProps) {
-  const { startNavigationTutorial, state: tutorialState, requiresMenuOpen } = useTutorial();
+  const { state: tutorialState, requiresMenuOpen } = useTutorial();
   const [expandedSections, setExpandedSections] = React.useState<Set<string>>(new Set());
   const { user, logout } = useAuth();
   const [, navigate] = useLocation();
@@ -82,6 +90,29 @@ export function SharedMenu({ open, onClose, elevated }: SharedMenuProps) {
   const handleDWContextClick = (dimensionLabel: string) => {
     onClose();
     navigate(`/talk?context=dimension:${encodeURIComponent(dimensionLabel)}`);
+  };
+
+  const renderMenuItem = (item: MenuItem, iconClassName = "text-muted-foreground") => {
+    const Icon = item.icon;
+    return (
+      <Link key={item.id} href={item.path}>
+        <button
+          className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left transition-colors"
+          onClick={() => {
+            addRecentPage({
+              id: item.id,
+              name: item.name,
+              path: item.path,
+            });
+            onClose();
+          }}
+          data-testid={`menu-item-${item.id}`}
+        >
+          <Icon className={`h-4 w-4 shrink-0 ${iconClassName}`} />
+          <span className="text-sm text-foreground">{item.name}</span>
+        </button>
+      </Link>
+    );
   };
 
   return (
@@ -120,7 +151,7 @@ export function SharedMenu({ open, onClose, elevated }: SharedMenuProps) {
                     className="w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left transition-colors"
                     onClick={onClose}
                   >
-                    <span className="text-sm text-foreground">{page.icon || "•"} {page.name}</span>
+                    <span className="text-sm text-foreground">{page.name}</span>
                   </button>
                 </Link>
               ))}
@@ -143,27 +174,12 @@ export function SharedMenu({ open, onClose, elevated }: SharedMenuProps) {
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <div className="space-y-1 mt-1">
-                    {section.items.map((item) => (
-                      <Link key={item.id} href={item.path}>
-                        <button
-                          className={`w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left transition-colors`}
-                          onClick={() => {
-                            addRecentPage({ 
-                              id: item.id, 
-                              name: item.name, 
-                              path: item.path, 
-                              icon: item.name.split(' ')[0] 
-                            });
-                            onClose();
-                          }}
-                          data-testid={`menu-item-${item.id}`}
-                        >
-                          <span className={`text-sm ${item.dimension ? DIM_COLORS[item.dimension] : 'text-foreground'}`}>
-                            {item.name}
-                          </span>
-                        </button>
-                      </Link>
-                    ))}
+                    {section.items.map((item) =>
+                      renderMenuItem(
+                        item,
+                        item.dimension ? DIM_COLORS[item.dimension] : "text-muted-foreground",
+                      ),
+                    )}
                     {section.dwContextLabel && (
                       <button
                         className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-left transition-colors hover:bg-primary/5"
@@ -187,27 +203,11 @@ export function SharedMenu({ open, onClose, elevated }: SharedMenuProps) {
                   </div>
                 )}
                 <div className="space-y-1">
-                  {section.items.map((item) => (
-                    <Link key={item.id} href={item.path}>
-                      <button
-                        className={`w-full flex items-center gap-3 p-2.5 rounded-lg hover-elevate text-left transition-colors`}
-                        onClick={() => {
-                          addRecentPage({ 
-                            id: item.id, 
-                            name: item.name, 
-                            path: item.path, 
-                            icon: item.name.split(' ')[0] 
-                          });
-                          onClose();
-                        }}
-                        data-testid={`menu-item-${item.id}`}
-                      >
-                        <span className={`text-sm ${item.dimension ? DIM_COLORS[item.dimension] : 'text-foreground'}`}>
-                          {item.name}
-                        </span>
-                      </button>
-                    </Link>
-                  ))}
+                  {section.items.map((item) => {
+                    const isBottomNavItem = BOTTOM_NAV_ITEMS.some((navItem) => navItem.id === item.id);
+                    const iconClassName = isBottomNavItem ? "text-foreground" : "text-muted-foreground";
+                    return renderMenuItem(item, iconClassName);
+                  })}
                 </div>
               </>
             )}

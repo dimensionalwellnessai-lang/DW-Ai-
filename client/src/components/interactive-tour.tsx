@@ -75,30 +75,30 @@ const TOUR_STEPS: TourStep[] = [
   },
   {
     id: "home",
-    title: "Command Center",
+    title: "Today",
     description:
-      "Your dashboard tracks everything at a glance — goals, habits, mood, water, calories, and your eight wellness dimensions. Tap any card to go deeper into that area. The Command Center updates as DW learns more about your system.",
+      "Today keeps the day clear: what's happening now, the next thing coming up, and the single most important nudge from DW.",
     icon: TrendingUp,
     targetSelector: "[data-tour='home']",
     position: "bottom",
   },
   {
     id: "calendar",
-    title: "Calendar & Schedule",
+    title: "Now and next",
     description:
-      "Your calendar syncs everything DW creates — workouts, meals, routines, and events — all in one view. You can also connect it to Apple Calendar or Google Calendar via the iCal feed in Settings, so DW lives alongside your existing schedule.",
+      "This pinned card keeps your day grounded. Use the day, week, and month shortcuts to move into the full calendar whenever you want a wider view.",
     icon: Calendar,
-    targetSelector: "[data-tour='calendar']",
+    targetSelector: "[data-testid='card-now-schedule']",
     position: "top",
-    action: "Tap Calendar in the bottom nav to explore",
+    action: "Tap the schedule card to open your calendar",
   },
   {
     id: "browse",
-    title: "Explore All Features",
+    title: "Menu",
     description:
-      "Browse gives you access to every DW feature: meal prep, workout planning, mood tracking, journal, finances, sleep, spiritual practices, and more. Everything you need to manage every dimension of your life is one tap away.",
+      "The menu is your one deep-browse surface. It groups everything by intent — body, mind, time, money, people, and plan — so the app feels like one system instead of a feature catalog.",
     icon: Star,
-    targetSelector: "[data-tour='browse']",
+    targetSelector: "[data-testid='btn-menu']",
     position: "top",
   },
   {
@@ -477,5 +477,4 @@ export function InteractiveTour({ open, onComplete, onSkip }: InteractiveTourPro
     </>
   );
 }
-
 

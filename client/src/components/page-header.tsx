@@ -5,7 +5,6 @@ import { Link, useLocation } from "wouter";
 import { useState, useEffect } from "react";
 import { SwipeableDrawer } from "@/components/swipeable-drawer";
 import { HamburgerMenu } from "@/components/hamburger-menu";
-import { AllFeaturesView } from "@/components/all-features-view";
 import { useNavigationStore } from "@/stores/useNavigationStore";
 import { isFeatureEnabled } from "@/config/featureFlags";
 import { getMenuFeatures, getMoreMenuFeatures } from "@/lib/feature-visibility";
@@ -48,9 +47,8 @@ interface PageHeaderProps {
 export function PageHeader({ title, showBack = true, backPath, rightContent }: PageHeaderProps) {
   const [, setLocation] = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
-  const { menuOpen: navMenuOpen, allFeaturesOpen, toggleMenu, closeMenu, closeAllFeatures } = useNavigationStore();
+  const { menuOpen: navMenuOpen, toggleMenu, closeMenu } = useNavigationStore();
   const useNewNavigation = isFeatureEnabled('NEW_NAVIGATION');
-  const useAllFeaturesView = isFeatureEnabled('ALL_FEATURES_VIEW');
   const { user, logout } = useAuth();
   
   const menuFeatures = getMenuFeatures();
@@ -156,9 +154,6 @@ export function PageHeader({ title, showBack = true, backPath, rightContent }: P
       {useNewNavigation ? (
         <>
           <HamburgerMenu open={navMenuOpen} onClose={handleMenuClose} />
-          {useAllFeaturesView && (
-            <AllFeaturesView open={allFeaturesOpen} onClose={closeAllFeatures} />
-          )}
         </>
       ) : (
         // Legacy menu (old implementation)
