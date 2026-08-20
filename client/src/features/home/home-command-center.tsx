@@ -778,8 +778,8 @@ export default function HomeCommandCenter() {
             <div className="px-4 pt-3 pb-2 border-b border-border/60">
               <p className="text-sm font-semibold font-display">Today</p>
             </div>
-            <div>
-              {todayRows.map((row, index) => {
+            <div className="divide-y divide-border/60">
+              {todayRows.map((row) => {
                 const Icon = row.icon;
                 return (
                   <button
@@ -792,7 +792,6 @@ export default function HomeCommandCenter() {
                     <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
                     <span className="text-sm text-foreground flex-1 truncate">{row.label}</span>
                     <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                    {index < todayRows.length - 1 && <span className="sr-only" />}
                   </button>
                 );
               })}

@@ -64,11 +64,18 @@ function inferRoutineTiming(text: string): {
   const explicitDay = WEEKDAY_NAMES.findIndex((day) => normalized.includes(day));
   const dayOfWeek = explicitDay >= 0 ? explicitDay : undefined;
 
+  const withCadence = (startTime: string, cadence: "daily" | "weekly" = dayOfWeek !== undefined ? "weekly" : "daily") => ({
+    cadence,
+    ...(dayOfWeek !== undefined ? { dayOfWeek } : {}),
+    startTime,
+    durationMinutes: 30,
+  });
+
   if (normalized.includes("morning")) {
-    return { cadence: "daily", startTime: "07:00", durationMinutes: 30 };
+    return withCadence("07:00");
   }
   if (normalized.includes("afternoon") || normalized.includes("lunch") || normalized.includes("midday")) {
-    return { cadence: "daily", startTime: "12:00", durationMinutes: 30 };
+    return withCadence("12:00");
   }
   if (
     normalized.includes("evening") ||
@@ -76,7 +83,7 @@ function inferRoutineTiming(text: string): {
     normalized.includes("wind down") ||
     normalized.includes("wind-down")
   ) {
-    return { cadence: "daily", startTime: "20:00", durationMinutes: 30 };
+    return withCadence("20:00");
   }
   if (normalized.includes("weekly") || dayOfWeek !== undefined) {
     return { cadence: "weekly", dayOfWeek: dayOfWeek ?? 1, startTime: "09:00", durationMinutes: 30 };
