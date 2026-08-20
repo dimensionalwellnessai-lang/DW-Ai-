@@ -2,7 +2,7 @@ import type { Express } from "express";
 
 import { storage } from "../storage";
 
-import { openai } from "../openai";
+import { chatComplete } from "../ai-engine";
 import { aiContentLimiter } from "./_limiters";
 
 
@@ -65,13 +65,11 @@ Return ONLY this JSON:
         } catch { /* fall through */ }
       }
       if (!playlists.length) {
-        const completion = await openai.chat.completions.create({
-          model: "gpt-4o-mini",
-          messages: [{ role: "user", content: prompt }],
-          temperature: 0.7, max_tokens: 900,
-        });
-        const raw = (completion.choices[0]?.message?.content ?? "{}").trim()
-          .replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
+        const raw = await chatComplete(
+          [{ role: "user", content: prompt }],
+          { task: "music", maxTokens: 900, temperature: 0.7 },
+        ).then(r => r.trim().replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, ""))
+          .catch(() => "{}");
         try { playlists = JSON.parse(raw).playlists || []; } catch { playlists = []; }
       }
       res.json({ playlists });
@@ -94,9 +92,8 @@ Return ONLY this JSON:
         ? `\n\nHere is what I know about this person: ${JSON.stringify(userContext)}`
         : "";
 
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
+      const explanation = await chatComplete(
+        [
           {
             role: "system",
             content: `You are DW — a personal life intelligence system. Your job is to explain real-life topics clearly and honestly, in plain conversational English. Never use jargon without explaining it immediately in parentheses. Always connect your explanation to the person's specific situation. Structure: start with the direct answer first, then explain the "why", then give one concrete thing they can do today. Keep it under 200 words. Use short paragraphs (2-3 sentences max). Be warm, direct, never preachy or generic.`,
@@ -106,11 +103,9 @@ Return ONLY this JSON:
             content: `Explain this specifically for my situation: ${topic.trim()}${contextStr}`,
           },
         ],
-        max_tokens: 320,
-        temperature: 0.72,
-      });
+        { task: "explain", maxTokens: 320, temperature: 0.72 },
+      ).catch(() => "");
 
-      const explanation = completion.choices[0]?.message?.content?.trim() || "";
       res.json({ explanation });
     } catch (err) {
       console.error("[ai/explain]", err);
@@ -134,9 +129,8 @@ Return ONLY this JSON:
         .map((m) => `${m.role === "user" ? "User" : "DW"}: ${m.content.slice(0, 200)}`)
         .join("\n");
 
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
+      const corrected = await chatComplete(
+        [
           {
             role: "system",
             content: `You are a speech-to-text correction assistant. You will receive a raw voice transcript that may have misheard words, wrong homophones, missing punctuation, or garbled phrases. Using the conversation context, correct only actual errors — do not rephrase or expand. Return ONLY the corrected transcript text, nothing else. If the transcript is already correct, return it unchanged.`,
@@ -146,11 +140,9 @@ Return ONLY this JSON:
             content: `Conversation so far:\n${recentContext || "(no prior context)"}\n\nRaw transcript to correct:\n"${transcript.trim()}"`,
           },
         ],
-        max_tokens: 256,
-        temperature: 0.2,
-      });
+        { task: "fix_transcript", maxTokens: 256, temperature: 0.2 },
+      ).catch(() => transcript);
 
-      const corrected = completion.choices[0]?.message?.content?.trim() || transcript;
       res.json({ text: corrected.replace(/^["']|["']$/g, "").trim() });
     } catch (err) {
       console.error("[ai/fix-transcript]", err);

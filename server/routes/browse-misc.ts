@@ -3,6 +3,7 @@ import type { Express } from "express";
 import { storage } from "../storage";
 
 import { openai } from "../openai";
+import { chatComplete } from "../ai-engine";
 import { aiContentLimiter } from "./_limiters";
 
 
@@ -125,9 +126,8 @@ Return ONLY this JSON, no other text:
       };
       const cfg = slotConfig[slot] ?? slotConfig["evening"];
 
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [{ role: "user", content: `${personalCtx ? `About this person: ${personalCtx}.\n\n` : ""}It is ${cfg.label}.
+      const raw = await chatComplete(
+        [{ role: "user", content: `${personalCtx ? `About this person: ${personalCtx}.\n\n` : ""}It is ${cfg.label}.
 
 Suggest 6 specific activities for RIGHT NOW — activities that fit what people actually do at ${cfg.label}. The intent is to ${cfg.intent}.
 
@@ -141,9 +141,8 @@ CRITICAL RULES:
 
 Return ONLY this JSON (no markdown):
 {"activities":[{"id":"a1","title":"Specific vivid title","description":"1-2 sentences — what to do exactly and why it's perfect for this time of day","type":"indoor or outdoor or social","duration":"30 min","whyPicked":"1 sentence connecting this to their goals or the time","canAddToSchedule":true,"suggestedTime":"${cfg.label}"}]}` }],
-        temperature: 0.85, max_tokens: 1000,
-      });
-      const raw = completion.choices[0]?.message?.content?.trim() ?? "{}";
+        { task: "activities", temperature: 0.85, maxTokens: 1000 },
+      ).catch(() => "{}");
       let activities: any[] = [];
       try {
         const cleaned = raw.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");

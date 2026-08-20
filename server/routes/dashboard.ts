@@ -4,7 +4,7 @@ import { storage } from "../storage";
 
 import { requireAuth } from "./_shared";
 
-import { openai } from "../openai";
+import { chatComplete } from "../ai-engine";
 import { generateProactiveNudges, generateMorningBriefing } from "../proactive";
 
 
@@ -59,9 +59,8 @@ export function registerDashboardRoutes(app: Express): void {
       const { message } = req.body as { message?: string };
       if (!message || message.length < 10) return res.json({ chips: [] });
 
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
+      const raw = await chatComplete(
+        [
           {
             role: "system",
             content: `You generate short quick-reply button text for a wellness AI chat.
@@ -76,11 +75,9 @@ Example: ["Work stress mostly", "It's been everything", "Just need a plan"]`,
           },
           { role: "user", content: message },
         ],
-        max_tokens: 80,
-        temperature: 0.8,
-      });
+        { task: "chips", maxTokens: 80, temperature: 0.8, jsonMode: false },
+      ).catch(() => "[]");
 
-      const raw = completion.choices[0]?.message?.content?.trim() || "[]";
       let chips: string[] = [];
       try { chips = JSON.parse(raw); } catch { chips = []; }
       res.json({ chips: Array.isArray(chips) ? chips.slice(0, 3) : [] });

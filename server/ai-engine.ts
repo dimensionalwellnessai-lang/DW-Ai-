@@ -335,6 +335,123 @@ export async function aiStream(
   return fallback;
 }
 
+// ─── Task-oriented chat-completion helper ─────────────────────────────────────
+
+export interface ChatCompleteOptions {
+  /** Logical task name — used to derive the per-task env var (DW_AI_MODEL_<TASK_UPPER>). */
+  task: string;
+  /** Explicit model override (highest priority). */
+  model?: string;
+  maxTokens?: number;
+  temperature?: number;
+  /** When true, sends response_format: json_object on OpenAI path. */
+  jsonMode?: boolean;
+  useCache?: boolean;
+}
+
+/**
+ * Resolve the model for a given task following the priority order:
+ *   1. explicit options.model
+ *   2. DW_AI_MODEL_<TASK_UPPER>   e.g. DW_AI_MODEL_CHIPS
+ *   3. DW_AI_MODEL_LIGHTWEIGHT
+ *   4. "gpt-4o-mini"
+ */
+function resolveTaskModel(options: ChatCompleteOptions): string {
+  if (options.model) return options.model;
+  const taskEnvVar = `DW_AI_MODEL_${options.task.toUpperCase()}`;
+  if (process.env[taskEnvVar]) return process.env[taskEnvVar] as string;
+  if (process.env.DW_AI_MODEL_LIGHTWEIGHT) return process.env.DW_AI_MODEL_LIGHTWEIGHT;
+  return "gpt-4o-mini";
+}
+
+/**
+ * Provider-neutral lightweight chat completion.
+ *
+ * Reuses the existing circuit-breaker / retry / cache infrastructure.
+ * - On the OpenAI path, jsonMode maps to response_format: { type: "json_object" }.
+ * - On the Perplexity fallback path, response_format is omitted (unsupported).
+ * - Throws on provider failure so callers can apply their own fallback logic.
+ */
+export async function chatComplete(
+  messages: { role: "system" | "user" | "assistant"; content: string }[],
+  options: ChatCompleteOptions,
+): Promise<string> {
+  const model = resolveTaskModel(options);
+  const maxTokens = options.maxTokens ?? 500;
+  const temperature = options.temperature ?? 0.7;
+  const useCache = options.useCache ?? false;
+
+  const key = useCache ? cacheKey(messages) : null;
+  if (key) {
+    const cached = getCached(key);
+    if (cached) {
+      console.log(`[ai-engine:${options.task}] Cache hit`);
+      return cached;
+    }
+  }
+
+  // ── Provider 1: OpenAI ──────────────────────────────────────────────────────
+  if (!isCircuitOpen("openai")) {
+    try {
+      const client = buildOpenAIClient();
+      if (!client) throw new Error("OpenAI not configured");
+
+      const createParams: Parameters<typeof client.chat.completions.create>[0] = {
+        model,
+        messages,
+        max_tokens: maxTokens,
+        temperature,
+        ...(options.jsonMode ? { response_format: { type: "json_object" as const } } : {}),
+      };
+
+      const result = await withRetry(async () => {
+        const completion = await client.chat.completions.create(createParams);
+        const text = completion.choices[0]?.message?.content?.trim();
+        if (!text) throw new Error("Empty response from OpenAI");
+        return text;
+      }, 2, 600);
+
+      recordSuccess("openai");
+      if (key) setCache(key, result);
+      console.log(`[ai-engine:${options.task}] OpenAI success (model=${model})`);
+      return result;
+    } catch (err) {
+      recordFailure("openai");
+      console.warn(`[ai-engine:${options.task}] OpenAI failed, trying Perplexity:`, (err as Error).message);
+    }
+  }
+
+  // ── Provider 2: Perplexity (omit response_format — unsupported; model is always "sonar") ─────────────────
+  if (!isCircuitOpen("perplexity")) {
+    try {
+      const client = buildPerplexityClient();
+      if (!client) throw new Error("Perplexity not configured");
+
+      const result = await withRetry(async () => {
+        const completion = await client.chat.completions.create({
+          model: "sonar",
+          messages,
+          max_tokens: maxTokens,
+        } as Parameters<typeof client.chat.completions.create>[0]);
+        const text = (completion as OpenAI.Chat.Completions.ChatCompletion).choices[0]?.message?.content?.trim();
+        if (!text) throw new Error("Empty response from Perplexity");
+        return text;
+      }, 2, 600);
+
+      recordSuccess("perplexity");
+      if (key) setCache(key, result);
+      console.log(`[ai-engine:${options.task}] Perplexity fallback success`);
+      return result;
+    } catch (err) {
+      recordFailure("perplexity");
+      console.warn(`[ai-engine:${options.task}] Perplexity failed:`, (err as Error).message);
+    }
+  }
+
+  // ── Both providers failed — throw so callers apply their own fallback ────────
+  throw new Error(`[ai-engine:${options.task}] All providers failed`);
+}
+
 // ─── Health status (for monitoring) ──────────────────────────────────────────
 
 export function getAIEngineStatus() {
