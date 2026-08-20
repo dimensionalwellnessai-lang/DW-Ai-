@@ -89,6 +89,17 @@ function cacheKey(messages: { role: string; content: string }[]): string {
   return messages.map(m => `${m.role}:${m.content}`).join("|").slice(0, 512);
 }
 
+function cacheKeyFromRequest(payload: {
+  messages: { role: string; content: string }[];
+  task: string;
+  model: string;
+  maxTokens: number;
+  temperature: number;
+  jsonMode: boolean;
+}): string {
+  return JSON.stringify(payload);
+}
+
 function getCached(key: string): string | null {
   const entry = responseCache.get(key);
   if (!entry) return null;
@@ -381,7 +392,14 @@ export async function chatComplete(
   const temperature = options.temperature ?? 0.7;
   const useCache = options.useCache ?? false;
 
-  const key = useCache ? cacheKey(messages) : null;
+  const key = useCache ? cacheKeyFromRequest({
+    messages,
+    task: options.task,
+    model,
+    maxTokens,
+    temperature,
+    jsonMode: options.jsonMode ?? false,
+  }) : null;
   if (key) {
     const cached = getCached(key);
     if (cached) {
@@ -432,6 +450,7 @@ export async function chatComplete(
           model: "sonar",
           messages,
           max_tokens: maxTokens,
+          temperature,
         } as Parameters<typeof client.chat.completions.create>[0]);
         const text = (completion as OpenAI.Chat.Completions.ChatCompletion).choices[0]?.message?.content?.trim();
         if (!text) throw new Error("Empty response from Perplexity");
