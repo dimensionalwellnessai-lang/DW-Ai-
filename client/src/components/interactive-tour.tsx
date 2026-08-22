@@ -218,6 +218,7 @@ interface InteractiveTourProps {
 export function InteractiveTour({ open, onComplete, onSkip }: InteractiveTourProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [location, setLocation] = useLocation();
+  const [pendingStep, setPendingStep] = useState<{ index: number; route: string } | null>(null);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -257,8 +258,16 @@ export function InteractiveTour({ open, onComplete, onSkip }: InteractiveTourPro
   useEffect(() => {
     if (open) {
       setCurrentStep(0);
+      setPendingStep(null);
     }
   }, [open]);
+
+  useEffect(() => {
+    if (!open || pendingStep === null) return;
+    if (location !== pendingStep.route) return;
+    setCurrentStep(pendingStep.index);
+    setPendingStep(null);
+  }, [open, pendingStep, location]);
 
   // Update target rect when the step changes, and scroll into view
   useEffect(() => {
@@ -300,13 +309,21 @@ export function InteractiveTour({ open, onComplete, onSkip }: InteractiveTourPro
 
   const handleNext = () => {
     if (currentStep < TOUR_STEPS.length - 1) {
-      const nextStep = TOUR_STEPS[currentStep + 1];
-      if (nextStep?.id === "chat") {
-        setLocation("/talk");
-      } else if (nextStep && ["home", "calendar", "browse"].includes(nextStep.id)) {
-        setLocation("/command-center");
+      const nextStepIndex = currentStep + 1;
+      const nextStep = TOUR_STEPS[nextStepIndex];
+      const nextRoute = nextStep?.id === "chat"
+        ? "/talk"
+        : nextStep && ["home", "calendar", "browse"].includes(nextStep.id)
+          ? "/command-center"
+          : null;
+
+      if (nextRoute && location !== nextRoute) {
+        setPendingStep({ index: nextStepIndex, route: nextRoute });
+        setLocation(nextRoute);
+        return;
       }
-      setCurrentStep(currentStep + 1);
+
+      setCurrentStep(nextStepIndex);
     } else {
       onComplete();
     }
