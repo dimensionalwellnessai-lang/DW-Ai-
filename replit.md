@@ -79,3 +79,31 @@ The underlying database schemas and unrelated code paths were left intact in cas
 - **Document Parsing**: `mammoth`
 - **Charts**: `Recharts`
 - **Form Handling**: `React Hook Form` with `Zod`
+
+## AI Provider Configuration (Phase 2)
+
+Lightweight, non-conversational AI tasks run through `chatComplete()` in `server/ai-engine.ts`. The model used for each task is resolved in this order:
+
+1. `options.model` (explicit per-call override)
+2. `DW_AI_MODEL_<TASK_UPPER>` — per-task env var, e.g. `DW_AI_MODEL_CHIPS`
+3. `DW_AI_MODEL_LIGHTWEIGHT` — global lightweight-task default
+4. `"gpt-4o-mini"` — hardcoded fallback
+
+### Task names
+
+| Task name          | Endpoint / function                                  |
+|--------------------|------------------------------------------------------|
+| `chips`            | `POST /api/ai/chips` (quick-reply suggestions)       |
+| `explain`          | `POST /api/ai/explain` (DW Explain)                  |
+| `fix_transcript`   | `POST /api/ai/fix-transcript` (transcript correction)|
+| `activities`       | `GET /api/browse/activities`                         |
+| `music`            | `GET /api/browse/music` (OpenAI fallback path)       |
+| `import_summary`   | `summarizeConversation` in imports-chat.ts           |
+| `import_normalize` | `normalizeRawPaste` in imports-chat.ts               |
+| `discover`         | `generateDiscoverRandomContent` in openai.ts         |
+| `affirmation`      | `generateAffirmation` in openai.ts                   |
+| `checkin`          | `generateCheckInAnalysis` in openai.ts               |
+
+### Paths NOT migrated (still on the original OpenAI path)
+
+Main chat, streaming responses, tool-calling, all audio (TTS, Whisper, realtime voice), life-system analysis, meal-plan parsing, and elevation plans all continue to run on the existing `openai.ts` / `ai-engine.ts` `aiCall`/`aiStream` infrastructure.

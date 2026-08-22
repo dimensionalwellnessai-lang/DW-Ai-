@@ -57,6 +57,7 @@ import { registerEnergyTransmutationRoutes } from "./routes/energy-transmutation
 import { sendPasswordResetEmail, sendFeedbackEmail, sendAccountDeletionEmail, sendSupportReportEmail, sendWelcomeEmail } from "./email";
 import { generateChatResponse, generateLifeSystemRecommendations, generateDashboardInsight, generateFullAnalysis, detectIntentAndRespond, detectIntentAndRespondStreaming, generateLearnModeQuestion, generateWorkoutPlan, generateMeditationSuggestions, analyzeMealPlanDocument, generateInteractionInsights, generateContextualSearch, generateIngredientSubstitutes, processConversationIntoInsights, generateElevationPlanStructure, openai, getAiConfigStatus, generateDiscoverRandomContent, enforceOneQuestion, type SearchCategory } from "./openai";
 import { generateProactiveNudges, generateMorningBriefing } from "./proactive";
+import { chatComplete } from "./ai-engine";
 import { extractTextFromBuffer, generateDocumentAnalysisPrompt, validateAnalysisResult, isProcessingError, detectPrimaryCategory, type DocumentAnalysisResult, type DocumentProcessingError } from "./document-parser";
 import { googleVisionService } from "./google-vision";
 import {
@@ -2672,9 +2673,8 @@ export async function registerRoutes(
       const { message } = req.body as { message?: string };
       if (!message || message.length < 10) return res.json({ chips: [] });
 
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
+      const raw = await chatComplete(
+        [
           {
             role: "system",
             content: `You generate short quick-reply button text for a wellness AI chat.
@@ -2689,11 +2689,8 @@ Example: ["Work stress mostly", "It's been everything", "Just need a plan"]`,
           },
           { role: "user", content: message },
         ],
-        max_tokens: 80,
-        temperature: 0.8,
-      });
-
-      const raw = completion.choices[0]?.message?.content?.trim() || "[]";
+        { task: "chips", maxTokens: 80, temperature: 0.8, jsonMode: false },
+      ).catch(() => "[]");
       let chips: string[] = [];
       try { chips = JSON.parse(raw); } catch { chips = []; }
       res.json({ chips: Array.isArray(chips) ? chips.slice(0, 3) : [] });
@@ -2760,13 +2757,11 @@ Return ONLY this JSON:
         } catch { /* fall through */ }
       }
       if (!playlists.length) {
-        const completion = await openai.chat.completions.create({
-          model: "gpt-4o-mini",
-          messages: [{ role: "user", content: prompt }],
-          temperature: 0.7, max_tokens: 900,
-        });
-        const raw = (completion.choices[0]?.message?.content ?? "{}").trim()
-          .replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
+        const raw = await chatComplete(
+          [{ role: "user", content: prompt }],
+          { task: "music", maxTokens: 900, temperature: 0.7 },
+        ).then(r => r.trim().replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, ""))
+          .catch(() => "{}");
         try { playlists = JSON.parse(raw).playlists || []; } catch { playlists = []; }
       }
       res.json({ playlists });
@@ -2789,9 +2784,8 @@ Return ONLY this JSON:
         ? `\n\nHere is what I know about this person: ${JSON.stringify(userContext)}`
         : "";
 
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
+      const explanation = await chatComplete(
+        [
           {
             role: "system",
             content: `You are DW — a personal life intelligence system. Your job is to explain real-life topics clearly and honestly, in plain conversational English. Never use jargon without explaining it immediately in parentheses. Always connect your explanation to the person's specific situation. Structure: start with the direct answer first, then explain the "why", then give one concrete thing they can do today. Keep it under 200 words. Use short paragraphs (2-3 sentences max). Be warm, direct, never preachy or generic.`,
@@ -2801,11 +2795,8 @@ Return ONLY this JSON:
             content: `Explain this specifically for my situation: ${topic.trim()}${contextStr}`,
           },
         ],
-        max_tokens: 320,
-        temperature: 0.72,
-      });
-
-      const explanation = completion.choices[0]?.message?.content?.trim() || "";
+        { task: "explain", maxTokens: 320, temperature: 0.72 },
+      ).catch(() => "");
       res.json({ explanation });
     } catch (err) {
       console.error("[ai/explain]", err);
@@ -2829,9 +2820,8 @@ Return ONLY this JSON:
         .map((m) => `${m.role === "user" ? "User" : "DW"}: ${m.content.slice(0, 200)}`)
         .join("\n");
 
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [
+      const corrected = await chatComplete(
+        [
           {
             role: "system",
             content: `You are a speech-to-text correction assistant. You will receive a raw voice transcript that may have misheard words, wrong homophones, missing punctuation, or garbled phrases. Using the conversation context, correct only actual errors — do not rephrase or expand. Return ONLY the corrected transcript text, nothing else. If the transcript is already correct, return it unchanged.`,
@@ -2841,11 +2831,8 @@ Return ONLY this JSON:
             content: `Conversation so far:\n${recentContext || "(no prior context)"}\n\nRaw transcript to correct:\n"${transcript.trim()}"`,
           },
         ],
-        max_tokens: 256,
-        temperature: 0.2,
-      });
-
-      const corrected = completion.choices[0]?.message?.content?.trim() || transcript;
+        { task: "fix_transcript", maxTokens: 256, temperature: 0.2 },
+      ).catch(() => transcript);
       res.json({ text: corrected.replace(/^["']|["']$/g, "").trim() });
     } catch (err) {
       console.error("[ai/fix-transcript]", err);
@@ -11600,9 +11587,8 @@ Return ONLY this JSON, no other text:
       };
       const cfg = slotConfig[slot] ?? slotConfig["evening"];
 
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [{ role: "user", content: `${personalCtx ? `About this person: ${personalCtx}.\n\n` : ""}It is ${cfg.label}.
+      const raw = await chatComplete(
+        [{ role: "user", content: `${personalCtx ? `About this person: ${personalCtx}.\n\n` : ""}It is ${cfg.label}.
 
 Suggest 6 specific activities for RIGHT NOW — activities that fit what people actually do at ${cfg.label}. The intent is to ${cfg.intent}.
 
@@ -11616,9 +11602,8 @@ CRITICAL RULES:
 
 Return ONLY this JSON (no markdown):
 {"activities":[{"id":"a1","title":"Specific vivid title","description":"1-2 sentences — what to do exactly and why it's perfect for this time of day","type":"indoor or outdoor or social","duration":"30 min","whyPicked":"1 sentence connecting this to their goals or the time","canAddToSchedule":true,"suggestedTime":"${cfg.label}"}]}` }],
-        temperature: 0.85, max_tokens: 1000,
-      });
-      const raw = completion.choices[0]?.message?.content?.trim() ?? "{}";
+        { task: "activities", temperature: 0.85, maxTokens: 1000 },
+      ).catch(() => "{}");
       let activities: any[] = [];
       try {
         const cleaned = raw.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");

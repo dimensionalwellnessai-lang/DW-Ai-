@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { storage } from "../storage";
 import { openai } from "../openai";
+import { chatComplete } from "../ai-engine";
 import { requireAuth, requirePaidOrQuota } from "./_shared";
 
 import type {
@@ -111,9 +112,8 @@ async function summarizeConversation(messages: ImportedConversationMessage[], or
     .slice(-12000);
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
+    const raw = await chatComplete(
+      [
         {
           role: "system",
           content:
@@ -124,10 +124,8 @@ async function summarizeConversation(messages: ImportedConversationMessage[], or
           content: `Title: ${originalTitle}\n\nTranscript:\n${transcript}`,
         },
       ],
-      response_format: { type: "json_object" },
-      temperature: 0.4,
-    });
-    const raw = completion.choices?.[0]?.message?.content || "{}";
+      { task: "import_summary", jsonMode: true, temperature: 0.4 },
+    );
     const parsed = JSON.parse(raw);
     return {
       summary: typeof parsed.summary === "string" ? parsed.summary : summarizeFallback(messages).summary,
@@ -148,9 +146,8 @@ async function summarizeConversation(messages: ImportedConversationMessage[], or
 async function normalizeRawPaste(text: string, providedTitle?: string): Promise<{ title: string; messages: ImportedConversationMessage[] }> {
   const trimmed = text.slice(0, 60000);
   try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
+    const raw = await chatComplete(
+      [
         {
           role: "system",
           content:
@@ -158,10 +155,8 @@ async function normalizeRawPaste(text: string, providedTitle?: string): Promise<
         },
         { role: "user", content: trimmed },
       ],
-      response_format: { type: "json_object" },
-      temperature: 0.2,
-    });
-    const raw = completion.choices?.[0]?.message?.content || "{}";
+      { task: "import_normalize", jsonMode: true, temperature: 0.2 },
+    );
     const parsed = JSON.parse(raw);
     const messages: ImportedConversationMessage[] = Array.isArray(parsed.messages)
       ? parsed.messages

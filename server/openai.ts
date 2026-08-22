@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import type { CoachingMode } from "@shared/schema";
+import { chatComplete } from "./ai-engine";
 
 // Prefer a direct OPENAI_API_KEY (works reliably in production deployments).
 // Fall back to Replit AI Integrations proxy credentials when available.
@@ -4319,18 +4320,16 @@ export async function generateDiscoverRandomContent(type: string): Promise<Array
   };
   const prompt = prompts[type] || prompts.fun_fact;
   try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
+    const raw = await chatComplete(
+      [
         {
           role: "system",
           content: 'Return ONLY valid JSON with this exact shape (no markdown, no explanation): { "items": [ { "title": "...", "body": "3-4 sentences", "dimension": "emotional|physical|financial|social|spiritual|intellectual|environmental|purpose", "source": "attribution or empty string" } ] }',
         },
         { role: "user", content: prompt },
       ],
-      max_tokens: 1400,
-    });
-    const raw = completion.choices[0]?.message?.content || "{}";
+      { task: "discover", maxTokens: 1400 },
+    );
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
     if (!jsonMatch) return [];
     const parsed = JSON.parse(jsonMatch[0]);
@@ -4343,15 +4342,13 @@ export async function generateDiscoverRandomContent(type: string): Promise<Array
 
 export async function generateAffirmation(name: string, timeOfDay: string): Promise<string> {
   try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
+    return await chatComplete(
+      [
         { role: "system", content: "You are DW, a calm, wise personal wellness AI. Write a single warm affirmation sentence (2-3 sentences max) for the user. Do not start with Hi or Hello. Make it specific to their moment." },
         { role: "user", content: `Write a ${timeOfDay} affirmation for ${name}. Make it warm, grounding, and focused on their potential.` },
       ],
-      max_tokens: 150,
-    });
-    return completion.choices[0]?.message?.content?.trim() || "";
+      { task: "affirmation", maxTokens: 150 },
+    );
   } catch {
     return "";
   }
@@ -4391,9 +4388,8 @@ export async function generateCheckInAnalysis(
       }
     }
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
+    return await chatComplete(
+      [
         {
           role: "system",
           content: `You are DW, a calm, supportive wellness AI. ${toneNote}${bodyContextNote} Never be judgmental. Acknowledge effort over outcomes. Speak directly to the user by name.`
@@ -4403,9 +4399,8 @@ export async function generateCheckInAnalysis(
           content: `Name: ${name}. Energy today: ${energyScore}/10. Active goals: ${goals.length ? goals.join(", ") : "none listed"}. Notes: ${userNotes || "No notes shared"}. Current hour: ${hour}.${wearableSummary ? ` Yesterday's body data: ${wearableSummary}.` : ""} Give a warm, personal check-in reflection.`
         },
       ],
-      max_tokens: 220,
-    });
-    return completion.choices[0]?.message?.content?.trim() || "";
+      { task: "checkin", maxTokens: 220 },
+    );
   } catch {
     return "";
   }
