@@ -96,26 +96,98 @@ function buildNextOccurrence(timing: {
   dayOfWeek?: number;
   startTime: string;
   durationMinutes: number;
-}) {
+}, timeZone: string) {
+  const getDateParts = (date: Date) => {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      weekday: "short",
+    }).formatToParts(date);
+    const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+    const weekdayMap: Record<string, number> = {
+      sun: 0,
+      mon: 1,
+      tue: 2,
+      wed: 3,
+      thu: 4,
+      fri: 5,
+      sat: 6,
+    };
+    return {
+      year: Number(get("year")),
+      month: Number(get("month")),
+      day: Number(get("day")),
+      weekday: weekdayMap[get("weekday").toLowerCase()] ?? 0,
+    };
+  };
+  const getTimeZoneOffsetMs = (date: Date) => {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    }).formatToParts(date);
+    const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "0";
+    const localAsUtc = Date.UTC(
+      Number(get("year")),
+      Number(get("month")) - 1,
+      Number(get("day")),
+      Number(get("hour")),
+      Number(get("minute")),
+      Number(get("second")),
+    );
+    return localAsUtc - date.getTime();
+  };
+  const zonedDateTimeToUtc = (
+    year: number,
+    month: number,
+    day: number,
+    hour: number,
+    minute: number,
+  ) => {
+    const utcGuess = Date.UTC(year, month - 1, day, hour, minute, 0, 0);
+    const guessDate = new Date(utcGuess);
+    const offset = getTimeZoneOffsetMs(guessDate);
+    const instant = new Date(utcGuess - offset);
+    const adjustedOffset = getTimeZoneOffsetMs(instant);
+    return adjustedOffset === offset ? instant : new Date(utcGuess - adjustedOffset);
+  };
+
   const now = new Date();
   const [hour, minute] = timing.startTime.split(":").map(Number);
-  const start = new Date(now);
-  start.setSeconds(0, 0);
+  const localNow = getDateParts(now);
+  const localDateUtc = new Date(Date.UTC(localNow.year, localNow.month - 1, localNow.day));
+  let daysUntil = 0;
+  let recurrenceWeekday = timing.dayOfWeek ?? localNow.weekday;
 
   if (timing.cadence === "daily") {
-    start.setHours(hour, minute, 0, 0);
-    if (start.getTime() <= now.getTime()) {
-      start.setDate(start.getDate() + 1);
-    }
+    const todayStart = zonedDateTimeToUtc(localNow.year, localNow.month, localNow.day, hour, minute);
+    if (todayStart.getTime() <= now.getTime()) daysUntil = 1;
   } else {
-    const targetDay = timing.dayOfWeek ?? now.getDay();
-    let daysUntil = targetDay - now.getDay();
-    start.setHours(hour, minute, 0, 0);
-    if (daysUntil < 0 || (daysUntil === 0 && start.getTime() <= now.getTime())) {
+    const targetDay = timing.dayOfWeek ?? localNow.weekday;
+    recurrenceWeekday = targetDay;
+    daysUntil = targetDay - localNow.weekday;
+    const thisWeekStart = zonedDateTimeToUtc(localNow.year, localNow.month, localNow.day, hour, minute);
+    if (daysUntil < 0 || (daysUntil === 0 && thisWeekStart.getTime() <= now.getTime())) {
       daysUntil += 7;
     }
-    start.setDate(start.getDate() + daysUntil);
   }
+
+  if (daysUntil !== 0) {
+    localDateUtc.setUTCDate(localDateUtc.getUTCDate() + daysUntil);
+  }
+
+  const startYear = localDateUtc.getUTCFullYear();
+  const startMonth = localDateUtc.getUTCMonth() + 1;
+  const startDay = localDateUtc.getUTCDate();
+  const start = zonedDateTimeToUtc(startYear, startMonth, startDay, hour, minute);
+  start.setSeconds(0, 0);
 
   const end = new Date(start);
   end.setMinutes(end.getMinutes() + timing.durationMinutes);
@@ -123,9 +195,21 @@ function buildNextOccurrence(timing: {
   const recurrenceRule =
     timing.cadence === "daily"
       ? "FREQ=DAILY"
-      : `FREQ=WEEKLY;BYDAY=${WEEKDAY_CODES[timing.dayOfWeek ?? start.getDay()]}`;
+      : `FREQ=WEEKLY;BYDAY=${WEEKDAY_CODES[recurrenceWeekday]}`;
 
   return { start, end, recurrenceRule };
+}
+
+function normalizeIanaTimezone(timezone: unknown): string | null {
+  if (typeof timezone !== "string") return null;
+  const trimmed = timezone.trim();
+  if (!trimmed || trimmed.length > 80) return null;
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: trimmed }).format(new Date());
+    return trimmed;
+  } catch {
+    return null;
+  }
 }
 
 export function registerOnboardingRoutes(app: Express): void {
@@ -401,7 +485,7 @@ Return only valid JSON. Do not guess at things not mentioned. Keep suggestions r
   app.post("/api/onboarding/accept-suggestions", requireAuth, async (req, res) => {
     try {
       const userId = req.session.userId!;
-      const { suggestions } = req.body as {
+      const { suggestions, timezone } = req.body as {
         suggestions: Array<{
           id: string;
           type: "focus_point" | "path" | "system" | "plan" | "project";
@@ -411,6 +495,7 @@ Return only valid JSON. Do not guess at things not mentioned. Keep suggestions r
           status: "accepted" | "edited" | "deferred" | "removed";
           editedTitle?: string;
         }>;
+        timezone?: string;
       };
 
       if (!Array.isArray(suggestions)) {
@@ -418,6 +503,7 @@ Return only valid JSON. Do not guess at things not mentioned. Keep suggestions r
       }
 
       const accepted = suggestions.filter((s) => s.status === "accepted" || s.status === "edited");
+      const requestTimezone = normalizeIanaTimezone(timezone) ?? "UTC";
       const finalTitle = (s: typeof accepted[0]) => {
         return (s.status === "edited" && s.editedTitle?.trim()) ? s.editedTitle.trim() : s.title.trim();
       };
@@ -491,7 +577,7 @@ Return only valid JSON. Do not guess at things not mentioned. Keep suggestions r
           });
 
           if (timing) {
-            const occurrence = buildNextOccurrence(timing);
+            const occurrence = buildNextOccurrence(timing, requestTimezone);
             await storage.createCalendarEvent({
               userId,
               title: finalTitle(s),

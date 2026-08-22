@@ -958,7 +958,10 @@ export default function VoiceOnboardingPage() {
       // Non-fatal
     }
     try {
-      await apiRequest("POST", "/api/onboarding/accept-suggestions", { suggestions });
+      await apiRequest("POST", "/api/onboarding/accept-suggestions", {
+        suggestions,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      });
     } catch {
       // Non-fatal
     }
@@ -988,7 +991,10 @@ export default function VoiceOnboardingPage() {
       // Non-fatal
     }
     try {
-      await apiRequest("POST", "/api/onboarding/accept-suggestions", { suggestions: deferred });
+      await apiRequest("POST", "/api/onboarding/accept-suggestions", {
+        suggestions: deferred,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      });
     } catch {
       // Non-fatal — navigate home even if persist fails
     }

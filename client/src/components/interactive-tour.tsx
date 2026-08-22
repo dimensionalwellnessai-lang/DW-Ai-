@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -216,6 +217,7 @@ interface InteractiveTourProps {
 
 export function InteractiveTour({ open, onComplete, onSkip }: InteractiveTourProps) {
   const [currentStep, setCurrentStep] = useState(0);
+  const [location, setLocation] = useLocation();
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -273,7 +275,7 @@ export function InteractiveTour({ open, onComplete, onSkip }: InteractiveTourPro
       }
     }
     updateTargetRect();
-  }, [open, currentStep, step?.targetSelector, updateTargetRect]);
+  }, [open, currentStep, step?.targetSelector, updateTargetRect, location]);
 
   // Recompute on resize, orientation change, and scroll
   useEffect(() => {
@@ -298,6 +300,12 @@ export function InteractiveTour({ open, onComplete, onSkip }: InteractiveTourPro
 
   const handleNext = () => {
     if (currentStep < TOUR_STEPS.length - 1) {
+      const nextStep = TOUR_STEPS[currentStep + 1];
+      if (nextStep?.id === "chat") {
+        setLocation("/talk");
+      } else if (nextStep && ["home", "calendar", "browse"].includes(nextStep.id)) {
+        setLocation("/command-center");
+      }
       setCurrentStep(currentStep + 1);
     } else {
       onComplete();
@@ -477,4 +485,3 @@ export function InteractiveTour({ open, onComplete, onSkip }: InteractiveTourPro
     </>
   );
 }
-

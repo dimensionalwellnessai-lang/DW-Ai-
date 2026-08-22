@@ -254,9 +254,9 @@ export default function HomeCommandCenter() {
     staleTime: 5 * 60 * 1000,
   });
   const onboardingProfile = onboardingProfileQ.data?.profile ?? null;
-  const directionLine = truncateDirection(
-    onboardingProfile?.generatedDirection ?? lifestylePreferencesQ.data?.identityVision,
-  );
+  const generatedDirectionLine = truncateDirection(onboardingProfile?.generatedDirection);
+  const identityVisionLine = truncateDirection(lifestylePreferencesQ.data?.identityVision);
+  const directionLine = generatedDirectionLine ?? identityVisionLine;
 
   const showFinishSetupCard =
     !isE2ETestMode() &&

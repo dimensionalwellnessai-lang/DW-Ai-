@@ -181,7 +181,6 @@ export interface BottomNavItem {
 
 /** Bottom navigation tabs. Labels use canonical names. */
 export const BOTTOM_NAV_ITEMS: BottomNavItem[] = [
-  { id: "my-life", path: "/my-life", icon: Map, label: "My Life" },
   { id: "command-center", path: "/command-center", icon: Home, label: "Today" },
   {
     id: "talk",
@@ -190,6 +189,7 @@ export const BOTTOM_NAV_ITEMS: BottomNavItem[] = [
     label: "Talk to DW",
     aliases: ["/chat"],
   },
+  { id: "my-life", path: "/my-life", icon: Map, label: "My Life" },
   { id: "profile", path: "/profile", icon: User, label: "Profile" },
 ];
 
