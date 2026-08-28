@@ -118,6 +118,12 @@ const ONBOARDING_STEPS = [
   "Launch",
 ] as const;
 
+const DISPLAY_PHASES = [
+  { label: "Getting to know you", start: 0, end: 3 },
+  { label: "What matters", start: 4, end: 6 },
+  { label: "Building your system", start: 7, end: 9 },
+] as const;
+
 // Infer the approximate current step (0-based) from the number of assistant turns.
 // assistantTurnCount 0 → step 0 "Connection"; 9+ → step 9 "Launch".
 // The StepProgressBar displays this as "1 of 10" through "10 of 10".
@@ -168,6 +174,10 @@ function AvatarOrb({ voiceState, phase }: { voiceState: VoiceState; phase: Onboa
 function StepProgressBar({ currentStep }: { currentStep: number }) {
   const total = ONBOARDING_STEPS.length;
   const stepLabel = ONBOARDING_STEPS[Math.min(currentStep, total - 1)];
+  const currentPhase = DISPLAY_PHASES.find(
+    (phase) => currentStep >= phase.start && currentStep <= phase.end,
+  ) ?? DISPLAY_PHASES[DISPLAY_PHASES.length - 1];
+  const currentPhaseNumber = DISPLAY_PHASES.indexOf(currentPhase) + 1;
   const pct = Math.round(((currentStep + 1) / total) * 100);
 
   return (
@@ -178,13 +188,13 @@ function StepProgressBar({ currentStep }: { currentStep: number }) {
     >
       <div className="flex items-center justify-between mb-1">
         <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
-          {stepLabel}
+          {currentPhase.label}
         </span>
         <span className="text-[10px] text-muted-foreground" aria-live="polite">
-          {currentStep + 1} / {total}
+          {currentPhaseNumber} of {DISPLAY_PHASES.length}
         </span>
       </div>
-      <div className="h-1 rounded-full bg-muted overflow-hidden" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={`Step ${currentStep + 1} of ${total}: ${stepLabel}`}>
+      <div className="h-1 rounded-full bg-muted overflow-hidden" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={`Phase ${currentPhaseNumber} of ${DISPLAY_PHASES.length}: ${currentPhase.label}. Step ${currentStep + 1} of ${total}: ${stepLabel}`}>
         <motion.div
           className="h-full bg-primary rounded-full"
           initial={{ width: 0 }}
@@ -948,13 +958,21 @@ export default function VoiceOnboardingPage() {
       // Non-fatal
     }
     try {
-      await apiRequest("POST", "/api/onboarding/accept-suggestions", { suggestions });
+      await apiRequest("POST", "/api/onboarding/accept-suggestions", {
+        suggestions,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      });
     } catch {
       // Non-fatal
     }
+    queryClient.invalidateQueries({ queryKey: ["/api/onboarding/profile"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/profile/lifestyle-preferences"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/calendar"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/schedule"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/routines"] });
     setIsSubmittingSuggestions(false);
     markOnboardingComplete();
-    setLocation("/my-life");
+    setLocation("/command-center");
   }, [persistFoundationSnapshot, suggestions, setLocation]);
 
   // ── Update a single suggestion status ──
@@ -973,15 +991,21 @@ export default function VoiceOnboardingPage() {
       // Non-fatal
     }
     try {
-      await apiRequest("POST", "/api/onboarding/accept-suggestions", { suggestions: deferred });
+      await apiRequest("POST", "/api/onboarding/accept-suggestions", {
+        suggestions: deferred,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      });
     } catch {
       // Non-fatal — navigate home even if persist fails
     }
+    queryClient.invalidateQueries({ queryKey: ["/api/onboarding/profile"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/profile/lifestyle-preferences"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/calendar"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/schedule"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/routines"] });
     setIsSubmittingSuggestions(false);
     markOnboardingComplete();
-    // Land on My Life either way so the user sees what DW gathered,
-    // with set-aside suggestions still reviewable from there.
-    setLocation("/my-life");
+    setLocation("/command-center");
   }, [persistFoundationSnapshot, suggestions, setLocation]);
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -1003,7 +1027,7 @@ export default function VoiceOnboardingPage() {
             onClick={() => {
               void persistFoundationSnapshot().finally(() => {
                 markOnboardingComplete();
-                setLocation("/my-life");
+                setLocation("/command-center");
               });
             }}
             className="text-muted-foreground text-xs"

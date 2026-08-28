@@ -46,7 +46,7 @@ import {
  * - shared-menu.tsx       (NAV_SECTIONS, SETTINGS_ITEMS)
  * - home/command-center-orbit.tsx (ORBIT_MODULES)
  *
- * Labels use canonical names: Command Center, Talk to DW, Calendar,
+ * Labels use canonical names: Today, Talk to DW, Calendar,
  * Life Blueprint, My Plan.
  */
 
@@ -87,13 +87,13 @@ export const NAV_SECTIONS: NavSection[] = [
     dimensionKey: "body",
     dwContextLabel: "Body",
     items: [
-      { id: "workout", name: "🏋️ Workout", path: "/workout", icon: Dumbbell, dimension: "body" },
-      { id: "workout-analytics", name: "📊 Workout Analytics", path: "/workout/analytics", icon: BarChart2, dimension: "body" },
-      { id: "health-data", name: "❤️ Health Data", path: "/health-data", icon: Activity, dimension: "body" },
-      { id: "wearable-manager", name: "⌚ Wearables & Screen Time", path: "/wearable-manager", icon: Activity, dimension: "body" },
-      { id: "meal-prep", name: "🍽️ Meal Prep", path: "/meal-prep", icon: Utensils, dimension: "body" },
-      { id: "shopping-list", name: "🛒 Shopping List", path: "/shopping-list", icon: CheckSquare, dimension: "body" },
-      { id: "body-scan", name: "🔄 Body Scan", path: "/recovery", icon: RefreshCw, dimension: "body" },
+      { id: "workout", name: "Workout", path: "/workout", icon: Dumbbell, dimension: "body" },
+      { id: "workout-analytics", name: "Workout Analytics", path: "/workout/analytics", icon: BarChart2, dimension: "body" },
+      { id: "health-data", name: "Health Data", path: "/health-data", icon: Activity, dimension: "body" },
+      { id: "wearable-manager", name: "Wearables & Screen Time", path: "/wearable-manager", icon: Activity, dimension: "body" },
+      { id: "meal-prep", name: "Meal Prep", path: "/meal-prep", icon: Utensils, dimension: "body" },
+      { id: "shopping-list", name: "Shopping List", path: "/shopping-list", icon: CheckSquare, dimension: "body" },
+      { id: "body-scan", name: "Body Scan", path: "/recovery", icon: RefreshCw, dimension: "body" },
     ],
   },
   {
@@ -101,33 +101,39 @@ export const NAV_SECTIONS: NavSection[] = [
     dimensionKey: "mind",
     dwContextLabel: "Mind",
     items: [
-      { id: "meditation", name: "🧘 Meditation", path: "/spiritual", icon: Heart, dimension: "mind" },
-      { id: "journal", name: "📓 Journal", path: "/journal", icon: Feather, dimension: "mind" },
-      { id: "insights", name: "💡 Insights", path: "/insights", icon: Brain, dimension: "mind" },
-      { id: "mood", name: "🌤️ Mood", path: "/mood-tracker", icon: Sun, dimension: "mind" },
+      { id: "meditation", name: "Meditation", path: "/spiritual", icon: Heart, dimension: "mind" },
+      { id: "journal", name: "Journal", path: "/journal", icon: Feather, dimension: "mind" },
+      { id: "insights", name: "Insights", path: "/insights", icon: Brain, dimension: "mind" },
+      { id: "tracking", name: "Tracking", path: "/tracking", icon: BarChart3, dimension: "mind" },
+      { id: "mood", name: "Mood", path: "/mood-tracker", icon: Sun, dimension: "mind" },
+      { id: "browse", name: "Browse", path: "/browse", icon: Search, dimension: "mind" },
+      { id: "library", name: "Library", path: "/library", icon: BookOpen, dimension: "mind" },
     ],
   },
   {
-    title: "TIME & SCHEDULE",
+    title: "TIME",
     dimensionKey: "time",
-    dwContextLabel: "Time & Schedule",
+    dwContextLabel: "Time",
     items: [
-      { id: "calendar-full", name: "📅 Calendar", path: "/calendar", icon: Calendar, dimension: "time" },
-      { id: "daily-schedule", name: "⏰ Daily Schedule", path: "/daily-schedule", icon: Clock, dimension: "time" },
-      { id: "routines", name: "📝 Routines", path: "/routines", icon: FileText, dimension: "time" },
-      { id: "tasks", name: "✅ Tasks", path: "/tasks", icon: CheckSquare, dimension: "time" },
-      { id: "weekly-review", name: "🔁 Weekly Review", path: "/weekly-review", icon: RefreshCw, dimension: "time" },
+      { id: "calendar-full", name: "Calendar", path: "/calendar", icon: Calendar, dimension: "time" },
+      { id: "daily-schedule", name: "Daily Schedule", path: "/daily-schedule", icon: Clock, dimension: "time" },
+      { id: "routines", name: "Routines", path: "/routines", icon: FileText, dimension: "time" },
+      { id: "tasks", name: "Tasks", path: "/tasks", icon: CheckSquare, dimension: "time" },
+      { id: "weekly-review", name: "Weekly Review", path: "/weekly-review", icon: RefreshCw, dimension: "time" },
+      { id: "smart-import", name: "Smart Import", path: "/life-system-import", icon: Sparkles, dimension: "time" },
     ],
   },
   {
-    title: "PURPOSE",
-    dimensionKey: "purpose",
-    dwContextLabel: "Purpose",
+    title: "PLAN & IDENTITY",
+    dimensionKey: "identity",
+    dwContextLabel: "Plan and identity",
     items: [
-      { id: "my-plan", name: "📋 My Plan", path: "/my-plan", icon: LayoutDashboard, dimension: "purpose" },
-      { id: "goals", name: "🎯 Goals", path: "/goals", icon: Target, dimension: "purpose" },
-      { id: "challenges", name: "🏆 Challenges", path: "/challenges", icon: Award, dimension: "purpose" },
-      { id: "habits", name: "✅ Habits", path: "/habits", icon: CheckSquare, dimension: "purpose" },
+      { id: "my-plan", name: "My Plan", path: "/my-plan", icon: LayoutDashboard, dimension: "identity" },
+      { id: "goals", name: "Goals", path: "/goals", icon: Target, dimension: "identity" },
+      { id: "challenges", name: "Challenges", path: "/challenges", icon: Award, dimension: "identity" },
+      { id: "habits", name: "Habits", path: "/habits", icon: CheckSquare, dimension: "identity" },
+      { id: "life-blueprint", name: "Life Blueprint", path: "/life-blueprint", icon: BookOpen, dimension: "identity" },
+      { id: "cosmic", name: "Cosmic Hub", path: "/cosmic", icon: Sparkles, dimension: "identity" },
     ],
   },
   {
@@ -135,7 +141,7 @@ export const NAV_SECTIONS: NavSection[] = [
     dimensionKey: "money",
     dwContextLabel: "Money",
     items: [
-      { id: "finances", name: "💰 Finances", path: "/finances", icon: Wallet, dimension: "money" },
+      { id: "finances", name: "Finances", path: "/finances", icon: Wallet, dimension: "money" },
     ],
   },
   {
@@ -143,27 +149,9 @@ export const NAV_SECTIONS: NavSection[] = [
     dimensionKey: "people",
     dwContextLabel: "People",
     items: [
-      { id: "community", name: "👥 Community", path: "/community", icon: Users, dimension: "people" },
-      { id: "relationships", name: "💞 Relationships", path: "/relationships", icon: HeartIcon, dimension: "people" },
-      { id: "accountability", name: "🤝 Accountability", path: "/accountability", icon: Handshake, dimension: "people" },
-    ],
-  },
-  {
-    title: "ENVIRONMENT",
-    dimensionKey: "environment",
-    dwContextLabel: "Environment",
-    items: [
-      { id: "browse", name: "🔍 Browse", path: "/browse", icon: Search, dimension: "environment" },
-      { id: "library", name: "📚 Library", path: "/library", icon: BookOpen, dimension: "environment" },
-    ],
-  },
-  {
-    title: "IDENTITY",
-    dimensionKey: "identity",
-    dwContextLabel: "Identity",
-    items: [
-      { id: "life-blueprint", name: "📜 Life Blueprint", path: "/life-blueprint", icon: BookOpen, dimension: "identity" },
-      { id: "cosmic", name: "🌌 Cosmic Hub", path: "/cosmic", icon: Sparkles, dimension: "identity" },
+      { id: "community", name: "Community", path: "/community", icon: Users, dimension: "people" },
+      { id: "relationships", name: "Relationships", path: "/relationships", icon: HeartIcon, dimension: "people" },
+      { id: "accountability", name: "Accountability", path: "/accountability", icon: Handshake, dimension: "people" },
     ],
   },
 ];
@@ -173,13 +161,13 @@ export const NAV_SECTIONS: NavSection[] = [
  * reachable after leaving the bottom nav.
  */
 export const SETTINGS_ITEMS: NavMenuItem[] = [
-  { id: "guidance", name: "🧭 Guidance", path: "/guidance", icon: Compass },
-  { id: "tools", name: "🧰 Tools", path: "/tools", icon: Wrench },
-  { id: "progress", name: "📊 My Progress", path: "/profile/progress", icon: BarChart3 },
-  { id: "settings", name: "⚙️ Settings", path: "/settings", icon: Settings },
-  { id: "app-tour", name: "🗺️ App Tour", path: "/app-tour", icon: Map },
-  { id: "feedback", name: "📋 Feedback", path: "/feedback", icon: MessageSquare },
-  { id: "privacy", name: "🔒 Privacy & Terms", path: "/privacy-terms", icon: Lock },
+  { id: "guidance", name: "Guidance", path: "/guidance", icon: Compass },
+  { id: "tools", name: "Tools", path: "/tools", icon: Wrench },
+  { id: "progress", name: "My Progress", path: "/profile/progress", icon: BarChart3 },
+  { id: "settings", name: "Settings", path: "/settings", icon: Settings },
+  { id: "app-tour", name: "App Tour", path: "/app-tour", icon: Map },
+  { id: "feedback", name: "Feedback", path: "/feedback", icon: MessageSquare },
+  { id: "privacy", name: "Privacy & Terms", path: "/privacy-terms", icon: Lock },
 ];
 
 export interface BottomNavItem {
@@ -193,15 +181,7 @@ export interface BottomNavItem {
 
 /** Bottom navigation tabs. Labels use canonical names. */
 export const BOTTOM_NAV_ITEMS: BottomNavItem[] = [
-  { id: "my-life", path: "/my-life", icon: Map, label: "My Life" },
-  {
-    id: "calendar",
-    path: "/calendar",
-    icon: Calendar,
-    label: "Calendar",
-    aliases: ["/daily-schedule", "/week-schedule", "/calendar/*"],
-  },
-  { id: "command-center", path: "/command-center", icon: Home, label: "Command Center" },
+  { id: "command-center", path: "/command-center", icon: Home, label: "Today" },
   {
     id: "talk",
     path: "/talk",
@@ -209,6 +189,7 @@ export const BOTTOM_NAV_ITEMS: BottomNavItem[] = [
     label: "Talk to DW",
     aliases: ["/chat"],
   },
+  { id: "my-life", path: "/my-life", icon: Map, label: "My Life" },
   { id: "profile", path: "/profile", icon: User, label: "Profile" },
 ];
 

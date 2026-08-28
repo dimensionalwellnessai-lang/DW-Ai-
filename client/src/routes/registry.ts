@@ -207,8 +207,8 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
   {
     id: "command-center",
     path: "/command-center",
-    label: "Command Center",
-    navLabel: "Command Center",
+    label: "Today",
+    navLabel: "Today",
     icon: "sun",
     type: "page",
     description: "Your daily hub — schedule, routines, and energy",

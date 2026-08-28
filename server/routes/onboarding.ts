@@ -43,6 +43,175 @@ export interface StructuredOnboardingExtraction {
   shortTermGoals?: string | null;
 }
 
+const WEEKDAY_CODES = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"] as const;
+const WEEKDAY_NAMES = [
+  "sunday",
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+] as const;
+
+function inferRoutineTiming(text: string): {
+  cadence: "daily" | "weekly";
+  dayOfWeek?: number;
+  startTime: string;
+  durationMinutes: number;
+} | null {
+  const normalized = text.toLowerCase();
+  const explicitDay = WEEKDAY_NAMES.findIndex((day) => normalized.includes(day));
+  const dayOfWeek = explicitDay >= 0 ? explicitDay : undefined;
+
+  const withCadence = (startTime: string, cadence: "daily" | "weekly" = dayOfWeek !== undefined ? "weekly" : "daily") => ({
+    cadence,
+    ...(dayOfWeek !== undefined ? { dayOfWeek } : {}),
+    startTime,
+    durationMinutes: 30,
+  });
+
+  if (normalized.includes("morning")) {
+    return withCadence("07:00");
+  }
+  if (normalized.includes("afternoon") || normalized.includes("lunch") || normalized.includes("midday")) {
+    return withCadence("12:00");
+  }
+  if (
+    normalized.includes("evening") ||
+    normalized.includes("night") ||
+    normalized.includes("wind down") ||
+    normalized.includes("wind-down")
+  ) {
+    return withCadence("20:00");
+  }
+  if (normalized.includes("weekly") || dayOfWeek !== undefined) {
+    return { cadence: "weekly", dayOfWeek: dayOfWeek ?? 1, startTime: "09:00", durationMinutes: 30 };
+  }
+  return null;
+}
+
+function buildNextOccurrence(timing: {
+  cadence: "daily" | "weekly";
+  dayOfWeek?: number;
+  startTime: string;
+  durationMinutes: number;
+}, timeZone: string) {
+  const getDateParts = (date: Date) => {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      weekday: "short",
+    }).formatToParts(date);
+    const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+    const weekdayMap: Record<string, number> = {
+      sun: 0,
+      mon: 1,
+      tue: 2,
+      wed: 3,
+      thu: 4,
+      fri: 5,
+      sat: 6,
+    };
+    return {
+      year: Number(get("year")),
+      month: Number(get("month")),
+      day: Number(get("day")),
+      weekday: weekdayMap[get("weekday").toLowerCase()] ?? 0,
+    };
+  };
+  const getTimeZoneOffsetMs = (date: Date) => {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    }).formatToParts(date);
+    const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "0";
+    const localAsUtc = Date.UTC(
+      Number(get("year")),
+      Number(get("month")) - 1,
+      Number(get("day")),
+      Number(get("hour")),
+      Number(get("minute")),
+      Number(get("second")),
+    );
+    return localAsUtc - date.getTime();
+  };
+  const zonedDateTimeToUtc = (
+    year: number,
+    month: number,
+    day: number,
+    hour: number,
+    minute: number,
+  ) => {
+    const utcGuess = Date.UTC(year, month - 1, day, hour, minute, 0, 0);
+    const guessDate = new Date(utcGuess);
+    const offset = getTimeZoneOffsetMs(guessDate);
+    const instant = new Date(utcGuess - offset);
+    const adjustedOffset = getTimeZoneOffsetMs(instant);
+    return adjustedOffset === offset ? instant : new Date(utcGuess - adjustedOffset);
+  };
+
+  const now = new Date();
+  const [hour, minute] = timing.startTime.split(":").map(Number);
+  const localNow = getDateParts(now);
+  const localDateUtc = new Date(Date.UTC(localNow.year, localNow.month - 1, localNow.day));
+  let daysUntil = 0;
+  let recurrenceWeekday = timing.dayOfWeek ?? localNow.weekday;
+
+  if (timing.cadence === "daily") {
+    const todayStart = zonedDateTimeToUtc(localNow.year, localNow.month, localNow.day, hour, minute);
+    if (todayStart.getTime() <= now.getTime()) daysUntil = 1;
+  } else {
+    const targetDay = timing.dayOfWeek ?? localNow.weekday;
+    recurrenceWeekday = targetDay;
+    daysUntil = targetDay - localNow.weekday;
+    const thisWeekStart = zonedDateTimeToUtc(localNow.year, localNow.month, localNow.day, hour, minute);
+    if (daysUntil < 0 || (daysUntil === 0 && thisWeekStart.getTime() <= now.getTime())) {
+      daysUntil += 7;
+    }
+  }
+
+  if (daysUntil !== 0) {
+    localDateUtc.setUTCDate(localDateUtc.getUTCDate() + daysUntil);
+  }
+
+  const startYear = localDateUtc.getUTCFullYear();
+  const startMonth = localDateUtc.getUTCMonth() + 1;
+  const startDay = localDateUtc.getUTCDate();
+  const start = zonedDateTimeToUtc(startYear, startMonth, startDay, hour, minute);
+  start.setSeconds(0, 0);
+
+  const end = new Date(start);
+  end.setMinutes(end.getMinutes() + timing.durationMinutes);
+
+  const recurrenceRule =
+    timing.cadence === "daily"
+      ? "FREQ=DAILY"
+      : `FREQ=WEEKLY;BYDAY=${WEEKDAY_CODES[recurrenceWeekday]}`;
+
+  return { start, end, recurrenceRule };
+}
+
+function normalizeIanaTimezone(timezone: unknown): string | null {
+  if (typeof timezone !== "string") return null;
+  const trimmed = timezone.trim();
+  if (!trimmed || trimmed.length > 80) return null;
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: trimmed }).format(new Date());
+    return trimmed;
+  } catch {
+    return null;
+  }
+}
+
 export function registerOnboardingRoutes(app: Express): void {
   app.post("/api/onboarding/complete", requireAuth, async (req, res) => {
     try {
@@ -316,7 +485,7 @@ Return only valid JSON. Do not guess at things not mentioned. Keep suggestions r
   app.post("/api/onboarding/accept-suggestions", requireAuth, async (req, res) => {
     try {
       const userId = req.session.userId!;
-      const { suggestions } = req.body as {
+      const { suggestions, timezone } = req.body as {
         suggestions: Array<{
           id: string;
           type: "focus_point" | "path" | "system" | "plan" | "project";
@@ -326,6 +495,7 @@ Return only valid JSON. Do not guess at things not mentioned. Keep suggestions r
           status: "accepted" | "edited" | "deferred" | "removed";
           editedTitle?: string;
         }>;
+        timezone?: string;
       };
 
       if (!Array.isArray(suggestions)) {
@@ -333,6 +503,7 @@ Return only valid JSON. Do not guess at things not mentioned. Keep suggestions r
       }
 
       const accepted = suggestions.filter((s) => s.status === "accepted" || s.status === "edited");
+      const requestTimezone = normalizeIanaTimezone(timezone) ?? "UTC";
       const finalTitle = (s: typeof accepted[0]) => {
         return (s.status === "edited" && s.editedTitle?.trim()) ? s.editedTitle.trim() : s.title.trim();
       };
@@ -368,6 +539,62 @@ Return only valid JSON. Do not guess at things not mentioned. Keep suggestions r
             explainWhy: s.sourceReason,
           }))
         );
+      }
+
+      // Systems also become routines, with lightweight schedule inference when
+      // the wording implies a recurring time of day or weekly cadence.
+      const routineSystems = validAccepted.filter((s) => s.type === "system");
+      for (const s of routineSystems) {
+        try {
+          const routineText = `${finalTitle(s)} ${s.description}`;
+          const timing = inferRoutineTiming(routineText);
+          const routine = await storage.createRoutine({
+            userId,
+            name: finalTitle(s),
+            dimensionTags: timing?.cadence === "daily" && routineText.toLowerCase().includes("morning")
+              ? ["morning"]
+              : timing?.cadence === "daily" && (
+                  routineText.toLowerCase().includes("evening") ||
+                  routineText.toLowerCase().includes("night") ||
+                  routineText.toLowerCase().includes("wind down") ||
+                  routineText.toLowerCase().includes("wind-down")
+                )
+                ? ["evening"]
+                : [],
+            steps: [],
+            totalDurationMinutes: timing?.durationMinutes ?? 30,
+            scheduleOptions: timing
+              ? {
+                  cadence: timing.cadence,
+                  time: timing.startTime,
+                  ...(timing.dayOfWeek !== undefined ? { dayOfWeek: timing.dayOfWeek } : {}),
+                }
+              : null,
+            mode: "guided",
+            isActive: true,
+            dataSource: "onboarding",
+            explainWhy: s.sourceReason,
+          });
+
+          if (timing) {
+            const occurrence = buildNextOccurrence(timing, requestTimezone);
+            await storage.createCalendarEvent({
+              userId,
+              title: finalTitle(s),
+              description: `${s.description}\n\n${s.sourceReason}`,
+              startTime: occurrence.start.toISOString(),
+              endTime: occurrence.end.toISOString(),
+              eventType: "routine",
+              isRecurring: true,
+              recurrenceRule: occurrence.recurrenceRule,
+              linkedType: "routine",
+              linkedId: routine.id,
+              linkedRoute: "/routines",
+            });
+          }
+        } catch (routineErr) {
+          console.error("Failed to create routine from onboarding suggestion:", routineErr);
+        }
       }
 
       // Projects/Plans -> Projects

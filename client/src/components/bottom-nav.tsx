@@ -6,7 +6,6 @@ import { BOTTOM_NAV_ITEMS } from "@/config/navigation";
 const tourDataMap: Record<string, string> = {
   "/command-center": "home",
   "/my-life": "life",
-  "/calendar": "calendar",
   "/talk": "talk",
   "/profile": "profile",
 };
