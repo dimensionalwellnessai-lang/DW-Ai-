@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import express from "express";
 import type { AddressInfo } from "net";
 import type { Server } from "http";
@@ -58,6 +58,9 @@ afterAll(async () => {
 beforeEach(() => {
   transcribeCreateMock.mockClear();
   toFileMock.mockClear();
+});
+
+afterEach(() => {
   vi.restoreAllMocks();
 });
 
@@ -105,6 +108,54 @@ describe("POST /api/transcribe", () => {
     expect(fetchSpy).toHaveBeenCalledWith(expect.stringContaining("https://api.deepgram.com/v1/listen"), expect.anything());
     expect(transcribeCreateMock).not.toHaveBeenCalled();
     expect(toFileMock).not.toHaveBeenCalled();
+  });
+
+  it("falls back to Whisper when Deepgram returns a non-2xx response", async () => {
+    process.env.DEEPGRAM_API_KEY = "test-deepgram-key";
+
+    vi.spyOn(global, "fetch").mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      if (url.startsWith("https://api.deepgram.com/v1/listen")) {
+        return Promise.resolve(new Response(JSON.stringify({ error: "Internal Server Error" }), { status: 500 }));
+      }
+      return realFetch(input, init);
+    });
+
+    const res = await fetch(`${baseUrl}/api/transcribe`, {
+      method: "POST",
+      body: audioFormData(),
+    });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ text: "whisper transcript" });
+    expect(transcribeCreateMock).toHaveBeenCalledTimes(1);
+    expect(toFileMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("falls back to Whisper when Deepgram returns an empty transcript", async () => {
+    process.env.DEEPGRAM_API_KEY = "test-deepgram-key";
+
+    vi.spyOn(global, "fetch").mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      if (url.startsWith("https://api.deepgram.com/v1/listen")) {
+        return Promise.resolve(new Response(JSON.stringify({
+          results: {
+            channels: [{ alternatives: [{ transcript: "" }] }],
+          },
+        }), { status: 200, headers: { "Content-Type": "application/json" } }));
+      }
+      return realFetch(input, init);
+    });
+
+    const res = await fetch(`${baseUrl}/api/transcribe`, {
+      method: "POST",
+      body: audioFormData(),
+    });
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ text: "whisper transcript" });
+    expect(transcribeCreateMock).toHaveBeenCalledTimes(1);
+    expect(toFileMock).toHaveBeenCalledTimes(1);
   });
 
   it("falls back to Whisper when Deepgram request fails", async () => {
