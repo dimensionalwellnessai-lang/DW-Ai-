@@ -1,4 +1,5 @@
 import type { Express } from "express";
+import multer from "multer";
 
 import { storage } from "../storage";
 
@@ -51,6 +52,39 @@ export function registerMediaMiscRoutes(app: Express): void {
       try {
         const file = req.file;
         if (!file) return res.status(400).json({ error: "No audio file provided" });
+
+        if (process.env.DEEPGRAM_API_KEY) {
+          try {
+            const response = await fetch("https://api.deepgram.com/v1/listen?model=nova-3&language=en&smart_format=true", {
+              method: "POST",
+              headers: {
+                Authorization: `Token ${process.env.DEEPGRAM_API_KEY}`,
+                "Content-Type": file.mimetype || "audio/webm",
+              },
+              body: file.buffer,
+              signal: AbortSignal.timeout(30_000),
+            });
+
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+            const data = await response.json() as {
+              results?: {
+                channels?: Array<{
+                  alternatives?: Array<{
+                    transcript?: string;
+                  }>;
+                }>;
+              };
+            };
+            const transcript = data.results?.channels?.[0]?.alternatives?.[0]?.transcript;
+            if (!transcript || transcript.trim().length === 0) throw new Error("Empty transcript");
+
+            return res.json({ text: transcript });
+          } catch (deepgramError: any) {
+            console.error("[Transcribe] Deepgram failed, falling back to Whisper:", deepgramError?.message ?? deepgramError);
+          }
+        }
+
         const { toFile } = await import("openai");
         const audioFile = await toFile(file.buffer, "audio.webm", { type: file.mimetype || "audio/webm" });
         const transcription = await openai.audio.transcriptions.create({
