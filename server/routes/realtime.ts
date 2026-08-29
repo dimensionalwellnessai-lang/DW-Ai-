@@ -22,8 +22,25 @@ const sessionBodySchema = z.object({
   userContextSummary: z.string().max(4000).optional(),
 });
 
-function getOpenAIKey(): string | null {
-  return process.env.OPENAI_API_KEY || process.env.AI_INTEGRATIONS_OPENAI_API_KEY || null;
+function getRealtimeConfig(): { apiKey: string; sessionsUrl: string } | null {
+  const integrationKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+  const integrationBaseUrl = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
+
+  if (integrationKey && integrationBaseUrl) {
+    return {
+      apiKey: integrationKey,
+      sessionsUrl: `${integrationBaseUrl.replace(/\/$/, "")}/realtime/sessions`,
+    };
+  }
+
+  if (process.env.OPENAI_API_KEY) {
+    return {
+      apiKey: process.env.OPENAI_API_KEY,
+      sessionsUrl: "https://api.openai.com/v1/realtime/sessions",
+    };
+  }
+
+  return null;
 }
 
 export function registerRealtimeRoutes(app: Express): void {
@@ -31,8 +48,8 @@ export function registerRealtimeRoutes(app: Express): void {
   // open a WebRTC session directly with OpenAI without our API key
   // ever touching the client.
   app.post("/api/realtime/session", requireAuth, requirePaidOrQuota("voice"), async (req, res) => {
-    const apiKey = getOpenAIKey();
-    if (!apiKey) {
+    const realtimeConfig = getRealtimeConfig();
+    if (!realtimeConfig) {
       return res
         .status(503)
         .json({ error: "Voice mode is not configured on this server." });
@@ -88,10 +105,10 @@ export function registerRealtimeRoutes(app: Express): void {
     });
 
     try {
-      const upstream = await fetch("https://api.openai.com/v1/realtime/sessions", {
+      const upstream = await fetch(realtimeConfig.sessionsUrl, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${apiKey}`,
+          Authorization: `Bearer ${realtimeConfig.apiKey}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -99,7 +116,7 @@ export function registerRealtimeRoutes(app: Express): void {
           voice: DW_REALTIME_VOICE,
           modalities: ["audio", "text"],
           instructions,
-          input_audio_transcription: { model: "whisper-1" },
+          input_audio_transcription: { model: "gpt-4o-mini-transcribe" },
           turn_detection: {
             type: "server_vad",
             threshold: 0.5,

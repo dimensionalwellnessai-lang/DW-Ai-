@@ -1131,7 +1131,10 @@ export function registerRelationshipsRoutes(app: Express): void {
       // Optional AI flourish: ask the model for one warm summary line
       let aiSummary: string | null = null;
       try {
-        if (process.env.OPENAI_API_KEY && drafts.length > 0) {
+        if (
+          (process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY) &&
+          drafts.length > 0
+        ) {
           const stub = drafts
             .slice(0, 6)
             .map((d) => `- ${d.message}`)

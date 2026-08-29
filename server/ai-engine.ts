@@ -22,11 +22,11 @@ function buildOpenAIClient(): OpenAI | null {
   const baseURL = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
   const integrationKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
 
-  if (apiKey) {
-    return new OpenAI({ apiKey, timeout: 30_000, maxRetries: 0 });
-  }
   if (baseURL && integrationKey) {
     return new OpenAI({ baseURL, apiKey: integrationKey, timeout: 30_000, maxRetries: 0 });
+  }
+  if (apiKey) {
+    return new OpenAI({ apiKey, timeout: 30_000, maxRetries: 0 });
   }
   return null;
 }

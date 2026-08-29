@@ -44,7 +44,7 @@ export function registerMediaMiscRoutes(app: Express): void {
     }
   });
 
-  // ── Speech-to-text transcription (Whisper) ───────────────────────────────
+  // ── Speech-to-text transcription ─────────────────────────────────────────
   app.post("/api/transcribe", async (req, res) => {
     const transcribeUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } }).single("audio");
     transcribeUpload(req, res, async (err) => {
@@ -81,14 +81,16 @@ export function registerMediaMiscRoutes(app: Express): void {
 
             return res.json({ text: transcript });
           } catch (deepgramError: any) {
-            console.error("[Transcribe] Deepgram failed, falling back to Whisper:", deepgramError?.message ?? deepgramError);
+            console.error("[Transcribe] Deepgram failed, falling back to OpenAI transcription:", deepgramError?.message ?? deepgramError);
           }
         }
 
         const { toFile } = await import("openai");
-        const audioFile = await toFile(file.buffer, "audio.webm", { type: file.mimetype || "audio/webm" });
+        const audioFile = await toFile(file.buffer, file.originalname || "audio.webm", {
+          type: file.mimetype || "audio/webm",
+        });
         const transcription = await openai.audio.transcriptions.create({
-          model: "whisper-1",
+          model: "gpt-4o-mini-transcribe",
           file: audioFile,
           language: "en",
         });

@@ -1,0 +1,19 @@
+No new PRs yet — all three agents (Phase 2, UX overhaul, Phase 4 Deepgram) are still working. The only open PRs are the three stale ones from before (#224, #226, #227).
+
+**Here's what's next, in the order it actually happens:**
+
+**1. Right now — the only thing on you:**
+Apply the Phase 1 billing fix in your deployment environment. Set `OPENAI_API_KEY` (or the `AI_INTEGRATIONS_OPENAI_BASE_URL` + `AI_INTEGRATIONS_OPENAI_API_KEY` pair) so the app stops dying on credits. If voice/audio features matter, the Replit audio client only reads the `AI_INTEGRATIONS_*` vars, so those need to be present regardless. And if you want Deepgram live when Phase 4 lands, grab a `DEEPGRAM_API_KEY` now so it's ready.
+
+**2. When each agent finishes:**
+A PR opens automatically. You merge — no verification gates, per your call. First one out will likely be Phase 4 (smallest scope), then Phase 2, then the UX overhaul (biggest).
+
+**3. When Phase 2's PR lands:**
+**Phase 3 launches — Claude Sonnet becomes DW's chat voice.** It's the only piece I've held back, deliberately: it builds directly on the abstraction Phase 2 is writing, and running both at once would guarantee merge conflicts in the same files. This is the last major AI change — after it, chat quality, cost structure, and provider independence are all addressed.
+
+**4. After everything merges — the cohesion polish pass:**
+Typography scale audit (the micro-text habit — `text-[11px]` everywhere), making sure every primary screen opens with a DW-authored line referencing real user state, and a sweep for leftover duplicate surfaces. This one is small, fast, and best done on top of the new UX rather than against the old one.
+
+**Optional housekeeping whenever:** close or merge the stale PRs — #224 (a revert), #226 (an empty-mention response), #227 (re-applies the chat-error fix). They're not blocking anything.
+
+So the honest short answer: **nothing for you to wait on except the PRs opening — and the one env-var fix only you can do.** Want me to check the agent task logs for progress on any of the three?

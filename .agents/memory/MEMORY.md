@@ -6,3 +6,4 @@
 - [Client route gating trap](route-gating-trap.md) — pages silently never render unless registered `enabled:true` in the client ROUTES list; also wait past the ~5s splash when testing fresh loads.
 - [Duplicate route registrations](duplicate-route-registrations.md) — legacy inline routes in the giant routes.ts shadow modular server/routes/* files whose register fns are never called; grep all registrations first.
 - [Playwright testing gates](playwright-app-gates.md) — seed dw_terms_accepted/dw_splash_shown/dw_onboarding_completed in localStorage + API login via ctx.request, or UI tests never reach the page.
+- [Managed OpenAI precedence](managed-openai-precedence.md) — prefer the complete AI_INTEGRATIONS credential pair; managed chat/STT work, but speech synthesis needs another provider.

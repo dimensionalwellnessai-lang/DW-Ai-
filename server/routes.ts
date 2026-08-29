@@ -12790,7 +12790,7 @@ Return ONLY this JSON:
     }
   });
 
-  // ── Speech-to-text transcription (Whisper) ───────────────────────────────
+  // ── Speech-to-text transcription ─────────────────────────────────────────
   app.post("/api/transcribe", publicAiLimiter, async (req, res) => {
     const transcribeUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } }).single("audio");
     transcribeUpload(req, res, async (err) => {
@@ -12799,9 +12799,11 @@ Return ONLY this JSON:
         const file = req.file;
         if (!file) return res.status(400).json({ error: "No audio file provided" });
         const { toFile } = await import("openai");
-        const audioFile = await toFile(file.buffer, "audio.webm", { type: file.mimetype || "audio/webm" });
+        const audioFile = await toFile(file.buffer, file.originalname || "audio.webm", {
+          type: file.mimetype || "audio/webm",
+        });
         const transcription = await openai.audio.transcriptions.create({
-          model: "whisper-1",
+          model: "gpt-4o-mini-transcribe",
           file: audioFile,
           language: "en",
         });

@@ -2,20 +2,23 @@ import OpenAI from "openai";
 import type { CoachingMode } from "@shared/schema";
 import { chatComplete } from "./ai-engine";
 
-// Prefer a direct OPENAI_API_KEY (works reliably in production deployments).
-// Fall back to Replit AI Integrations proxy credentials when available.
-const useDirectKey = !!process.env.OPENAI_API_KEY;
+// Prefer Replit AI Integrations when both credential sets are present.
+// A stale/depleted direct OPENAI_API_KEY must not shadow managed credentials.
+const useManagedIntegration = !!(
+  process.env.AI_INTEGRATIONS_OPENAI_BASE_URL &&
+  process.env.AI_INTEGRATIONS_OPENAI_API_KEY
+);
 
 const _openai = new OpenAI(
-  useDirectKey
+  useManagedIntegration
     ? {
-        apiKey: process.env.OPENAI_API_KEY,
+        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
         timeout: 30 * 1000,
         maxRetries: 0, // We handle retries ourselves
       }
     : {
-        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+        apiKey: process.env.OPENAI_API_KEY,
         timeout: 30 * 1000,
         maxRetries: 0,
       }
