@@ -21,6 +21,8 @@ import { Badge } from "@/components/ui/badge";
 import { DWOrb } from "@/components/dw-orb";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { isFeatureEnabled } from "@/config/featureFlags";
+import { proposeAction, requestConsent, executeAction } from "@/lib/agent-actions";
 
 // ── Recommended actions per switch/dimension ──────────────────────────────────
 
@@ -270,6 +272,18 @@ export function ReadingCard({
           label="Talk to DW"
         />
       </div>
+      {isFeatureEnabled("actionEngine") && (
+        <button
+          type="button"
+          onClick={async () => {
+            const action = proposeAction({ type: "open", label: "Open today's plan", consentTier: "silent", targetUrl: "/elevation-plan" });
+            await executeAction(requestConsent(action));
+          }}
+          className="w-full text-left text-[10px] text-primary font-medium py-1 px-0 hover:underline focus:outline-none"
+        >
+          Open today's plan →
+        </button>
+      )}
     </div>
   );
 

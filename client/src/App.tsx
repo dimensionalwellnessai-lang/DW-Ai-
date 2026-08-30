@@ -157,6 +157,7 @@ import NotFound404Page from "@/pages/not-found-404";
 import PrivacyTermsPage from "@/pages/privacy-terms";
 import SwitchTrainingPage from "@/pages/switch-training";
 import SwitchboardIntakePage from "@/pages/switchboard-intake";
+const SharedAttentionPage = lazy(() => import("@/pages/shared-attention"));
 const DimensionOverviewPage = lazy(() => import("@/pages/dimension-overview"));
 import PlanPage from "@/pages/plan-page";
 import MyProgressPage from "@/pages/my-progress";
@@ -459,6 +460,7 @@ function Router() {
       {isRouteEnabled("/expand-my-week") && <Route path="/expand-my-week" component={ExpandMyWeekPage} />}
       
       <Route path="/dev/routes" component={DevRoutesPage} />
+      <Route path="/shared-attention" component={SharedAttentionPage} />
       <Route path="/privacy-terms" component={PrivacyTermsPage} />
       <Route path="/support/report" component={SupportReportPage} />
       <Route path="/404" component={NotFound404Page} />

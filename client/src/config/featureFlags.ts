@@ -34,6 +34,14 @@ export interface FeatureFlags {
   DW_READING_CARD: boolean;        // ⏸️ Daily dimensional reading card on home command center
   ONBOARDING_VALUE_PREVIEW: boolean; // ⏸️ Value preview layer before onboarding conversation
   MILESTONE_MOMENTS: boolean;      // ⏸️ Milestone celebration cards for switch + habit progress
+  // ── Agentic Companion (SPEC_14) ──────────────────────────────────────────
+  exploreCard: boolean;            // ⏸️ Explore doorway card (hobbies & curiosities)
+  entertainmentCard: boolean;      // ⏸️ Entertainment doorway card (unwind & enjoy)
+  creatorsCard: boolean;           // ⏸️ Creators doorway card (people you follow)
+  companionshipCard: boolean;      // ⏸️ Companionship doorway card (you don't have to do this alone)
+  dwProactiveNotices: boolean;     // ⏸️ Proactive "DW noticed…" suggestion layer
+  actionEngine: boolean;           // ⏸️ Client-side agentic action engine
+  sharedAttention: boolean;        // ⏸️ Shared Attention modes (co-watch, broadcast)
 }
 
 /**
@@ -412,6 +420,14 @@ export const FEATURE_FLAGS: FeatureFlags = {
   DW_READING_CARD: resolveDwReadingCardFlag(),
   ONBOARDING_VALUE_PREVIEW: resolveOnboardingValuePreviewFlag(),
   MILESTONE_MOMENTS: resolveMilestoneMomentsFlag(),
+  // ── Agentic Companion (SPEC_14) — all OFF by default ─────────────────────
+  exploreCard: false,
+  entertainmentCard: false,
+  creatorsCard: false,
+  companionshipCard: false,
+  dwProactiveNotices: false,
+  actionEngine: false,
+  sharedAttention: false,
 };
 
 /**

@@ -53,6 +53,8 @@ export const ROUTES: RouteConfig[] = [
   { path: "/blueprint", name: "Blueprint", enabled: false },
   { path: "/projects", name: "Projects", enabled: false },
   { path: "/systems", name: "Systems Hub", enabled: false },
+  // Agentic Companion (SPEC_14) — route enabled; page self-gates via feature flag
+  { path: "/shared-attention", name: "Shared Attention", enabled: true },
 ];
 
 export function isRouteEnabled(path: string): boolean {
