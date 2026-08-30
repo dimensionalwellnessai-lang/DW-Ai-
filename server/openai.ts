@@ -58,7 +58,7 @@ function _inferProviderFromModel(model: string | undefined): MainChatProvider | 
 function _inferProviderFromBaseURL(baseURL: string | undefined): MainChatProvider {
   if (!baseURL) return "openai";
   const normalized = baseURL.toLowerCase();
-  if (normalized.includes("anthropic") || normalized.includes("openrouter")) return "anthropic-compatible";
+  if (normalized.includes("anthropic")) return "anthropic-compatible";
   return "openai";
 }
 
@@ -267,7 +267,7 @@ export async function consumeChatCompletionStream(
     if (delta?.tool_calls) {
       for (const toolCall of delta.tool_calls) {
         if (toolCall.function) {
-          if (!currentToolCall || toolCall.id) {
+          if (!currentToolCall || toolCall.id != null) {
             if (currentToolCall) {
               try {
                 toolCalls.push({
@@ -284,7 +284,6 @@ export async function consumeChatCompletionStream(
               arguments: toolCall.function.arguments || "",
             };
           } else if (currentToolCall) {
-            if (toolCall.function.name) currentToolCall.name += toolCall.function.name;
             if (toolCall.function.arguments) currentToolCall.arguments += toolCall.function.arguments;
           }
         }
@@ -518,7 +517,7 @@ export function getAiConfigStatus(): {
 } {
   const mainChatClient = _resolveMainChatClientConfigStatus();
   const chatModel = resolveMainChatModel();
-  const missing = mainChatClient.missing;
+  const missing = [...mainChatClient.missing];
   return {
     configured: mainChatClient.apiKeyConfigured,
     missing,
@@ -528,7 +527,7 @@ export function getAiConfigStatus(): {
       source: chatModel.source,
       clientSource: mainChatClient.source,
       configured: mainChatClient.apiKeyConfigured,
-      missing,
+      missing: [...mainChatClient.missing],
     },
   };
 }
@@ -2443,7 +2442,7 @@ Calm over speed.`;
     return typeof rawContent === "string" ? enforceOneQuestion(rawContent) : rawContent;
   } catch (error: any) {
     const msg: string = error?.message || String(error);
-    if (msg.includes("DW_AI_UNAVAILABLE") || msg.includes("All providers temporarily unavailable")) {
+    if (msg.includes("DW_AI_UNAVAILABLE")) {
       console.warn("[generateChatResponse] All providers unavailable — returning graceful message");
       return "I'm here — just had a brief moment of interrupted thinking. Send that again and I'll pick right up.";
     }
@@ -3442,7 +3441,7 @@ RESPONSE FORMATTING:
     return await consumeChatCompletionStream(stream as AsyncIterable<OpenAIStyleChatChunk>, res);
   } catch (error: any) {
     const msg: string = error?.message || String(error);
-    if (msg.includes("DW_AI_UNAVAILABLE") || msg.includes("All providers temporarily unavailable")) {
+    if (msg.includes("DW_AI_UNAVAILABLE")) {
       console.warn("[generateChatResponseStreaming] All providers unavailable — returning graceful message");
       return {
         response: "I'm here — just had a brief moment of interrupted thinking. Send that again and I'll pick right up.",
