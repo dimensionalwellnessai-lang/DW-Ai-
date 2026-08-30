@@ -185,9 +185,9 @@ export default function GoalsPage() {
 
       {/* DW opening line */}
       {(() => {
-        const activeGoals = (goals as any[]).filter((g: any) => g.isActive !== false);
+        const activeGoals = goals.filter(g => g.isActive !== false);
         const avgProgress = activeGoals.length > 0
-          ? Math.round(activeGoals.reduce((s: number, g: any) => s + (g.progress ?? 0), 0) / activeGoals.length)
+          ? Math.round(activeGoals.reduce((s: number, g) => s + (g.progress ?? 0), 0) / activeGoals.length)
           : 0;
         let line = "A goal written down is already a step forward.";
         if (!isLoading && activeGoals.length === 1) line = "One goal in motion — stay with it.";

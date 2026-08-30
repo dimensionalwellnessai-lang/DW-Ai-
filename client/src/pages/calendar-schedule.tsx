@@ -306,8 +306,8 @@ export default function CalendarSchedulePage() {
 
       {/* DW opening line */}
       {(() => {
-        const today = new Date().toISOString().split("T")[0];
-        const todayEvents = (events || []).filter(e => e.startTime?.startsWith(today));
+        const todayKey = format(startOfToday(), "yyyy-MM-dd");
+        const todayEvents = (events || []).filter(e => e.startTime?.startsWith(todayKey));
         let line = "Your schedule is a map of what you value — keep it honest.";
         if (!isLoading && todayEvents.length > 0) line = `${todayEvents.length} thing${todayEvents.length !== 1 ? "s" : ""} on today's map — take it one at a time.`;
         else if (!isLoading && (events || []).length > 0) line = "Nothing locked in for today — space is a resource too.";
