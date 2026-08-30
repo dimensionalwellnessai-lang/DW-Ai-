@@ -81,7 +81,7 @@ export function DWBriefingCard({ nextStep }: DWBriefingCardProps) {
             <p className="text-xs font-semibold uppercase tracking-wide text-primary">
               DW Briefing
             </p>
-            <p className="text-[10px] text-muted-foreground">Your next step, spoken aloud</p>
+            <p className="text-xs text-muted-foreground">Your next step, spoken aloud</p>
           </div>
         </div>
 

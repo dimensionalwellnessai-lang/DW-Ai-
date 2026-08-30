@@ -153,6 +153,19 @@ export default function HabitsPage() {
         }
       />
 
+      {/* DW opening line */}
+      <p className="text-sm text-muted-foreground italic px-5 pt-3 pb-1" data-testid="text-dw-line-habits">
+        {!isLoading && habits.length === 0
+          ? "Start with one small habit — that's enough."
+          : !isLoading && completedToday > 0 && completedToday === activeHabits.length
+          ? `All ${activeHabits.length} habit${activeHabits.length !== 1 ? "s" : ""} done — that's a full day.`
+          : !isLoading && completedToday > 0
+          ? `${completedToday} of ${activeHabits.length} done today — momentum's building.`
+          : !isLoading
+          ? `${activeHabits.length} habit${activeHabits.length !== 1 ? "s" : ""} to tend to today — small steps add up.`
+          : "Your habits are ready when you are."}
+      </p>
+
       <div className="flex-1 overflow-auto">
         <div className="container max-w-2xl mx-auto p-4 space-y-5 pb-24">
 
@@ -415,21 +428,21 @@ function HabitCard({ habit, expanded, paused, isPending, linkedGoal, onToggleExp
             </p>
             <div className="flex items-center gap-2 mt-0.5 flex-wrap">
               {dim && DimIcon && (
-                <span className={`flex items-center gap-0.5 text-[10px] font-medium ${dim.color}`}>
+                <span className={`flex items-center gap-0.5 text-xs font-medium ${dim.color}`}>
                   <DimIcon className="h-3 w-3" />
                   {dim.label}
                 </span>
               )}
-              <span className="text-[10px] text-muted-foreground">{frequencyLabel(habit.frequency ?? "daily")}</span>
+              <span className="text-xs text-muted-foreground">{frequencyLabel(habit.frequency ?? "daily")}</span>
               {habit.reminderTime && (
-                <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
+                <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
                   <Bell className="h-2.5 w-2.5" />
                   {habit.reminderTime}
                 </span>
               )}
               {linkedGoal && (
                 <span
-                  className="flex items-center gap-0.5 text-[10px] font-medium bg-primary/10 text-primary rounded-full px-1.5 py-0.5"
+                  className="flex items-center gap-0.5 text-xs font-medium bg-primary/10 text-primary rounded-full px-1.5 py-0.5"
                   data-testid={`chip-goal-link-${habit.id}`}
                 >
                   <Target className="h-2.5 w-2.5" />

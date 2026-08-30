@@ -51,7 +51,7 @@ function Stat({ label, value, testid }: { label: string; value: string; testid: 
   return (
     <div className="rounded-md bg-muted/40 px-2 py-2">
       <div className="text-sm font-bold leading-tight" data-testid={testid}>{value}</div>
-      <div className="text-[10px] text-muted-foreground mt-0.5">{label}</div>
+      <div className="text-xs text-muted-foreground mt-0.5">{label}</div>
     </div>
   );
 }
@@ -460,7 +460,7 @@ export default function HealthDataPage() {
                 <Stat label="Screen Time" value={wearableSummary.screenTimeMinutes != null ? `${Math.floor(wearableSummary.screenTimeMinutes / 60)}h ${wearableSummary.screenTimeMinutes % 60}m` : "—"} testid="stat-wearable-screentime" />
               </div>
               {wearables?.insights?.yesterday?.topCategory && (
-                <p className="text-[11px] text-muted-foreground mt-2" data-testid="text-screentime-insight">
+                <p className="text-xs text-muted-foreground mt-2" data-testid="text-screentime-insight">
                   Yesterday you spent{" "}
                   <span className="font-medium text-foreground">
                     {Math.floor(wearables.insights.yesterday.topCategory.minutes / 60)}h{" "}
@@ -525,7 +525,7 @@ export default function HealthDataPage() {
                                 <Icon className="w-3 h-3" style={{ color }} />
                                 <span className="flex-1">{label}</span>
                                 {!hasData && (
-                                  <span className="text-[10px] text-muted-foreground">no data</span>
+                                  <span className="text-xs text-muted-foreground">no data</span>
                                 )}
                               </label>
                             );
@@ -535,12 +535,12 @@ export default function HealthDataPage() {
                     </Popover>
                     <button
                       onClick={() => setTrendWindow(7)}
-                      className={`text-[11px] px-2 py-0.5 rounded ${trendWindow === 7 ? "bg-primary text-primary-foreground" : "text-muted-foreground hover-elevate"}`}
+                      className={`text-xs px-2 py-0.5 rounded ${trendWindow === 7 ? "bg-primary text-primary-foreground" : "text-muted-foreground hover-elevate"}`}
                       data-testid="button-trend-window-7"
                     >7d</button>
                     <button
                       onClick={() => setTrendWindow(30)}
-                      className={`text-[11px] px-2 py-0.5 rounded ${trendWindow === 30 ? "bg-primary text-primary-foreground" : "text-muted-foreground hover-elevate"}`}
+                      className={`text-xs px-2 py-0.5 rounded ${trendWindow === 30 ? "bg-primary text-primary-foreground" : "text-muted-foreground hover-elevate"}`}
                       data-testid="button-trend-window-30"
                     >30d</button>
                   </div>
@@ -647,7 +647,7 @@ export default function HealthDataPage() {
                     <div className="text-lg font-bold leading-tight">
                       {val != null ? `${val}${unit}` : "—"}
                     </div>
-                    <div className="text-[10px] text-muted-foreground">{label}</div>
+                    <div className="text-xs text-muted-foreground">{label}</div>
                   </CardContent>
                 </Card>
               );

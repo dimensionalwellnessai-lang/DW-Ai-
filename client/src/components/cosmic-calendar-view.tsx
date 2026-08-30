@@ -278,7 +278,7 @@ export function CosmicCalendarView() {
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-medium">{day?.phase ?? ""}</p>
                   {events.length > 0 && (
-                    <p className="text-[11px] text-muted-foreground truncate">
+                    <p className="text-xs text-muted-foreground truncate">
                       {events.map(e => e.label).join(" · ")}
                     </p>
                   )}

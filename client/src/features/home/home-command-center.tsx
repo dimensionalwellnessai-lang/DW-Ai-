@@ -693,11 +693,11 @@ export default function HomeCommandCenter() {
               </button>
             </div>
           )}
-          <p className="text-[11px] text-muted-foreground/70 italic leading-tight mt-0.5" data-testid="text-affirmation">
+          <p className="text-xs text-muted-foreground/70 italic leading-tight mt-0.5" data-testid="text-affirmation">
             {getDynamicAffirmation(summary.energyLevel, summary.moodLevel)}
           </p>
           {directionLine && (
-            <p className="text-[11px] text-muted-foreground italic leading-tight mt-1" data-testid="text-direction-line">
+            <p className="text-xs text-muted-foreground italic leading-tight mt-1" data-testid="text-direction-line">
               {directionLine}
             </p>
           )}
@@ -734,7 +734,7 @@ export default function HomeCommandCenter() {
                   key={v}
                   type="button"
                   onClick={() => navigate(`/calendar?view=${v}`)}
-                  className="text-[11px] capitalize px-2.5 py-1 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
+                  className="text-xs capitalize px-2.5 py-1 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
                   data-testid={`btn-now-${v}`}
                 >
                   {v}
@@ -748,7 +748,7 @@ export default function HomeCommandCenter() {
           </section>
 
           <section className="w-full" data-testid="section-feeling-chips">
-            <p className="text-[11px] text-muted-foreground/70 text-center mb-2">How are you feeling right now?</p>
+            <p className="text-xs text-muted-foreground/70 text-center mb-2">How are you feeling right now?</p>
             <div className="flex items-center justify-center gap-2 flex-wrap">
               {(Object.keys(FEELING_CHIPS) as Array<keyof typeof FEELING_CHIPS>).map((label) => (
                 <button

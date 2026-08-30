@@ -1180,7 +1180,7 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
                             <span>{opt.emoji}</span>
                             <span className="flex flex-col">
                               <span>{opt.label}</span>
-                              <span className="text-[10px] font-normal text-muted-foreground/70">{opt.description}</span>
+                              <span className="text-xs font-normal text-muted-foreground/70">{opt.description}</span>
                             </span>
                           </span>
                           {selected && <Check className="h-4 w-4 text-primary shrink-0" />}
@@ -1250,7 +1250,7 @@ export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) 
                             <span className="flex-1">{g.label}</span>
                           </span>
                           <span className="flex items-center gap-1.5 shrink-0">
-                            <span className="text-[10px] text-muted-foreground/60 hidden sm:block">{g.dimension}</span>
+                            <span className="text-xs text-muted-foreground/60 hidden sm:block">{g.dimension}</span>
                             {selected && <Check className="h-4 w-4 text-primary" />}
                           </span>
                         </span>

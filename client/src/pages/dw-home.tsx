@@ -869,7 +869,7 @@ export default function DWHomePage() {
                 </div>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wider text-violet-400" style={{ letterSpacing: "0.07em" }}>Mirror Moment</p>
-                  <p className="text-[10px] text-muted-foreground">Today's deep question</p>
+                  <p className="text-xs text-muted-foreground">Today's deep question</p>
                 </div>
               </div>
               <p className="text-sm leading-relaxed text-foreground font-medium">
@@ -904,7 +904,7 @@ export default function DWHomePage() {
                   </div>
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-wider text-primary/80" style={{ letterSpacing: "0.07em" }}>Your Signal Field</p>
-                    <p className="text-[10px] text-muted-foreground">{activeSwitchCount} of 8 dimensions active</p>
+                    <p className="text-xs text-muted-foreground">{activeSwitchCount} of 8 dimensions active</p>
                   </div>
                 </div>
                 <Link href="/switchboard">
@@ -952,7 +952,7 @@ export default function DWHomePage() {
                   </div>
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-wider text-primary/80" style={{ letterSpacing: "0.07em" }}>What DW Knows About You</p>
-                    <p className="text-[10px] text-muted-foreground">Gems from your conversations</p>
+                    <p className="text-xs text-muted-foreground">Gems from your conversations</p>
                   </div>
                 </div>
               </div>
@@ -1006,7 +1006,7 @@ export default function DWHomePage() {
                 </div>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wider text-emerald-400" style={{ letterSpacing: "0.07em" }}>Discover This Week</p>
-                  <p className="text-[10px] text-muted-foreground">Topics worth going deeper on</p>
+                  <p className="text-xs text-muted-foreground">Topics worth going deeper on</p>
                 </div>
               </div>
 

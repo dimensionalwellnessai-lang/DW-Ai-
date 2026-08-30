@@ -624,7 +624,7 @@ Suggest 2-3 specific workout ideas in a calm, supportive tone. Keep it brief and
               <h1 className="text-xl font-display font-semibold text-foreground">
                 {heroGreeting}{userName ? `, ${userName}` : ""}
               </h1>
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-sm text-muted-foreground mt-1" data-testid="text-dw-line-workout">
                 {hasBodyScan
                   ? (bodyProfile?.bodyGoal ? `Goal: ${GOAL_LABELS[bodyProfile.bodyGoal]}` : "Move with intention today.")
                   : "Tell DW about your body to get personalized workouts."}

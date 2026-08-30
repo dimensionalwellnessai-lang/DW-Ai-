@@ -203,6 +203,17 @@ export default function InsightsDashboard() {
   return (
     <div className="flex flex-col h-full bg-gradient-to-b from-background to-muted/20">
       <PageHeader title="Insights" />
+
+      {/* DW opening line */}
+      <p className="text-sm text-muted-foreground italic px-5 pt-3 pb-1" data-testid="text-dw-line-insights">
+        {assessments.length === 0
+          ? "Every check-in teaches you something — start here."
+          : overallBalance >= 70
+          ? `Life balance at ${overallBalance}% — you're building something real.`
+          : overallBalance >= 40
+          ? `Balance at ${overallBalance}% — there's room to grow, and you're already tracking it.`
+          : "Seeing clearly is the first step — let's look at where you are."}
+      </p>
       
       <div className="flex-1 overflow-auto">
         <div className="container max-w-6xl mx-auto p-4 space-y-6 page-enter">
@@ -599,7 +610,7 @@ function DwInsightCard({ insight }: { insight: DwInsightItem }) {
             <button
               type="button"
               onClick={() => setExpanded((v) => !v)}
-              className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
               {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
               {expanded ? "Hide quotes" : `${insight.quotes.length} quote${insight.quotes.length !== 1 ? "s" : ""}`}

@@ -383,9 +383,9 @@ export function FormCheckDialog({ open, onClose, exerciseName = "" }: FormCheckD
 
           {/* Bottom labels */}
           <div className="absolute bottom-0 left-0 right-0 flex items-end justify-center gap-5 px-6 pb-1">
-            <span className="w-11 text-center text-[10px] text-white/50">Reps</span>
-            <span className="w-16 text-center text-[10px] text-white/50">Analyze</span>
-            <span className="w-11 text-center text-[10px] text-white/50">Auto</span>
+            <span className="w-11 text-center text-xs text-white/50">Reps</span>
+            <span className="w-16 text-center text-xs text-white/50">Analyze</span>
+            <span className="w-11 text-center text-xs text-white/50">Auto</span>
           </div>
         </div>
       </DialogContent>

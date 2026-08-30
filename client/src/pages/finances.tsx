@@ -197,6 +197,7 @@ export default function FinancesPage() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [financeProfile, setFinanceProfile] = useState<FinanceProfile | null>(getFinanceProfile());
   const [activeTab, setActiveTab] = useState("overview");
+  const { data: financeSummary } = useQuery<Summary>({ queryKey: ["/api/finance/summary"] });
 
   return (
     <div className="container max-w-7xl pt-6 pb-32 space-y-6">
@@ -208,6 +209,15 @@ export default function FinancesPage() {
           </Button>
         }
       />
+
+      {/* DW opening line */}
+      <p className="text-sm text-muted-foreground italic -mt-2" data-testid="text-dw-line-finances">
+        {financeSummary
+          ? financeSummary.budgets?.some((b: any) => b.spent > b.monthlyLimit)
+            ? "A few budgets are over — awareness is the first move toward change."
+            : "Your money shows you what you value — let's make sure they match."
+          : "Financial clarity is a form of self-respect."}
+      </p>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-5" data-testid="tabs-finance">

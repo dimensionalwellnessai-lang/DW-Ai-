@@ -1527,6 +1527,13 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
     <div className="flex flex-col h-full bg-background">
       <PageHeader title="Meal Plans" />
 
+      {/* DW opening line */}
+      <p className="text-sm text-muted-foreground italic px-5 pt-3 pb-1" data-testid="text-dw-line-meal">
+        {dbMealPlans.length > 0
+          ? `${dbMealPlans.length} meal plan${dbMealPlans.length !== 1 ? "s" : ""} ready — good nourishment starts here.`
+          : "Good nourishment starts with a little intention."}
+      </p>
+
       {/* Cook Session Dialog */}
       {cookingMeal && (
         <Dialog open={!!cookingMeal} onOpenChange={(open) => { if (!open) setCookingMeal(null); }}>
@@ -2479,15 +2486,15 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
                                   <div className="grid grid-cols-4 gap-2 p-2 rounded-md bg-background/50 border">
                                     <div className="text-center">
                                       <p className="text-xs font-semibold text-foreground">{meal.nutrition.protein}g</p>
-                                      <p className="text-[10px] text-muted-foreground">Protein</p>
+                                      <p className="text-xs text-muted-foreground">Protein</p>
                                     </div>
                                     <div className="text-center">
                                       <p className="text-xs font-semibold text-foreground">{meal.nutrition.carbs}g</p>
-                                      <p className="text-[10px] text-muted-foreground">Carbs</p>
+                                      <p className="text-xs text-muted-foreground">Carbs</p>
                                     </div>
                                     <div className="text-center">
                                       <p className="text-xs font-semibold text-foreground">{meal.nutrition.fat}g</p>
-                                      <p className="text-[10px] text-muted-foreground">Fat</p>
+                                      <p className="text-xs text-muted-foreground">Fat</p>
                                     </div>
                                   </div>
                                   <div>
