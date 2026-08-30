@@ -1,15 +1,30 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const ORIGINAL_ENV = { ...process.env };
+const AI_TEST_ENV_KEYS = [
+  "DW_AI_MODEL_CHAT",
+  "DW_AI_CHAT_BASE_URL",
+  "DW_AI_CHAT_API_KEY",
+  "OPENAI_API_KEY",
+  "AI_INTEGRATIONS_OPENAI_BASE_URL",
+  "AI_INTEGRATIONS_OPENAI_API_KEY",
+  "PERPLEXITY_API_KEY",
+  "AI_INTEGRATIONS_PERPLEXITY_API_KEY",
+  "AI_INTEGRATIONS_PERPLEXITY_BASE_URL",
+];
+const TEST_ENV_BASELINE = { ...ORIGINAL_ENV };
+for (const key of AI_TEST_ENV_KEYS) {
+  delete TEST_ENV_BASELINE[key];
+}
 
 async function loadOpenAiModule() {
   vi.resetModules();
-  process.env.OPENAI_API_KEY ||= "test-openai-key";
+  process.env.OPENAI_API_KEY = "test-openai-key";
   return await import("../openai");
 }
 
 beforeEach(() => {
-  process.env = { ...ORIGINAL_ENV };
+  process.env = { ...TEST_ENV_BASELINE };
 });
 
 afterEach(() => {
@@ -66,6 +81,33 @@ describe("runMainChatFallbackChain", () => {
     expect(result.provider).toBe("openai-fallback");
     expect(result.model).toBe("gpt-4o-mini");
   });
+
+  it("uses the dedicated OpenAI fallback caller when provided", async () => {
+    const { runMainChatFallbackChain } = await loadOpenAiModule();
+    const primaryCalls: string[] = [];
+    const fallbackCalls: string[] = [];
+
+    const result = await runMainChatFallbackChain({
+      primaryModel: "claude-sonnet-4-5",
+      openAiFallbackModel: "gpt-4o-mini",
+      callWithModel: async (model) => {
+        primaryCalls.push(model);
+        throw new Error(`primary unavailable for ${model}`);
+      },
+      callOpenAiFallbackModel: async (model) => {
+        fallbackCalls.push(model);
+        return { ok: true, model };
+      },
+      callPerplexity: async () => {
+        throw new Error("perplexity should not be called");
+      },
+    });
+
+    expect(primaryCalls).toEqual(["claude-sonnet-4-5"]);
+    expect(fallbackCalls).toEqual(["gpt-4o-mini"]);
+    expect(result.provider).toBe("openai-fallback");
+    expect(result.model).toBe("gpt-4o-mini");
+  });
 });
 
 describe("normalizeToolCallsFromAssistantMessage", () => {
@@ -86,6 +128,15 @@ describe("normalizeToolCallsFromAssistantMessage", () => {
       { name: "navigate_to", arguments: { path: "/goals" } },
     ]);
   });
+
+  it("does not treat OpenAI tool_call type as the function name", async () => {
+    const { normalizeToolCallsFromAssistantMessage } = await loadOpenAiModule();
+    const toolCalls = normalizeToolCallsFromAssistantMessage({
+      tool_calls: [{ type: "function", function: { arguments: "{\"path\":\"/today\"}" } }],
+    });
+
+    expect(toolCalls).toEqual([]);
+  });
 });
 
 describe("consumeChatCompletionStream", () => {
@@ -100,7 +151,7 @@ describe("consumeChatCompletionStream", () => {
         choices: [
           {
             delta: {
-              tool_calls: [{ id: "call_1", function: { name: "navigate_to", arguments: "{\"path\":\"/today\"" } }],
+              tool_calls: [{ id: "call_1", function: { name: "navigate", arguments: "{\"path\":\"/today\"" } }],
             },
           },
         ],
@@ -109,7 +160,7 @@ describe("consumeChatCompletionStream", () => {
         choices: [
           {
             delta: {
-              tool_calls: [{ function: { arguments: ",\"tab\":\"focus\"}" } }],
+              tool_calls: [{ id: "call_1", function: { name: "_to", arguments: ",\"tab\":\"focus\"}" } }],
             },
           },
         ],

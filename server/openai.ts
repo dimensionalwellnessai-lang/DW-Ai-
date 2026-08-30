@@ -159,7 +159,7 @@ export function normalizeToolCallsFromAssistantMessage(message: any): { name: st
         parsedArgs = rawArgs;
       }
       normalized.push({
-        name: (tc as any)?.function?.name || (tc as any)?.type || "",
+        name: (tc as any)?.function?.name || (tc as any)?.name || "",
         arguments: parsedArgs,
       });
     }
@@ -204,6 +204,7 @@ export async function runMainChatFallbackChain<T>(args: {
   primaryModel: string;
   openAiFallbackModel?: string;
   callWithModel: (model: string) => Promise<T>;
+  callOpenAiFallbackModel?: (model: string) => Promise<T>;
   callPerplexity: () => Promise<T>;
 }): Promise<{ result: T; provider: "primary" | "openai-fallback" | "perplexity"; model: string }> {
   const openAiFallbackModel = args.openAiFallbackModel ?? OPENAI_MAIN_CHAT_FALLBACK_MODEL;
@@ -217,7 +218,8 @@ export async function runMainChatFallbackChain<T>(args: {
 
   if (args.primaryModel !== openAiFallbackModel) {
     try {
-      const result = await args.callWithModel(openAiFallbackModel);
+      const fallbackCaller = args.callOpenAiFallbackModel ?? args.callWithModel;
+      const result = await fallbackCaller(openAiFallbackModel);
       return { result, provider: "openai-fallback", model: openAiFallbackModel };
     } catch (openAiFallbackError) {
       console.warn(`[openai] OpenAI fallback model failed (${openAiFallbackModel}), trying Perplexity:`, (openAiFallbackError as Error).message);
@@ -267,7 +269,10 @@ export async function consumeChatCompletionStream(
     if (delta?.tool_calls) {
       for (const toolCall of delta.tool_calls) {
         if (toolCall.function) {
-          if (!currentToolCall || toolCall.id != null) {
+          const isNewToolCall =
+            !currentToolCall ||
+            (toolCall.id != null && toolCall.id !== "" && toolCall.id !== currentToolCall.id);
+          if (isNewToolCall) {
             if (currentToolCall) {
               try {
                 toolCalls.push({
@@ -284,6 +289,7 @@ export async function consumeChatCompletionStream(
               arguments: toolCall.function.arguments || "",
             };
           } else if (currentToolCall) {
+            if (toolCall.function.name) currentToolCall.name += toolCall.function.name;
             if (toolCall.function.arguments) currentToolCall.arguments += toolCall.function.arguments;
           }
         }
@@ -2404,6 +2410,21 @@ Calm over speed.`;
         400,
       );
     };
+    const createOpenAiFallbackCompletion = async (model: string) => {
+      return await _withRetry(
+        () =>
+          _originalCreate({
+            model,
+            messages,
+            tools,
+            tool_choice: "auto",
+            max_completion_tokens: 1200,
+            temperature: 0.7,
+          }),
+        3,
+        400,
+      );
+    };
     const createPerplexityFallback = async () => {
       const perp = _buildPerplexityClient();
       if (!perp) throw new Error("Perplexity fallback is not configured");
@@ -2421,11 +2442,11 @@ Calm over speed.`;
         400,
       );
     };
-
     const { result: response } = await runMainChatFallbackChain({
       primaryModel: chatModel.model,
       openAiFallbackModel: OPENAI_MAIN_CHAT_FALLBACK_MODEL,
       callWithModel: createMainCompletion,
+      callOpenAiFallbackModel: createOpenAiFallbackCompletion,
       callPerplexity: createPerplexityFallback,
     });
 
@@ -3430,11 +3451,28 @@ RESPONSE FORMATTING:
         400,
       );
     };
+    const createOpenAiFallbackStream = async (model: string) => {
+      return await _withRetry(
+        () =>
+          _originalCreate({
+            model,
+            messages,
+            tools,
+            tool_choice: "auto",
+            stream: true,
+            max_completion_tokens: 1200,
+            temperature: 0.7,
+          }),
+        3,
+        400,
+      );
+    };
 
     const { result: stream } = await runMainChatFallbackChain({
       primaryModel: chatModel.model,
       openAiFallbackModel: OPENAI_MAIN_CHAT_FALLBACK_MODEL,
       callWithModel: createMainStream,
+      callOpenAiFallbackModel: createOpenAiFallbackStream,
       callPerplexity: createPerplexityFallbackStream,
     });
 
