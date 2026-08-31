@@ -102,6 +102,9 @@ export function UserBroadcastDialog({ open, onOpenChange }: UserBroadcastDialogP
       setStep("active");
       // Attach to video element on next tick (ref may not be in DOM yet)
       setTimeout(() => {
+        if (!openRef.current || requestId !== captureRequestIdRef.current) {
+          return;
+        }
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
           videoRef.current.play().catch(() => {/* user blocked autoplay; preview still shown */});
