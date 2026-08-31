@@ -21,6 +21,10 @@ export const EVENTS = {
   PLAN_COMPLETED: "plan_completed",
   CHECKIN_SUBMITTED: "checkin_submitted",
   REMINDER_INTERACTED: "reminder_interacted",
+  // Agentic Companion — proactive notices (SPEC_14)
+  PROACTIVE_NOTICE_SHOWN: "proactive_notice_shown",
+  PROACTIVE_NOTICE_ACCEPTED: "proactive_notice_accepted",
+  PROACTIVE_NOTICE_DISMISSED: "proactive_notice_dismissed",
 } as const;
 
 export type AnalyticsEventName = (typeof EVENTS)[keyof typeof EVENTS];
@@ -120,6 +124,11 @@ type ReminderInteractedPayload = {
   snoozeLabel?: string;
 };
 
+// Agentic Companion — proactive notice payloads (SPEC_14)
+type ProactiveNoticePayload = {
+  suggestionKey: string;
+};
+
 // Map event names to their payload types
 type EventPayloadMap = {
   [EVENTS.QUICK_SETUP_STARTED]: undefined;
@@ -141,6 +150,9 @@ type EventPayloadMap = {
   [EVENTS.PLAN_COMPLETED]: PlanCompletedPayload;
   [EVENTS.CHECKIN_SUBMITTED]: CheckinSubmittedPayload;
   [EVENTS.REMINDER_INTERACTED]: ReminderInteractedPayload;
+  [EVENTS.PROACTIVE_NOTICE_SHOWN]: ProactiveNoticePayload;
+  [EVENTS.PROACTIVE_NOTICE_ACCEPTED]: ProactiveNoticePayload;
+  [EVENTS.PROACTIVE_NOTICE_DISMISSED]: ProactiveNoticePayload;
 };
 
 // Session metadata (in-memory only)

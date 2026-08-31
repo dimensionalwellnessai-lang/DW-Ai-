@@ -36,6 +36,14 @@ describe("FEATURE_FLAGS shape", () => {
       "ELEVATION_ENGINE",
       "DAILY_CHECKIN",
       "DW_LEARNS",
+      // Agentic Companion flags
+      "exploreCard",
+      "entertainmentCard",
+      "creatorsCard",
+      "companionshipCard",
+      "dwProactiveNotices",
+      "actionEngine",
+      "sharedAttention",
     ];
     for (const key of expectedKeys) {
       expect(FEATURE_FLAGS).toHaveProperty(key);
@@ -55,6 +63,16 @@ describe("isFeatureEnabled", () => {
 
   it("returns false for LIFE_BLUEPRINT which is off by default", () => {
     expect(isFeatureEnabled("LIFE_BLUEPRINT")).toBe(false);
+  });
+
+  it("agentic companion flags are off by default", () => {
+    expect(isFeatureEnabled("exploreCard")).toBe(false);
+    expect(isFeatureEnabled("entertainmentCard")).toBe(false);
+    expect(isFeatureEnabled("creatorsCard")).toBe(false);
+    expect(isFeatureEnabled("companionshipCard")).toBe(false);
+    expect(isFeatureEnabled("dwProactiveNotices")).toBe(false);
+    expect(isFeatureEnabled("actionEngine")).toBe(false);
+    expect(isFeatureEnabled("sharedAttention")).toBe(false);
   });
 
   it("returns the same value as direct flag lookup", () => {
@@ -80,6 +98,17 @@ describe("getEnabledFeatures", () => {
   it("excludes LIFE_BLUEPRINT which is off by default", () => {
     const enabled = getEnabledFeatures();
     expect(enabled).not.toContain("LIFE_BLUEPRINT");
+  });
+
+  it("excludes agentic companion flags which are off by default", () => {
+    const enabled = getEnabledFeatures();
+    expect(enabled).not.toContain("exploreCard");
+    expect(enabled).not.toContain("entertainmentCard");
+    expect(enabled).not.toContain("creatorsCard");
+    expect(enabled).not.toContain("companionshipCard");
+    expect(enabled).not.toContain("dwProactiveNotices");
+    expect(enabled).not.toContain("actionEngine");
+    expect(enabled).not.toContain("sharedAttention");
   });
 
   it("every returned key is actually enabled in FEATURE_FLAGS", () => {

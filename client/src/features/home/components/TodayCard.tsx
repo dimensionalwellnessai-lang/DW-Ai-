@@ -12,6 +12,8 @@ import { CalendarDays } from "lucide-react";
 import { DWCardContainer } from "./DWCardContainer";
 import { MOCK_HOME_DATA } from "../homeData";
 import type { HomeSummary } from "../types";
+import { isFeatureEnabled } from "@/config/featureFlags";
+import { proposeAction, requestConsent, executeAction } from "@/lib/agent-actions";
 
 interface TodayCardProps {
   summary: Pick<HomeSummary, "todayLabel" | "nextEvent">;
@@ -96,6 +98,24 @@ export function TodayCard({ summary }: TodayCardProps) {
           Talk to DW
         </button>
       </div>
+      {isFeatureEnabled("actionEngine") && (
+        <button
+          type="button"
+          onClick={async () => {
+            const briefParts = [`Today is ${todayLabel}.`];
+            if (nextEvent) {
+              const eventTime = formatEventTime(nextEvent.startTime, nextEvent.isAllDay);
+              briefParts.push(`Your next event is ${nextEvent.title} at ${eventTime}.`);
+            }
+            const brief = briefParts.join(" ");
+            const action = proposeAction({ type: "read", label: "Read my brief aloud", consentTier: "silent", readText: brief });
+            await executeAction(requestConsent(action));
+          }}
+          className="w-full text-left text-xs text-primary font-medium py-1.5 px-1 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-sm"
+        >
+          Read my brief aloud
+        </button>
+      )}
     </DWCardContainer>
   );
 }

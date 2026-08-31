@@ -13,6 +13,11 @@ import { InsightSnapshotCard } from "./components/InsightSnapshotCard";
 import { useHomeSummary } from "./useHomeSummary";
 import { isE2ETestMode } from "@/lib/e2e-mode";
 import { isFeatureEnabled } from "@/config/featureFlags";
+import { DwNoticed } from "@/components/dw-noticed";
+import { ExploreCard } from "./components/ExploreCard";
+import { EntertainmentCard } from "./components/EntertainmentCard";
+import { CreatorsCard } from "./components/CreatorsCard";
+import { CompanionshipCard } from "./components/CompanionshipCard";
 import type { HomeSummary } from "./types";
 import {
   Brain,
@@ -797,6 +802,15 @@ export default function HomeCommandCenter() {
               })}
             </div>
           </section>
+
+          {/* Agentic Companion — proactive layer (SPEC_14) */}
+          {isFeatureEnabled("dwProactiveNotices") && <DwNoticed />}
+
+          {/* Agentic Companion — doorway cards (SPEC_14) */}
+          <ExploreCard />
+          <EntertainmentCard />
+          <CreatorsCard />
+          <CompanionshipCard />
         </div>
       </div>
 
