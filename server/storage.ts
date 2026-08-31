@@ -36,6 +36,9 @@ import {
   wellnessContent,
   savedContent,
   feedInteractions,
+  userCurrents,
+  zoneStates,
+  userInterests,
   challenges,
   bodyScans,
   systemModules,
@@ -236,6 +239,7 @@ import {
   wellnessPreferences,
   type WellnessPreferences,
   type InsertWellnessPreferences,
+  type UserInterests,
   userValuesRules,
   type UserValuesRules,
   type InsertUserValuesRules,
@@ -542,6 +546,7 @@ export interface IStorage {
   getUserProfile(userId: string): Promise<UserProfile | undefined>;
   createUserProfile(profile: InsertUserProfile): Promise<UserProfile>;
   updateUserProfile(userId: string, data: Partial<UserProfile>): Promise<UserProfile | undefined>;
+  getUserInterests(userId: string): Promise<UserInterests | undefined>;
 
   getWellnessContent(filters?: { category?: string; goalTags?: string[]; difficulty?: string }): Promise<WellnessContent[]>;
   getWellnessContentById(id: string): Promise<WellnessContent | undefined>;
@@ -1168,6 +1173,9 @@ export class DatabaseStorage implements IStorage {
       await tx.delete(activityCompletions).where(eq(activityCompletions.userId, id));
       await tx.delete(trackerSettings).where(eq(trackerSettings.userId, id));
       await tx.delete(workoutPlans).where(eq(workoutPlans.userId, id));
+      await tx.delete(userCurrents).where(eq(userCurrents.userId, id));
+      await tx.delete(zoneStates).where(eq(zoneStates.userId, id));
+      await tx.delete(userInterests).where(eq(userInterests.userId, id));
       await tx.delete(birthCharts).where(eq(birthCharts.userId, id));
       await tx.delete(userProfiles).where(eq(userProfiles.userId, id));
       await tx.delete(onboardingProfiles).where(eq(onboardingProfiles.userId, id));
@@ -1994,6 +2002,11 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db.update(userProfiles).set({ ...data, lastUpdated: new Date() })
       .where(eq(userProfiles.userId, userId)).returning();
     return updated || undefined;
+  }
+
+  async getUserInterests(userId: string): Promise<UserInterests | undefined> {
+    const [record] = await db.select().from(userInterests).where(eq(userInterests.userId, userId));
+    return record || undefined;
   }
 
   async getWellnessContent(filters?: { category?: string; goalTags?: string[]; difficulty?: string }): Promise<WellnessContent[]> {

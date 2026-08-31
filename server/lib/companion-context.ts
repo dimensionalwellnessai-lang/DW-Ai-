@@ -1,56 +1,99 @@
-/**
- * companion-context.ts
- *
- * Builds the CompanionContext injected into user-bound DW prompts from
- * existing persisted profile data. It must degrade gracefully when optional
- * profile fields are absent or malformed.
- */
-
 import { storage } from "../storage";
-
-// ── Types ─────────────────────────────────────────────────────────────────────
+import {
+  calculateEnergyCurrents,
+  type CurrentType,
+  type CurrentState,
+  type EnergyType,
+  type DecisionCompass,
+} from "./energy-currents";
 
 export type ZoneId =
-  | "physical" | "mental" | "spiritual" | "financial"
-  | "relationships" | "career" | "learning" | "environment"
-  | "creativity" | "fun" | "community" | "rest" | "identity";
+  | "physical"
+  | "mental"
+  | "spiritual"
+  | "financial"
+  | "relationships"
+  | "career"
+  | "learning"
+  | "environment"
+  | "creativity"
+  | "fun"
+  | "community"
+  | "rest"
+  | "identity";
 
-export type CurrentType =
-  | "Gut" | "Wave" | "Spark" | "Will" | "Voice"
-  | "Mind" | "Flow" | "Drive" | "Light";
-
-export type CurrentReliability = "hardwired" | "variable" | "open";
-
-export type EnergyType = "Builder" | "Guide" | "Initiator" | "Observer";
-
-export interface ZoneState {
-  /** 0–100 energy level */
+interface ZoneContext {
   level: number;
-  /** "rising" | "falling" | "stable" */
-  trend: "rising" | "falling" | "stable";
-  /** Primary Current powering this Zone */
-  current: CurrentType;
+  trend: string;
+  lastAction?: string;
 }
 
 export interface CompanionContext {
-  /** Per-Zone state snapshot */
-  zones: Partial<Record<ZoneId, ZoneState>>;
-  /** How each Current behaves for this user */
-  currents: Partial<Record<CurrentType, CurrentReliability>>;
-  /** User's core energy archetype */
-  energyType: EnergyType | null;
-  /** What the user is genuinely interested in */
+  currents: Record<CurrentType, CurrentState>;
+  energyType: EnergyType;
+  decisionCompass: DecisionCompass;
+  zones: Record<ZoneId, ZoneContext>;
+  cosmicWeather: { activeCurrents: string[]; moonPhase: string | null };
   interests: {
     deepDives: string[];
     currentObsessions: string[];
     popCulture: string[];
+    spiritualCuriosity: string[];
   };
+  patterns: { bestDecisionTime?: string; energyCrashRisk?: string };
+  isFallback?: boolean;
 }
 
-// ── Builder ───────────────────────────────────────────────────────────────────
+const DEFAULT_ZONES: ZoneId[] = [
+  "physical",
+  "mental",
+  "spiritual",
+  "financial",
+  "relationships",
+  "career",
+  "learning",
+  "environment",
+  "creativity",
+  "fun",
+  "community",
+  "rest",
+  "identity",
+];
 
-const MAX_INTEREST_ITEMS = 6;
+const CURRENT_TYPES: CurrentType[] = [
+  "gut",
+  "wave",
+  "spark",
+  "will",
+  "voice",
+  "mind",
+  "flow",
+  "drive",
+  "light",
+];
+
+const DIMENSION_TO_ZONE: Record<string, ZoneId> = {
+  physical: "physical",
+  emotional: "mental",
+  mental: "mental",
+  social: "relationships",
+  spiritual: "spiritual",
+  environmental: "environment",
+  occupational: "career",
+  intellectual: "learning",
+  financial: "financial",
+};
+
+const MAX_INTEREST_ITEMS = 4;
 const MAX_INTEREST_LENGTH = 120;
+
+function scoreToZoneState(score?: number | null): { level: number; trend: string } {
+  const level = Math.max(1, Math.min(5, Math.round(score ?? 2)));
+  if (level <= 2) return { level, trend: "dim" };
+  if (level === 3) return { level, trend: "flickering" };
+  if (level === 4) return { level, trend: "bright" };
+  return { level, trend: "radiant" };
+}
 
 function normalizeInterestText(value: unknown): string | null {
   if (typeof value !== "string") return null;
@@ -81,139 +124,169 @@ function normalizeStringArray(value: unknown, maxItems = MAX_INTEREST_ITEMS): st
   return items;
 }
 
-function normalizePreferenceValues(value: unknown): string[] {
-  if (Array.isArray(value)) return normalizeStringArray(value, 3);
-  const normalized = normalizeInterestText(value);
-  return normalized ? [normalized] : [];
+function createDefaultZones(): Record<ZoneId, ZoneContext> {
+  return Object.fromEntries(
+    DEFAULT_ZONES.map((zone) => [zone, { level: 2, trend: "dim" }]),
+  ) as Record<ZoneId, ZoneContext>;
 }
 
-function mergeUniqueLists(...lists: string[][]): string[] {
-  const seen = new Set<string>();
-  const items: string[] = [];
+function parseInterests(input: {
+  deepDives?: unknown;
+  currentObsessions?: unknown;
+  popCulture?: unknown;
+  spiritualCuriosity?: unknown;
+  traditions?: unknown;
+}): CompanionContext["interests"] {
+  const spiritualCuriosity = normalizeStringArray(input.spiritualCuriosity);
 
-  for (const list of lists) {
-    for (const entry of list) {
-      const key = entry.toLowerCase();
-      if (seen.has(key)) continue;
-      seen.add(key);
-      items.push(entry);
-      if (items.length >= MAX_INTEREST_ITEMS) return items;
-    }
-  }
+  return {
+    deepDives: normalizeStringArray(input.deepDives),
+    currentObsessions: normalizeStringArray(input.currentObsessions),
+    popCulture: normalizeStringArray(input.popCulture),
+    spiritualCuriosity: (
+      spiritualCuriosity.length > 0
+        ? spiritualCuriosity
+        : normalizeStringArray(input.traditions)
+    ).slice(0, MAX_INTEREST_ITEMS),
+  };
+}
 
-  return items;
+function serializeUserList(label: string, values: string[]): string | null {
+  return values.length ? `${label}: ${JSON.stringify(values)}` : null;
 }
 
 export function emptyCompanionContext(): CompanionContext {
-  const empty: CompanionContext = {
-    zones: {},
-    currents: {},
-    energyType: null,
-    interests: { deepDives: [], currentObsessions: [], popCulture: [] },
+  return {
+    currents: Object.fromEntries(
+      CURRENT_TYPES.map((current) => [current, "open"]),
+    ) as Record<CurrentType, CurrentState>,
+    energyType: "Builder",
+    decisionCompass: "Self",
+    zones: createDefaultZones(),
+    cosmicWeather: { activeCurrents: [], moonPhase: null },
+    interests: {
+      deepDives: [],
+      currentObsessions: [],
+      popCulture: [],
+      spiritualCuriosity: [],
+    },
+    patterns: {},
+    isFallback: true,
   };
-  return empty;
 }
 
-/**
- * Builds a CompanionContext for a given userId.
- * Falls back gracefully if data is unavailable — DW degrades to generic
- * context rather than crashing.
- */
-export async function buildCompanionContext(userId: string): Promise<CompanionContext> {
-  const empty = emptyCompanionContext();
+export async function buildCompanionContext(
+  userId: string,
+  options?: { useAstrologyInGuidance?: boolean },
+): Promise<CompanionContext> {
+  if (!userId) return emptyCompanionContext();
 
-  if (!userId) return empty;
-
-  try {
-    const [userProfile, onboardingProfile] = await Promise.all([
-      storage.getUserProfile(userId).catch(() => undefined),
-      storage.getOnboardingProfile(userId).catch(() => undefined),
+  const [chart, assessments, interestsRow, wellnessPreferences, onboardingProfile, goals] =
+    await Promise.all([
+      storage.getBirthChart(userId).catch(() => null),
+      storage.getLifeDimensionAssessments(userId).catch(() => []),
+      storage.getUserInterests(userId).catch(() => null),
+      storage.getWellnessPreferences(userId).catch(() => null),
+      storage.getOnboardingProfile(userId).catch(() => null),
+      storage.getGoals(userId).catch(() => []),
     ]);
 
-    const lifestylePreferences =
-      userProfile?.lifestylePreferences &&
-      typeof userProfile.lifestylePreferences === "object" &&
-      !Array.isArray(userProfile.lifestylePreferences)
-        ? userProfile.lifestylePreferences as Record<string, unknown>
-        : {};
+  const birthPlace = [chart?.birthCity, chart?.birthState, chart?.birthCountry]
+    .filter(Boolean)
+    .join(", ");
+  const energy = calculateEnergyCurrents({
+    birthDate: chart?.birthDate,
+    birthTime: chart?.birthTime,
+    birthPlace,
+  });
 
-    const interests = {
-      deepDives: mergeUniqueLists(
-        normalizeStringArray(onboardingProfile?.curiosityTopics),
-        normalizeStringArray(userProfile?.goals),
-      ),
-      currentObsessions: mergeUniqueLists(
-        normalizePreferenceValues(userProfile?.fitnessGoal),
-        normalizePreferenceValues(onboardingProfile?.shortTermGoals),
-        normalizeStringArray(onboardingProfile?.wellnessFocus),
-      ),
-      popCulture: mergeUniqueLists(
-        normalizePreferenceValues(lifestylePreferences.watchLikes),
-        normalizePreferenceValues(lifestylePreferences.musicLikes),
-        normalizePreferenceValues(lifestylePreferences.readLikes),
-        normalizePreferenceValues(lifestylePreferences.doLikes),
-        normalizePreferenceValues(lifestylePreferences.goLikes),
-      ),
-    };
+  const zones = createDefaultZones();
+  const seenZones = new Set<ZoneId>();
 
-    return {
-      // These richer wiring fields are intentionally left empty until the app
-      // persists explicit zone state / current reliability data.
-      zones: {},
-      currents: {},
-      energyType: null,
-      interests,
-    };
-  } catch {
-    return empty;
-  }
+  [...assessments]
+    .sort(
+      (a, b) =>
+        new Date(b.assessedAt ?? 0).getTime() - new Date(a.assessedAt ?? 0).getTime(),
+    )
+    .forEach((row) => {
+      const dimension = (row.dimension ?? "").toLowerCase();
+      const zone = DIMENSION_TO_ZONE[dimension];
+      if (!zone || seenZones.has(zone)) return;
+
+      seenZones.add(zone);
+      zones[zone] = {
+        ...scoreToZoneState(row.score),
+        lastAction: goals.find(
+          (goal) => (goal.wellnessDimension ?? "").toLowerCase() === dimension,
+        )?.title,
+      };
+    });
+
+  if (zones.community.trend === "dim") zones.community = { level: 3, trend: "flickering" };
+  if (zones.fun.trend === "dim") zones.fun = { level: 3, trend: "flickering" };
+  if (zones.rest.trend === "dim") zones.rest = { level: zones.physical.level, trend: zones.physical.trend };
+  if (zones.identity.trend === "dim") zones.identity = { level: zones.mental.level, trend: zones.mental.trend };
+  if (zones.creativity.trend === "dim") zones.creativity = { level: zones.learning.level, trend: zones.learning.trend };
+
+  const useAstrologyInGuidance =
+    options?.useAstrologyInGuidance ?? Boolean(wellnessPreferences?.useAstrologyInGuidance);
+
+  return {
+    currents: energy.currents,
+    energyType: energy.energyType,
+    decisionCompass: energy.decisionCompass,
+    zones,
+    cosmicWeather: {
+      activeCurrents: useAstrologyInGuidance ? energy.activeCurrents : [],
+      moonPhase: useAstrologyInGuidance ? energy.moonPhase : null,
+    },
+    interests: parseInterests({
+      deepDives: interestsRow?.deepDives,
+      currentObsessions: interestsRow?.currentObsessions,
+      popCulture: interestsRow?.popCulture,
+      spiritualCuriosity: interestsRow?.spiritualCuriosity,
+      traditions: wellnessPreferences?.traditions,
+    }),
+    patterns: {
+      bestDecisionTime: normalizeInterestText(onboardingProfile?.peakMotivationTime) ?? undefined,
+      energyCrashRisk: zones.rest.level <= 2 ? "high" : zones.rest.level === 3 ? "medium" : "low",
+    },
+  };
 }
 
-// ── Prompt serialiser ─────────────────────────────────────────────────────────
+export function companionContextPromptBlock(context: CompanionContext): string {
+  if (context.isFallback) return "";
 
-/**
- * Converts a CompanionContext into a concise string block for the DW
- * system prompt. Omitted when context is entirely empty.
- */
-export function serializeCompanionContext(ctx: CompanionContext): string {
-  const lines: string[] = [];
+  const lines = [
+    "COMPANION CONTEXT (Energy Blueprint)",
+    `Energy Type: ${context.energyType}`,
+    `Decision Compass: ${context.decisionCompass}`,
+    `Currents: ${Object.entries(context.currents)
+      .map(([name, state]) => `${name}:${state}`)
+      .join(", ")}`,
+    `Zones: ${Object.entries(context.zones)
+      .map(([zone, value]) => `${zone}:${value.trend}(${value.level})`)
+      .join(", ")}`,
+    context.cosmicWeather.moonPhase
+      ? `Cosmic Weather: moon=${context.cosmicWeather.moonPhase}; active=${context.cosmicWeather.activeCurrents.join(", ") || "none"}`
+      : "Cosmic Weather: off",
+    serializeUserList("Deep interests (user-provided)", context.interests.deepDives),
+    serializeUserList("Current obsessions (user-provided)", context.interests.currentObsessions),
+    serializeUserList("Pop culture signals (user-provided)", context.interests.popCulture),
+    serializeUserList("Spiritual curiosity (user-provided)", context.interests.spiritualCuriosity),
+    context.patterns.bestDecisionTime
+      ? `Best decision time: ${context.patterns.bestDecisionTime}`
+      : null,
+    context.patterns.energyCrashRisk
+      ? `Energy crash risk: ${context.patterns.energyCrashRisk}`
+      : null,
+    "WIRING EXAMPLES:",
+    "- Gut Current: e.g., You said yes to plans but your stomach clenched.",
+    "- Wave Current: e.g., You decided while excited, then regretted it next day.",
+    "- Spark Current: e.g., You ignored a flash of 'don't trust this' and later found out why.",
+  ].filter((line): line is string => Boolean(line));
 
-  if (ctx.energyType) {
-    lines.push(`Energy Type: ${ctx.energyType}`);
-  }
-
-  const hardwired = Object.entries(ctx.currents)
-    .filter(([, r]) => r === "hardwired")
-    .map(([c]) => c);
-  const variable = Object.entries(ctx.currents)
-    .filter(([, r]) => r === "variable")
-    .map(([c]) => c);
-  const open = Object.entries(ctx.currents)
-    .filter(([, r]) => r === "open")
-    .map(([c]) => c);
-
-  if (hardwired.length) lines.push(`Hardwired Currents: ${hardwired.join(", ")}`);
-  if (variable.length)  lines.push(`Variable Currents: ${variable.join(", ")}`);
-  if (open.length)      lines.push(`Open Currents: ${open.join(", ")}`);
-
-  const dimZones = Object.entries(ctx.zones)
-    .filter(([, z]) => z.level < 30)
-    .map(([id]) => id);
-  const brightZones = Object.entries(ctx.zones)
-    .filter(([, z]) => z.level >= 70)
-    .map(([id]) => id);
-
-  if (dimZones.length)  lines.push(`Dim Zones (need attention): ${dimZones.join(", ")}`);
-  if (brightZones.length) lines.push(`Bright Zones (thriving): ${brightZones.join(", ")}`);
-
-  if (ctx.interests.deepDives.length)
-    lines.push(`Deep interests (user-provided): ${JSON.stringify(ctx.interests.deepDives)}`);
-  if (ctx.interests.currentObsessions.length)
-    lines.push(`Current obsessions (user-provided): ${JSON.stringify(ctx.interests.currentObsessions)}`);
-  if (ctx.interests.popCulture.length)
-    lines.push(`Pop culture signals (user-provided): ${JSON.stringify(ctx.interests.popCulture)}`);
-
-  if (!lines.length) return "";
-
-  return `\n--- Companion Context ---\n${lines.join("\n")}\n---`;
+  return lines.join("\n");
 }
+
+export const serializeCompanionContext = companionContextPromptBlock;

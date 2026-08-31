@@ -413,8 +413,8 @@ function Router() {
       {isRouteEnabled("/cosmic-insights") && <Route path="/cosmic-insights" component={AstrologyPage} />}
       <Route path="/astrology"><Redirect to="/cosmic-insights" /></Route>
       <Route path="/cosmic" component={CosmicHubPage} />
-      {isRouteEnabled("/feed") && <Route path="/feed" component={FeedPage} />}
-      {isRouteEnabled("/browse") && <Route path="/browse"><Redirect to="/feed" /></Route>}
+      <Route path="/feed" component={FeedPage} />
+      <Route path="/browse"><Redirect to="/feed" /></Route>
       {isRouteEnabled("/energy-transmutation") && <Route path="/energy-transmutation" component={EnergyTransmutationPage} />}
       {isRouteEnabled("/library") && <Route path="/library" component={LibraryPage} />}
       {/* The House — Zones architecture */}

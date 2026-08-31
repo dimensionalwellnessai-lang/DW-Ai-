@@ -4,31 +4,37 @@
  * Feed stream for `/feed`.
  */
 
-import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/page-header";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, parseApiError } from "@/lib/queryClient";
-import { Constellation } from "@/components/constellation";
+import { Constellation, type ZoneId } from "@/components/constellation";
 import {
-  Bookmark, ExternalLink, Heart, Loader2, ShieldOff, RefreshCw, Sparkles,
+  Bookmark,
+  ExternalLink,
+  Heart,
+  Loader2,
+  RefreshCw,
+  Search,
+  ShieldOff,
+  Sparkles,
+  Star,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { ZoneId } from "@/components/constellation";
-
-// ── Types ─────────────────────────────────────────────────────────────────────
 
 interface FeedItem {
   id: string;
   title: string;
   description: string;
   type: string;
-  /** "constructive" | "recreational" | "social" */
   mix?: string;
+  streamBucket?: "constructive" | "recreational" | "social";
   category: string | null;
   source: string;
   duration: string | null;
@@ -38,15 +44,16 @@ interface FeedItem {
   liked: boolean;
   favorited: boolean;
   saved: boolean;
-  /** Zone this item feeds */
   zone?: ZoneId;
-  /** Human-readable reason this appears in the user's feed */
   whyForYou?: string;
-  /** Optional cosmic timing note */
   timingNote?: string;
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+interface FeedResponse {
+  items: FeedItem[];
+  hasMore: boolean;
+  nextCursor: number | null;
+}
 
 const MIX_LABELS: Record<string, string> = {
   constructive: "Zone fuel",
@@ -60,37 +67,52 @@ const MIX_COLORS: Record<string, string> = {
   social: "bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-500/20",
 };
 
-async function fetchFeed(filter: string): Promise<{ items: FeedItem[] }> {
-  const params = new URLSearchParams();
-  params.set("filter", filter);
-  params.set("sort", "relevant");
-  const res = await apiRequest("GET", `/api/feed?${params}`);
-  return res.json();
-}
-
-// ── Component ─────────────────────────────────────────────────────────────────
-
 const FILTERS = [
   { id: "all", label: "All" },
   { id: "article", label: "Articles" },
   { id: "video", label: "Videos" },
+  { id: "meme", label: "Memes" },
+  { id: "quote", label: "Quotes" },
+  { id: "audio", label: "Audio" },
+  { id: "cosmic_update", label: "Cosmic" },
+  { id: "social", label: "Social" },
 ];
 
 export default function FeedPage() {
   usePageMeta(
     "The Current",
-    "A stream of things worth your attention — constructive, recreational, and in the moment."
+    "A stream of things worth your attention — constructive, recreational, and in the moment.",
   );
 
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
-  const feedQuery = useQuery<{ items: FeedItem[] }>({
-    queryKey: ["/api/feed", filter],
-    queryFn: () => fetchFeed(filter),
+  const [sort, setSort] = useState<"relevant" | "latest">("relevant");
+  const loaderRef = useRef<HTMLDivElement | null>(null);
+  const pullStartRef = useRef<number | null>(null);
+
+  const queryString = useMemo(() => {
+    const params = new URLSearchParams();
+    if (search.trim()) params.set("search", search.trim());
+    params.set("filter", filter);
+    params.set("sort", sort);
+    params.set("limit", "12");
+    return params.toString();
+  }, [filter, search, sort]);
+
+  const feedQuery = useInfiniteQuery<FeedResponse>({
+    queryKey: ["/api/feed", queryString],
+    initialPageParam: 0,
+    queryFn: async ({ pageParam }) => {
+      const response = await apiRequest("GET", `/api/feed?${queryString}&cursor=${pageParam}`);
+      return response.json();
+    },
+    getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.nextCursor : undefined),
     staleTime: 60_000,
   });
+  const { fetchNextPage, hasNextPage, isFetchingNextPage, isRefetching, refetch } = feedQuery;
 
   const interactionMutation = useMutation<void, Error, {
     item: FeedItem;
@@ -138,6 +160,55 @@ export default function FeedPage() {
     },
   });
 
+  useEffect(() => {
+    const node = loaderRef.current;
+    if (!node) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const first = entries[0];
+        if (first?.isIntersecting && hasNextPage && !isFetchingNextPage) {
+          void fetchNextPage();
+        }
+      },
+      { rootMargin: "300px" },
+    );
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+
+  useEffect(() => {
+    const onTouchStart = (event: TouchEvent) => {
+      if (window.scrollY <= 0) {
+        pullStartRef.current = event.touches[0]?.clientY ?? null;
+      }
+    };
+
+    const onTouchMove = (event: TouchEvent) => {
+      if (pullStartRef.current === null || window.scrollY > 0 || isRefetching) return;
+      const y = event.touches[0]?.clientY ?? pullStartRef.current;
+      if (y - pullStartRef.current > 90) {
+        pullStartRef.current = null;
+        void refetch();
+      }
+    };
+
+    const onTouchEnd = () => {
+      pullStartRef.current = null;
+    };
+
+    window.addEventListener("touchstart", onTouchStart, { passive: true });
+    window.addEventListener("touchmove", onTouchMove, { passive: true });
+    window.addEventListener("touchend", onTouchEnd, { passive: true });
+
+    return () => {
+      window.removeEventListener("touchstart", onTouchStart);
+      window.removeEventListener("touchmove", onTouchMove);
+      window.removeEventListener("touchend", onTouchEnd);
+    };
+  }, [isRefetching, refetch]);
+
   const handleOpen = (item: FeedItem) => {
     if (item.url.startsWith("http://") || item.url.startsWith("https://")) {
       window.open(item.url, "_blank", "noopener,noreferrer");
@@ -146,7 +217,7 @@ export default function FeedPage() {
     if (item.route) setLocation(item.route);
   };
 
-  const allItems = feedQuery.data?.items ?? [];
+  const items = (feedQuery.data?.pages ?? []).flatMap((page) => page.items);
 
   return (
     <div className="min-h-screen bg-background">
@@ -157,38 +228,90 @@ export default function FeedPage() {
         icon={<Constellation state="idle" size={24} className="opacity-70" />}
       />
 
-      {/* Filter chips */}
-      <div className="px-4 pb-3 pt-1 overflow-x-auto">
-        <div className="flex gap-2 min-w-max">
-          {FILTERS.map((chip) => (
-            <button
-              type="button"
-              key={chip.id}
-              onClick={() => setFilter(chip.id)}
-              aria-pressed={filter === chip.id}
-              className={cn(
-                "rounded-full px-4 py-1.5 text-xs font-medium border transition-all min-h-11",
-                filter === chip.id
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "border-border/50 text-muted-foreground hover:text-foreground"
-              )}
-            >
-              {chip.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      <div className="mx-auto max-w-2xl space-y-3 px-4 pb-28 pt-1">
+        <Card className="border-border/50">
+          <CardContent className="space-y-4 p-4">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search the current"
+                className="pl-9"
+              />
+            </div>
 
-      <div className="mx-auto max-w-2xl px-4 pb-28 space-y-3">
-        {/* Loading state */}
+            <div className="overflow-x-auto">
+              <div className="flex min-w-max gap-2">
+                {FILTERS.map((chip) => (
+                  <button
+                    type="button"
+                    key={chip.id}
+                    onClick={() => setFilter(chip.id)}
+                    aria-pressed={filter === chip.id}
+                    className={cn(
+                      "rounded-full border px-4 py-1.5 text-xs font-medium transition-all min-h-11",
+                      filter === chip.id
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border/50 text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {chip.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Sort
+              </span>
+              <Button
+                size="sm"
+                variant={sort === "relevant" ? "default" : "ghost"}
+                className="min-h-11"
+                onClick={() => setSort("relevant")}
+              >
+                Relevant
+              </Button>
+              <Button
+                size="sm"
+                variant={sort === "latest" ? "default" : "ghost"}
+                className="min-h-11"
+                onClick={() => setSort("latest")}
+              >
+                Latest
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="min-h-11"
+                disabled={isRefetching}
+                onClick={() => void refetch()}
+              >
+                {isRefetching ? (
+                  <>
+                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                    Refreshing…
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+                    Refresh
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         {feedQuery.isLoading && (
-          <div className="flex items-center justify-center py-12 text-muted-foreground gap-2 text-sm">
+          <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
             Pulling your stream…
           </div>
         )}
 
-        {/* Error state */}
         {feedQuery.isError && (
           <Card>
             <CardContent className="space-y-3 p-6">
@@ -196,7 +319,7 @@ export default function FeedPage() {
               <p className="text-sm text-muted-foreground">
                 Nothing wrong on your end — try refreshing.
               </p>
-              <Button variant="outline" size="sm" onClick={() => feedQuery.refetch()}>
+              <Button variant="outline" size="sm" onClick={() => void refetch()}>
                 <RefreshCw className="mr-2 h-3.5 w-3.5" />
                 Refresh
               </Button>
@@ -204,16 +327,14 @@ export default function FeedPage() {
           </Card>
         )}
 
-        {/* Empty state */}
-        {!feedQuery.isLoading && !feedQuery.isError && allItems.length === 0 && (
-          <div className="py-12 text-center text-muted-foreground text-sm">
+        {!feedQuery.isLoading && !feedQuery.isError && items.length === 0 && (
+          <div className="py-12 text-center text-sm text-muted-foreground">
             <p>Nothing here yet.</p>
             <p className="mt-1 text-xs">Try a different filter or pull to refresh.</p>
           </div>
         )}
 
-        {/* Feed cards */}
-        {allItems.map((item) => (
+        {items.map((item) => (
           <FeedCard
             key={`${item.id}-${item.url}`}
             item={item}
@@ -221,12 +342,22 @@ export default function FeedPage() {
             onInteract={(action) => interactionMutation.mutate({ item, action })}
           />
         ))}
+
+        {!feedQuery.isLoading && !feedQuery.isError && (
+          <div ref={loaderRef} className="py-6 text-center text-xs text-muted-foreground">
+            {isFetchingNextPage ? (
+              <Loader2 className="mx-auto h-4 w-4 animate-spin" />
+            ) : hasNextPage ? (
+              "Scroll for more"
+            ) : (
+              "You're caught up"
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
 }
-
-// ── Feed Card ─────────────────────────────────────────────────────────────────
 
 interface FeedCardProps {
   item: FeedItem;
@@ -235,21 +366,22 @@ interface FeedCardProps {
 }
 
 function FeedCard({ item, onOpen, onInteract }: FeedCardProps) {
-  const mixKey = item.mix && MIX_LABELS[item.mix] && MIX_COLORS[item.mix] ? item.mix : null;
+  const mixKey =
+    (item.mix && MIX_LABELS[item.mix] && MIX_COLORS[item.mix] ? item.mix : null) ??
+    (item.streamBucket ? item.streamBucket : null);
   const mixLabel = mixKey ? MIX_LABELS[mixKey] : null;
   const mixColor = mixKey ? MIX_COLORS[mixKey] : null;
 
   return (
-    <Card className="border-border/50 overflow-hidden">
-      <CardContent className="p-4 space-y-3">
-        {/* Top row: mix badge + zone constellation */}
+    <Card className="overflow-hidden border-border/50">
+      <CardContent className="space-y-3 p-4">
         <div className="flex items-center justify-between">
           <div>
             {mixLabel && mixColor && (
               <span
                 className={cn(
-                  "text-[11px] font-medium px-2 py-0.5 rounded-full border",
-                  mixColor
+                  "rounded-full border px-2 py-0.5 text-[11px] font-medium",
+                  mixColor,
                 )}
               >
                 {mixLabel}
@@ -264,32 +396,30 @@ function FeedCard({ item, onOpen, onInteract }: FeedCardProps) {
           )}
         </div>
 
-        {/* Content */}
         <div>
-          <h3 className="font-semibold text-sm leading-snug">{item.title}</h3>
-          <p className="text-xs text-muted-foreground mt-1 leading-relaxed line-clamp-2">
+          <h3 className="text-sm font-semibold leading-snug">{item.title}</h3>
+          <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
             {item.description}
           </p>
+          {item.duration && (
+            <p className="mt-1 text-[11px] text-muted-foreground/70">{item.duration}</p>
+          )}
         </div>
 
-        {/* Why for you */}
         {item.whyForYou && (
           <div className="flex items-start gap-1.5 rounded-lg bg-muted/40 px-3 py-2">
-            <Sparkles className="h-3 w-3 text-primary mt-0.5 shrink-0" />
-            <p className="text-[11px] text-muted-foreground leading-snug">{item.whyForYou}</p>
+            <Sparkles className="mt-0.5 h-3 w-3 shrink-0 text-primary" />
+            <p className="text-[11px] leading-snug text-muted-foreground">{item.whyForYou}</p>
           </div>
         )}
 
-        {/* Timing note */}
         {item.timingNote && (
-          <p className="text-[11px] text-muted-foreground/60 italic">{item.timingNote}</p>
+          <p className="text-[11px] italic text-muted-foreground/60">{item.timingNote}</p>
         )}
 
-        {/* Meta + actions */}
-        <div className="flex items-center justify-between pt-1">
+        <div className="flex items-center justify-between gap-2 pt-1">
           <span className="text-[11px] text-muted-foreground">{item.source}</span>
-          <div className="flex items-center gap-1">
-            {/* This hit my Zone */}
+          <div className="flex flex-wrap items-center justify-end gap-1">
             <button
               type="button"
               onClick={() => onInteract("like")}
@@ -298,14 +428,28 @@ function FeedCard({ item, onOpen, onInteract }: FeedCardProps) {
               className={cn(
                 "inline-flex h-11 w-11 items-center justify-center rounded-lg transition-colors",
                 item.liked
-                  ? "text-rose-500 bg-rose-500/10"
-                  : "text-muted-foreground hover:text-foreground"
+                  ? "bg-rose-500/10 text-rose-500"
+                  : "text-muted-foreground hover:text-foreground",
               )}
             >
               <Heart className="h-4 w-4" strokeWidth={item.liked ? 2.5 : 1.8} />
             </button>
 
-            {/* Save */}
+            <button
+              type="button"
+              onClick={() => onInteract("favorite")}
+              aria-label="Favorite"
+              aria-pressed={item.favorited}
+              className={cn(
+                "inline-flex h-11 w-11 items-center justify-center rounded-lg transition-colors",
+                item.favorited
+                  ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <Star className="h-4 w-4" strokeWidth={item.favorited ? 2.4 : 1.8} />
+            </button>
+
             <button
               type="button"
               onClick={() => onInteract("save")}
@@ -314,30 +458,28 @@ function FeedCard({ item, onOpen, onInteract }: FeedCardProps) {
               className={cn(
                 "inline-flex h-11 w-11 items-center justify-center rounded-lg transition-colors",
                 item.saved
-                  ? "text-sky-500 bg-sky-500/10"
-                  : "text-muted-foreground hover:text-foreground"
+                  ? "bg-sky-500/10 text-sky-500"
+                  : "text-muted-foreground hover:text-foreground",
               )}
             >
               <Bookmark className="h-4 w-4" strokeWidth={item.saved ? 2.5 : 1.8} />
             </button>
 
-            {/* Hide */}
             <button
               type="button"
               onClick={() => onInteract("hide")}
               aria-label="Not for me"
-              className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground transition-colors"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground"
             >
               <ShieldOff className="h-4 w-4" strokeWidth={1.8} />
             </button>
 
-            {/* Open */}
             {(item.route || item.url.startsWith("http")) && (
               <button
                 type="button"
                 onClick={() => onOpen(item)}
                 aria-label="Open"
-                className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground transition-colors"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground"
               >
                 <ExternalLink className="h-4 w-4" strokeWidth={1.8} />
               </button>

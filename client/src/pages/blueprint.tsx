@@ -130,7 +130,7 @@ interface BlueprintData {
 }
 
 export function BlueprintPage() {
-  usePageMeta("Blueprint", "Your personalized wellness blueprint.");
+  usePageMeta("Blueprint", "Your personalized zones and currents blueprint.");
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("foundations");
 
@@ -148,7 +148,7 @@ export function BlueprintPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <PageHeader title="Wellness Blueprint" backPath="/" rightContent={<ThemeToggle />} />
+      <PageHeader title="Energy Blueprint" backPath="/" rightContent={<ThemeToggle />} />
 
       <main className="max-w-4xl mx-auto px-4 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
@@ -159,19 +159,19 @@ export function BlueprintPage() {
             </TabsTrigger>
             <TabsTrigger value="baseline" className="flex flex-col gap-1 py-3 data-[state=active]:bg-primary/10" data-testid="tab-baseline">
               <Heart className="w-4 h-4" />
-              <span className="text-xs">Baseline</span>
+              <span className="text-xs">Native State</span>
             </TabsTrigger>
             <TabsTrigger value="dimensions" className="flex flex-col gap-1 py-3 data-[state=active]:bg-sky-500/20" data-testid="tab-dimensions">
               <Compass className="w-4 h-4" />
-              <span className="text-xs">Dimensions</span>
+              <span className="text-xs">Zones</span>
             </TabsTrigger>
             <TabsTrigger value="signals" className="flex flex-col gap-1 py-3 data-[state=active]:bg-primary/10" data-testid="tab-signals">
               <AlertCircle className="w-4 h-4" />
-              <span className="text-xs">Signals</span>
+              <span className="text-xs">Static</span>
             </TabsTrigger>
             <TabsTrigger value="actions" className="flex flex-col gap-1 py-3 data-[state=active]:bg-primary/10" data-testid="tab-actions">
               <RefreshCw className="w-4 h-4" />
-              <span className="text-xs">Reset</span>
+              <span className="text-xs">Reset Protocols</span>
             </TabsTrigger>
             <TabsTrigger value="support" className="flex flex-col gap-1 py-3 data-[state=active]:bg-primary/10" data-testid="tab-support">
               <Users className="w-4 h-4" />
@@ -179,7 +179,7 @@ export function BlueprintPage() {
             </TabsTrigger>
             <TabsTrigger value="reflection" className="flex flex-col gap-1 py-3 data-[state=active]:bg-primary/10" data-testid="tab-reflection">
               <BookOpen className="w-4 h-4" />
-              <span className="text-xs">Reflect</span>
+              <span className="text-xs">Integrate</span>
             </TabsTrigger>
           </TabsList>
 
@@ -208,7 +208,7 @@ export function BlueprintPage() {
           </TabsContent>
 
           <TabsContent value="reflection" className="space-y-6">
-            <ReflectionSection reflections={data?.reflections || []} />
+            <IntegrationLogsSection reflections={data?.reflections || []} />
           </TabsContent>
         </Tabs>
 
@@ -238,9 +238,9 @@ function BaselineSection({ baseline }: { baseline: BaselineProfile | null | unde
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/blueprint"] });
-      toast({ 
-        title: "Baseline saved", 
-        description: "Your baseline profile has been updated successfully." 
+      toast({
+        title: "Native state saved",
+        description: "Your native-state profile has been updated successfully."
       });
     },
   });
@@ -267,8 +267,8 @@ function BaselineSection({ baseline }: { baseline: BaselineProfile | null | unde
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg font-medium">How You Know You're Okay</CardTitle>
-          <CardDescription>Signs that tell you you're in a balanced state</CardDescription>
+          <CardTitle className="text-lg font-medium">How You Know Your Native State</CardTitle>
+          <CardDescription>Signals that tell you your circuits are steady</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap gap-2">
@@ -286,7 +286,7 @@ function BaselineSection({ baseline }: { baseline: BaselineProfile | null | unde
           </div>
           <div className="flex gap-2">
             <Input
-              placeholder="Add a baseline sign..."
+              placeholder="Add a native-state signal..."
               value={newSign}
               onChange={(e) => setNewSign(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && addSign()}
@@ -301,8 +301,8 @@ function BaselineSection({ baseline }: { baseline: BaselineProfile | null | unde
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg font-medium">What Supports You Daily</CardTitle>
-          <CardDescription>Things that help maintain your balance</CardDescription>
+          <CardTitle className="text-lg font-medium">Daily Recharge Supports</CardTitle>
+          <CardDescription>Things that keep your circuits steady</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap gap-2">
@@ -320,7 +320,7 @@ function BaselineSection({ baseline }: { baseline: BaselineProfile | null | unde
           </div>
           <div className="flex gap-2">
             <Input
-              placeholder="Add a daily support..."
+              placeholder="Add a daily recharge..."
               value={newSupport}
               onChange={(e) => setNewSupport(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && addSupport()}
@@ -371,7 +371,7 @@ function BaselineSection({ baseline }: { baseline: BaselineProfile | null | unde
       <Card>
         <CardHeader>
           <CardTitle className="text-lg font-medium">Notes</CardTitle>
-          <CardDescription>Anything else about your baseline</CardDescription>
+          <CardDescription>Anything else about your native state</CardDescription>
         </CardHeader>
         <CardContent>
           <Textarea
@@ -386,7 +386,7 @@ function BaselineSection({ baseline }: { baseline: BaselineProfile | null | unde
 
       <Button onClick={save} disabled={mutation.isPending} className="w-full" data-testid="button-save-baseline">
         {mutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Check className="w-4 h-4 mr-2" />}
-        Save Baseline
+        Save Native State
       </Button>
     </div>
   );
@@ -492,8 +492,8 @@ function DimensionsSection() {
       lastUpdated: Date.now(),
     });
     toast({ 
-      title: "Level updated",
-      description: `${selectedDimension} dimension has been updated.` 
+      title: "Zone level updated",
+      description: `${selectedDimension} zone has been updated.`
     });
   };
 
@@ -587,8 +587,8 @@ function DimensionsSection() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg font-medium">How do you feel in this area right now?</CardTitle>
-            <CardDescription>There is no right or wrong answer. Just notice where you are today.</CardDescription>
+            <CardTitle className="text-lg font-medium">How lit is this zone right now?</CardTitle>
+            <CardDescription>No pressure, just read the meter honestly.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {LEVEL_LABELS.map((item) => (
@@ -616,12 +616,12 @@ function DimensionsSection() {
           </CardContent>
         </Card>
 
-        {/* Dimension-Specific Questions */}
+        {/* Zone-Specific Questions */}
         {dimensionQuestions.length > 0 && (
           <Card>
             <CardHeader>
               <CardTitle className="text-lg font-medium">Reflective Questions</CardTitle>
-              <CardDescription>Take time to consider these questions about this dimension</CardDescription>
+              <CardDescription>Take time to consider these questions about this zone</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               {dimensionQuestions.map((q, idx) => (
@@ -642,7 +642,7 @@ function DimensionsSection() {
               ))}
               <Button onClick={saveQuestionAnswers} size="sm" data-testid="button-save-questions">
                 <Check className="w-4 h-4 mr-2" />
-                Save Reflections
+                Save Zone Reflections
               </Button>
             </CardContent>
           </Card>
@@ -650,8 +650,8 @@ function DimensionsSection() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg font-medium">What supports you in this area?</CardTitle>
-            <CardDescription>Things, people, or practices that help you feel well here</CardDescription>
+            <CardTitle className="text-lg font-medium">What helps this zone stay powered?</CardTitle>
+            <CardDescription>People, tools, or rituals that keep this zone charged</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex flex-wrap gap-2">
@@ -681,12 +681,12 @@ function DimensionsSection() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg font-medium">Personal Reflection</CardTitle>
+            <CardTitle className="text-lg font-medium">Circuit Reflection</CardTitle>
             <CardDescription>Any thoughts, patterns, or insights you want to remember</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <Textarea
-              placeholder="What do you notice about this area of your life?"
+              placeholder="What do you notice about this zone lately?"
               value={currentAssessment?.notes || ""}
               onChange={(e) => updateNotes(e.target.value)}
               className="min-h-24"
@@ -694,7 +694,7 @@ function DimensionsSection() {
             />
             <Button onClick={saveNotes} size="sm" data-testid="button-save-notes">
               <Check className="w-4 h-4 mr-2" />
-              Save Reflection
+              Save Circuit Reflection
             </Button>
           </CardContent>
         </Card>
@@ -712,9 +712,9 @@ function DimensionsSection() {
   return (
     <div className="space-y-6">
       <div className="text-center mb-6">
-        <h2 className="text-xl font-display font-semibold mb-2">The 8 Wellness Dimensions</h2>
+        <h2 className="text-xl font-display font-semibold mb-2">The 8 Core Zones</h2>
         <p className="text-sm text-muted-foreground">
-          Tap any dimension to check in. You are the expert on yourself.
+          Tap any zone to read its state. You know your system best.
         </p>
       </div>
 
@@ -752,7 +752,7 @@ function DimensionsSection() {
 
       <div className="pt-4 border-t">
         <p className="text-xs text-center text-muted-foreground">
-          Wellness is about awareness and self-compassion, not perfection.
+          Read the meter without pressure. Small resets compound.
         </p>
       </div>
     </div>
@@ -788,8 +788,8 @@ function SignalsSection({ signals }: { signals: StressSignalsType | null | undef
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg font-medium">Things That Drain You</CardTitle>
-          <CardDescription>Patterns or situations that tend to deplete your energy</CardDescription>
+          <CardTitle className="text-lg font-medium">Static / Interference</CardTitle>
+          <CardDescription>Patterns or situations that create static in your circuits</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap gap-2">
@@ -807,7 +807,7 @@ function SignalsSection({ signals }: { signals: StressSignalsType | null | undef
           </div>
           <div className="flex gap-2">
             <Input
-              placeholder="Add a draining pattern..."
+              placeholder="Add a static pattern..."
               value={newDraining}
               onChange={(e) => setNewDraining(e.target.value)}
               onKeyDown={(e) => {
@@ -837,8 +837,8 @@ function SignalsSection({ signals }: { signals: StressSignalsType | null | undef
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg font-medium">Early Warning Signs</CardTitle>
-          <CardDescription>Signals that your balance is shifting</CardDescription>
+          <CardTitle className="text-lg font-medium">Interference Alerts</CardTitle>
+          <CardDescription>Signals that your zones are flickering</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap gap-2">
@@ -856,7 +856,7 @@ function SignalsSection({ signals }: { signals: StressSignalsType | null | undef
           </div>
           <div className="flex gap-2">
             <Input
-              placeholder="Add an early signal..."
+              placeholder="Add an interference alert..."
               value={newSignal}
               onChange={(e) => setNewSignal(e.target.value)}
               onKeyDown={(e) => {
@@ -936,7 +936,7 @@ function SignalsSection({ signals }: { signals: StressSignalsType | null | undef
       <Card>
         <CardHeader>
           <CardTitle className="text-lg font-medium">Notes</CardTitle>
-          <CardDescription>Anything else about your signals</CardDescription>
+          <CardDescription>Anything else about your static patterns</CardDescription>
         </CardHeader>
         <CardContent>
           <Textarea
@@ -951,7 +951,7 @@ function SignalsSection({ signals }: { signals: StressSignalsType | null | undef
 
       <Button onClick={save} disabled={mutation.isPending} className="w-full" data-testid="button-save-signals">
         {mutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Check className="w-4 h-4 mr-2" />}
-        Save Signals
+        Save Static Map
       </Button>
     </div>
   );
@@ -973,7 +973,7 @@ function ActionsSection({ actions }: { actions: StabilizingAction[] }) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/blueprint"] });
-      toast({ title: "Created", description: "Reset action added." });
+      toast({ title: "Created", description: "Reset protocol added." });
       resetForm();
     },
   });
@@ -985,7 +985,7 @@ function ActionsSection({ actions }: { actions: StabilizingAction[] }) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/blueprint"] });
-      toast({ title: "Deleted", description: "Reset action removed." });
+      toast({ title: "Deleted", description: "Reset protocol removed." });
     },
   });
 
@@ -1013,12 +1013,12 @@ function ActionsSection({ actions }: { actions: StabilizingAction[] }) {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-medium">Reset Actions</h2>
-          <p className="text-sm text-muted-foreground">Things that help you return to balance</p>
+          <h2 className="text-lg font-medium">Reset Protocols</h2>
+          <p className="text-sm text-muted-foreground">Actions that help you flip and ground your current</p>
         </div>
         <Button onClick={() => setShowForm(!showForm)} variant="outline" data-testid="button-add-action">
           <Plus className="w-4 h-4 mr-2" />
-          Add Action
+          Add Protocol
         </Button>
       </div>
 
@@ -1077,7 +1077,7 @@ function ActionsSection({ actions }: { actions: StabilizingAction[] }) {
             </div>
 
             <div>
-              <label className="text-sm font-medium">Wellness Dimensions</label>
+              <label className="text-sm font-medium">Zones</label>
               <div className="flex flex-wrap gap-2 mt-2">
                 {DIMENSION_OPTIONS.map((dim) => (
                   <Badge
@@ -1117,8 +1117,8 @@ function ActionsSection({ actions }: { actions: StabilizingAction[] }) {
           <Card>
             <CardContent className="py-12 text-center">
               <RefreshCw className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
-              <p className="text-muted-foreground">No reset actions yet.</p>
-              <p className="text-sm text-muted-foreground mt-1">Add actions that help you return to balance.</p>
+              <p className="text-muted-foreground">No reset protocols yet.</p>
+              <p className="text-sm text-muted-foreground mt-1">Add actions that help you reset and ground quickly.</p>
             </CardContent>
           </Card>
         )}
@@ -1358,13 +1358,13 @@ function SupportSection({ support }: { support: SupportPreferencesType | null | 
 
       <Button onClick={save} disabled={mutation.isPending} className="w-full" data-testid="button-save-support">
         {mutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Check className="w-4 h-4 mr-2" />}
-        Save Support Preferences
+        Save Support Wiring
       </Button>
     </div>
   );
 }
 
-function ReflectionSection({ reflections }: { reflections: RecoveryReflection[] }) {
+function IntegrationLogsSection({ reflections }: { reflections: RecoveryReflection[] }) {
   const { toast } = useToast();
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState("");
@@ -1381,7 +1381,7 @@ function ReflectionSection({ reflections }: { reflections: RecoveryReflection[] 
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/blueprint"] });
-      toast({ title: "Created", description: "Reflection added." });
+      toast({ title: "Created", description: "Integration log added." });
       resetForm();
     },
   });
@@ -1393,7 +1393,7 @@ function ReflectionSection({ reflections }: { reflections: RecoveryReflection[] 
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/blueprint"] });
-      toast({ title: "Deleted", description: "Reflection removed." });
+      toast({ title: "Deleted", description: "Integration log removed." });
     },
   });
 
@@ -1407,7 +1407,7 @@ function ReflectionSection({ reflections }: { reflections: RecoveryReflection[] 
 
   const handleCreate = () => {
     createMutation.mutate({
-      title: title.trim() || `Reflection - ${new Date().toLocaleDateString()}`,
+      title: title.trim() || `Integration Log - ${new Date().toLocaleDateString()}`,
       content: content.trim() || null,
       lessonsLearned: lessonsLearned.length > 0 ? lessonsLearned : null,
       adjustmentsToMake: adjustmentsToMake.length > 0 ? adjustmentsToMake : null,
@@ -1418,12 +1418,12 @@ function ReflectionSection({ reflections }: { reflections: RecoveryReflection[] 
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-medium">Recovery Reflections</h2>
-          <p className="text-sm text-muted-foreground">Looking back to move forward</p>
+          <h2 className="text-lg font-medium">Integration Logs</h2>
+          <p className="text-sm text-muted-foreground">Read your patterns and lock in what works</p>
         </div>
         <Button onClick={() => setShowForm(!showForm)} variant="outline" data-testid="button-add-reflection">
           <Plus className="w-4 h-4 mr-2" />
-          Add Reflection
+          Add Log
         </Button>
       </div>
 
@@ -1442,9 +1442,9 @@ function ReflectionSection({ reflections }: { reflections: RecoveryReflection[] 
             </div>
 
             <div>
-              <label className="text-sm font-medium">Reflection</label>
+              <label className="text-sm font-medium">Integration Log</label>
               <Textarea
-                placeholder="What happened? How did you navigate it?"
+                placeholder="What happened? What did you notice in the circuit?"
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 className="mt-1 min-h-24"
@@ -1453,7 +1453,7 @@ function ReflectionSection({ reflections }: { reflections: RecoveryReflection[] 
             </div>
 
             <div>
-              <label className="text-sm font-medium">Lessons Learned</label>
+              <label className="text-sm font-medium">Pattern Gains</label>
               <div className="flex flex-wrap gap-2 mt-2 mb-2">
                 {lessonsLearned.map((lesson, i) => (
                   <Badge key={i} variant="secondary" className="gap-1 pr-1">
@@ -1469,7 +1469,7 @@ function ReflectionSection({ reflections }: { reflections: RecoveryReflection[] 
               </div>
               <div className="flex gap-2">
                 <Input
-                  placeholder="Add a lesson..."
+                  placeholder="Add a pattern gain..."
                   value={newLesson}
                   onChange={(e) => setNewLesson(e.target.value)}
                   onKeyDown={(e) => {
@@ -1497,7 +1497,7 @@ function ReflectionSection({ reflections }: { reflections: RecoveryReflection[] 
             </div>
 
             <div>
-              <label className="text-sm font-medium">Adjustments to Make</label>
+              <label className="text-sm font-medium">Next Circuit Adjustments</label>
               <div className="flex flex-wrap gap-2 mt-2 mb-2">
                 {adjustmentsToMake.map((adj, i) => (
                   <Badge key={i} variant="outline" className="gap-1 pr-1">
@@ -1543,7 +1543,7 @@ function ReflectionSection({ reflections }: { reflections: RecoveryReflection[] 
             <div className="flex gap-2 pt-2">
               <Button onClick={handleCreate} disabled={createMutation.isPending} data-testid="button-create-reflection">
                 {createMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Check className="w-4 h-4 mr-2" />}
-                Save Reflection
+                Save Integration Log
               </Button>
               <Button variant="ghost" onClick={resetForm} data-testid="button-cancel-reflection">
                 Cancel
@@ -1558,8 +1558,8 @@ function ReflectionSection({ reflections }: { reflections: RecoveryReflection[] 
           <Card>
             <CardContent className="py-12 text-center">
               <BookOpen className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
-              <p className="text-muted-foreground">No reflections yet.</p>
-              <p className="text-sm text-muted-foreground mt-1">After a challenging time, reflect on what you learned.</p>
+              <p className="text-muted-foreground">No integration logs yet.</p>
+              <p className="text-sm text-muted-foreground mt-1">After a heavy moment, log what helped you reset.</p>
             </CardContent>
           </Card>
         )}
@@ -1569,7 +1569,7 @@ function ReflectionSection({ reflections }: { reflections: RecoveryReflection[] 
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="font-medium text-foreground">{reflection.title || "Reflection"}</span>
+                    <span className="font-medium text-foreground">{reflection.title || "Integration Log"}</span>
                     <span className="text-xs text-muted-foreground">
                       {reflection.createdAt ? new Date(reflection.createdAt).toLocaleDateString() : ""}
                     </span>
@@ -1579,7 +1579,7 @@ function ReflectionSection({ reflections }: { reflections: RecoveryReflection[] 
                   )}
                   {reflection.lessonsLearned && reflection.lessonsLearned.length > 0 && (
                     <div className="mt-3">
-                      <span className="text-xs font-medium text-muted-foreground">Lessons:</span>
+                      <span className="text-xs font-medium text-muted-foreground">Pattern gains:</span>
                       <div className="flex flex-wrap gap-1 mt-1">
                         {reflection.lessonsLearned.map((lesson, i) => (
                           <Badge key={i} variant="secondary" className="text-xs">
@@ -1765,7 +1765,7 @@ function FoundationsSection() {
 
             <div className="space-y-2">
               <label htmlFor="foundations-minimum-day" className="text-sm font-medium">Minimum day</label>
-              <p className="text-xs text-muted-foreground">The smallest version of a good day — your non-negotiable baseline</p>
+              <p className="text-xs text-muted-foreground">The smallest version of a good day — your non-negotiable native state</p>
               <Textarea
                 id="foundations-minimum-day"
                 placeholder="e.g. Sleep, one meal I prepared, 10 minutes outside…"

@@ -33,10 +33,14 @@ import {
   extractSyncableItems,
 } from "./_shared";
 import { getUserContextSnapshot, toUserLifeContext } from "../lib/user-context";
+import {
+  buildCompanionContext,
+  companionContextPromptBlock,
+  serializeCompanionContext,
+} from "../lib/companion-context";
 import { DW_GUIDE_BEHAVIOR } from "@shared/dw-persona";
 import { resolveAdaptiveDWMode } from "../lib/dw-role-picker";
 import { logDwRolePick } from "../lib/dw-role-pick-log";
-import { buildCompanionContext, emptyCompanionContext, serializeCompanionContext } from "../lib/companion-context";
 
 /**
  * Test-only escape hatch used by the e2e suite (see
@@ -85,7 +89,13 @@ export async function chatHandler(req: Request, res: Response) {
     const userId = req.session.userId!;
 
     const snapshot = await getUserContextSnapshot(userId);
-    const userContext = toUserLifeContext(snapshot, { category: context });
+    const companion = await buildCompanionContext(userId, {
+      useAstrologyInGuidance: snapshot.spirit.cosmicConsent.useAstrologyInGuidance,
+    });
+    const userContext = {
+      ...toUserLifeContext(snapshot, { category: context }),
+      companionContextPrompt: companionContextPromptBlock(companion),
+    };
 
     // Adaptive role: pick the right DW lane unless the client locked one.
     // Hysteresis against `previousMode` is handled inside the resolver.
@@ -103,9 +113,7 @@ export async function chatHandler(req: Request, res: Response) {
       ...dwModeResult.logFields,
     });
 
-    const companionContextBlock = serializeCompanionContext(
-      await buildCompanionContext(userId).catch(() => emptyCompanionContext())
-    );
+    const companionContextBlock = serializeCompanionContext(companion);
 
     const rawResponse = await generateChatResponse(
       message,
@@ -321,12 +329,18 @@ export async function smartChatHandler(req: Request, res: Response) {
       : message;
 
     const snapshot = await getUserContextSnapshot(userId);
+    const companion = await buildCompanionContext(userId, {
+      useAstrologyInGuidance: cosmicConsent && typeof cosmicConsent === "object"
+        ? Boolean(cosmicConsent.useAstrologyInGuidance)
+        : snapshot.spirit.cosmicConsent.useAstrologyInGuidance,
+    });
     const userContext = {
       ...toUserLifeContext(snapshot, {
         category: context,
         energyContext: energyContext || undefined,
         lifeSystem: lifeSystemContext || undefined,
       }),
+      companionContextPrompt: companionContextPromptBlock(companion),
       profile: clientProfile || null,
       cosmicConsent: cosmicConsent && typeof cosmicConsent === "object"
         ? {
@@ -364,9 +378,7 @@ export async function smartChatHandler(req: Request, res: Response) {
       .join("\n\n");
 
     const wearablesYesterdayForChat = await safeGetWearablesYesterday(req.session.userId!);
-    const companionContextBlock = serializeCompanionContext(
-      await buildCompanionContext(userId).catch(() => emptyCompanionContext())
-    );
+    const companionContextBlock = serializeCompanionContext(companion);
 
     // Test-only short-circuit: e2e suite forces the resilient AI client to
     // appear unavailable so we can prove the catch block below still
