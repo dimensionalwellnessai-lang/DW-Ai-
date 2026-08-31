@@ -563,7 +563,7 @@ export default function MoodTrackerPage() {
       <PageHeader title="Mood Tracker" showBack backPath="/command-center" />
 
       {/* DW opening line */}
-      <p className="text-sm text-muted-foreground italic px-5 pt-3 pb-1" data-testid="text-dw-line-mood">
+      <p className="text-sm text-muted-foreground italic px-5 pt-3 pb-1" data-testid="text-dw-line-mood-tracker">
         Your feelings are information, not instructions — notice them here.
       </p>
 

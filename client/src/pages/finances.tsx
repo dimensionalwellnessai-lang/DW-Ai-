@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -194,10 +194,11 @@ interface ChatMessage { role: "user" | "assistant"; content: string; }
 
 export default function FinancesPage() {
   usePageMeta("Finances", "Track your budget, manage spending, and build financial wellness.");
+  const queryClient = useQueryClient();
   const [profileOpen, setProfileOpen] = useState(false);
   const [financeProfile, setFinanceProfile] = useState<FinanceProfile | null>(getFinanceProfile());
   const [activeTab, setActiveTab] = useState("overview");
-  const { data: financeSummary } = useQuery<Summary>({ queryKey: ["/api/finance/summary"] });
+  const financeSummary = queryClient.getQueryData<Summary>(["/api/finance/summary"]);
 
   return (
     <div className="container max-w-7xl pt-6 pb-32 space-y-6">
@@ -213,7 +214,7 @@ export default function FinancesPage() {
       {/* DW opening line */}
       <p className="text-sm text-muted-foreground italic -mt-2" data-testid="text-dw-line-finances">
         {financeSummary
-          ? financeSummary.budgets?.some((b: any) => b.spent > b.monthlyLimit)
+          ? financeSummary.budgets.some((budget) => budget.spent > budget.monthlyLimit)
             ? "A few budgets are over — awareness is the first move toward change."
             : "Your money shows you what you value — let's make sure they match."
           : "Financial clarity is a form of self-respect."}

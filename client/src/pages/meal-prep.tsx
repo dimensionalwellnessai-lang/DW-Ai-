@@ -1528,7 +1528,7 @@ Provide 2-3 helpful alternatives in a calm, supportive tone. Format as a brief l
       <PageHeader title="Meal Plans" />
 
       {/* DW opening line */}
-      <p className="text-sm text-muted-foreground italic px-5 pt-3 pb-1" data-testid="text-dw-line-meal">
+      <p className="text-sm text-muted-foreground italic px-5 pt-3 pb-1" data-testid="text-dw-line-meal-prep">
         {dbMealPlans.length > 0
           ? `${dbMealPlans.length} meal plan${dbMealPlans.length !== 1 ? "s" : ""} ready — good nourishment starts here.`
           : "Good nourishment starts with a little intention."}
