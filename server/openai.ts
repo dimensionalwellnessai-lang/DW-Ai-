@@ -32,6 +32,295 @@ function _buildPerplexityClient(): OpenAI | null {
   return new OpenAI({ baseURL, apiKey, timeout: 30_000, maxRetries: 0 });
 }
 
+type MainChatProvider = "openai" | "anthropic-compatible";
+
+export interface MainChatModelResolution {
+  model: string;
+  provider: MainChatProvider;
+  source: "DW_AI_MODEL_CHAT" | "provider-default";
+}
+
+interface MainChatClientConfigStatus {
+  source: "dw-chat-override" | "ai-integrations" | "openai-direct" | "none";
+  baseURL?: string;
+  apiKeyConfigured: boolean;
+  missing: string[];
+}
+
+const OPENAI_MAIN_CHAT_FALLBACK_MODEL = "gpt-4o-mini";
+const ANTHROPIC_MAIN_CHAT_DEFAULT_MODEL = "claude-sonnet-4-5";
+
+function _inferProviderFromModel(model: string | undefined): MainChatProvider | null {
+  if (!model) return null;
+  return model.toLowerCase().includes("claude") ? "anthropic-compatible" : "openai";
+}
+
+function _inferProviderFromBaseURL(baseURL: string | undefined): MainChatProvider {
+  if (!baseURL) return "openai";
+  const normalized = baseURL.toLowerCase();
+  if (normalized.includes("anthropic")) return "anthropic-compatible";
+  return "openai";
+}
+
+function _resolveMainChatClientConfigStatus(): MainChatClientConfigStatus {
+  const chatBaseURL = process.env.DW_AI_CHAT_BASE_URL;
+  const chatApiKey = process.env.DW_AI_CHAT_API_KEY;
+  const overrideMissing: string[] = [];
+  if (chatBaseURL && chatApiKey) {
+    return { source: "dw-chat-override", baseURL: chatBaseURL, apiKeyConfigured: true, missing: [] };
+  }
+  if (chatBaseURL || chatApiKey) {
+    if (!chatBaseURL) overrideMissing.push("DW_AI_CHAT_BASE_URL");
+    if (!chatApiKey) overrideMissing.push("DW_AI_CHAT_API_KEY");
+  }
+
+  const integrationsBaseURL = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
+  const integrationsApiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+  if (integrationsBaseURL && integrationsApiKey) {
+    return { source: "ai-integrations", baseURL: integrationsBaseURL, apiKeyConfigured: true, missing: overrideMissing };
+  }
+
+  if (process.env.OPENAI_API_KEY) {
+    return { source: "openai-direct", apiKeyConfigured: true, missing: overrideMissing };
+  }
+
+  return {
+    source: "none",
+    apiKeyConfigured: false,
+    missing: [...overrideMissing, "AI_INTEGRATIONS_OPENAI_BASE_URL", "AI_INTEGRATIONS_OPENAI_API_KEY", "OPENAI_API_KEY"],
+  };
+}
+
+function _buildMainChatClient(): OpenAI | null {
+  const cfg = _resolveMainChatClientConfigStatus();
+  if (!cfg.apiKeyConfigured) return null;
+  switch (cfg.source) {
+    case "dw-chat-override":
+      return new OpenAI({
+        baseURL: process.env.DW_AI_CHAT_BASE_URL,
+        apiKey: process.env.DW_AI_CHAT_API_KEY,
+        timeout: 30_000,
+        maxRetries: 0,
+      });
+    case "ai-integrations":
+      return new OpenAI({
+        baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
+        apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
+        timeout: 30_000,
+        maxRetries: 0,
+      });
+    case "openai-direct":
+      return new OpenAI({ apiKey: process.env.OPENAI_API_KEY, timeout: 30_000, maxRetries: 0 });
+    default:
+      return null;
+  }
+}
+
+export function resolveMainChatModel(): MainChatModelResolution {
+  const explicitModel = process.env.DW_AI_MODEL_CHAT;
+  const providerHint =
+    _inferProviderFromModel(explicitModel) ||
+    _inferProviderFromBaseURL(_resolveMainChatClientConfigStatus().baseURL);
+  if (explicitModel) {
+    return {
+      model: explicitModel,
+      provider: providerHint,
+      source: "DW_AI_MODEL_CHAT",
+    };
+  }
+  if (providerHint === "anthropic-compatible") {
+    return {
+      model: ANTHROPIC_MAIN_CHAT_DEFAULT_MODEL,
+      provider: "anthropic-compatible",
+      source: "provider-default",
+    };
+  }
+  return {
+    model: OPENAI_MAIN_CHAT_FALLBACK_MODEL,
+    provider: "openai",
+    source: "provider-default",
+  };
+}
+
+export function normalizeToolCallsFromAssistantMessage(message: any): { name: string; arguments: Record<string, any> }[] {
+  const normalized: { name: string; arguments: Record<string, any> }[] = [];
+
+  if (Array.isArray(message?.tool_calls) && message.tool_calls.length > 0) {
+    for (const tc of message.tool_calls) {
+      const rawArgs = (tc as any)?.function?.arguments;
+      let parsedArgs: Record<string, any> = {};
+      if (typeof rawArgs === "string" && rawArgs.trim().length > 0) {
+        try {
+          parsedArgs = JSON.parse(rawArgs);
+        } catch {
+          parsedArgs = {};
+        }
+      } else if (rawArgs && typeof rawArgs === "object") {
+        parsedArgs = rawArgs;
+      }
+      normalized.push({
+        name: (tc as any)?.function?.name || "",
+        arguments: parsedArgs,
+      });
+    }
+  }
+
+  const contentBlocks = Array.isArray(message?.content) ? message.content : [];
+  for (const block of contentBlocks) {
+    if ((block as any)?.type !== "tool_use") continue;
+    const rawInput = (block as any)?.input;
+    let parsedInput: Record<string, any> = {};
+    if (typeof rawInput === "string" && rawInput.trim().length > 0) {
+      try {
+        parsedInput = JSON.parse(rawInput);
+      } catch {
+        parsedInput = {};
+      }
+    } else if (rawInput && typeof rawInput === "object") {
+      parsedInput = rawInput;
+    }
+    normalized.push({
+      name: (block as any)?.name || "",
+      arguments: parsedInput,
+    });
+  }
+
+  return normalized.filter((t) => !!t.name);
+}
+
+function _extractAssistantText(message: any): string {
+  if (typeof message?.content === "string") return message.content;
+  if (Array.isArray(message?.content)) {
+    return message.content
+      .filter((block: any) => block?.type === "text" && typeof block?.text === "string")
+      .map((block: any) => block.text)
+      .join("")
+      .trim();
+  }
+  return "";
+}
+
+export async function runMainChatFallbackChain<T>(args: {
+  primaryModel: string;
+  openAiFallbackModel?: string;
+  /**
+   * When true, the primary client IS the direct-OpenAI client (e.g. source is
+   * "openai-direct" or "ai-integrations"), so the OpenAI fallback step would
+   * use the same credentials and can be skipped.  When false (default), an
+   * independent `callOpenAiFallbackModel` caller should be provided that uses
+   * `_originalCreate` instead of the primary client.
+   */
+  primaryIsOpenAiDirect?: boolean;
+  callWithModel: (model: string) => Promise<T>;
+  callOpenAiFallbackModel?: (model: string) => Promise<T>;
+  callPerplexity: () => Promise<T>;
+}): Promise<{ result: T; provider: "primary" | "openai-fallback" | "perplexity"; model: string }> {
+  const openAiFallbackModel = args.openAiFallbackModel ?? OPENAI_MAIN_CHAT_FALLBACK_MODEL;
+
+  try {
+    const result = await args.callWithModel(args.primaryModel);
+    return { result, provider: "primary", model: args.primaryModel };
+  } catch (primaryError) {
+    console.warn(`[openai] Primary chat model failed (${args.primaryModel}), trying OpenAI fallback model:`, (primaryError as Error).message);
+  }
+
+  // Skip OpenAI fallback when:
+  // - The primary client already IS the direct-OpenAI client (same credentials, would fail again), or
+  // - No separate OpenAI fallback caller was provided AND the primary model is identical (nothing different to try)
+  const skipOpenAiFallback =
+    args.primaryIsOpenAiDirect ||
+    (!args.callOpenAiFallbackModel && args.primaryModel === openAiFallbackModel);
+
+  if (!skipOpenAiFallback) {
+    try {
+      const fallbackCaller = args.callOpenAiFallbackModel ?? args.callWithModel;
+      const result = await fallbackCaller(openAiFallbackModel);
+      return { result, provider: "openai-fallback", model: openAiFallbackModel };
+    } catch (openAiFallbackError) {
+      console.warn(`[openai] OpenAI fallback model failed (${openAiFallbackModel}), trying Perplexity:`, (openAiFallbackError as Error).message);
+    }
+  }
+
+  try {
+    const result = await args.callPerplexity();
+    return { result, provider: "perplexity", model: "sonar" };
+  } catch (perplexityError) {
+    console.error("[openai] Perplexity fallback also failed:", (perplexityError as Error).message);
+    throw new Error("DW_AI_UNAVAILABLE: All AI providers temporarily unavailable. Please try again in a moment.");
+  }
+}
+
+type OpenAIStyleChatChunk = {
+  choices?: Array<{
+    delta?: {
+      content?: string;
+      tool_calls?: Array<{
+        index?: number;
+        id?: string;
+        function?: {
+          name?: string;
+          arguments?: string;
+        };
+      }>;
+    };
+  }>;
+};
+
+export async function consumeChatCompletionStream(
+  stream: AsyncIterable<OpenAIStyleChatChunk>,
+  res: { write: (chunk: string) => void },
+): Promise<{ response: string; toolCalls?: { name: string; arguments: Record<string, any> }[] }> {
+  let fullResponse = "";
+  const toolCalls: { name: string; arguments: Record<string, any> }[] = [];
+  // Accumulate each parallel tool call independently by its index
+  const toolCallMap = new Map<number, { id: string; name: string; arguments: string }>();
+
+  for await (const chunk of stream) {
+    const delta = chunk.choices?.[0]?.delta;
+
+    if (delta?.content) {
+      fullResponse += delta.content;
+      res.write(`data: ${JSON.stringify({ content: delta.content })}\n\n`);
+    }
+
+    if (delta?.tool_calls) {
+      for (const toolCall of delta.tool_calls) {
+        if (toolCall.function) {
+          const idx = toolCall.index ?? 0;
+          const existing = toolCallMap.get(idx);
+          if (!existing) {
+            toolCallMap.set(idx, {
+              id: toolCall.id || "",
+              name: toolCall.function.name || "",
+              arguments: toolCall.function.arguments || "",
+            });
+          } else {
+            if (toolCall.function.name) existing.name += toolCall.function.name;
+            if (toolCall.function.arguments) existing.arguments += toolCall.function.arguments;
+          }
+        }
+      }
+    }
+  }
+
+  // Parse completed tool calls in index order
+  for (const [, tc] of [...toolCallMap.entries()].sort(([a], [b]) => a - b)) {
+    try {
+      toolCalls.push({
+        name: tc.name,
+        arguments: JSON.parse(tc.arguments),
+      });
+    } catch {
+      console.error("Failed to parse tool arguments:", tc.arguments);
+    }
+  }
+
+  return {
+    response: fullResponse || "I'm here with you. Take your time - there's no rush.",
+    toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+  };
+}
+
 // ─── Resilience state ──────────────────────────────────────────────────────────
 const _resilience = {
   openaiFailures: 0,
@@ -227,12 +516,42 @@ export { openai };
  * Returns which AI credentials are present/missing.
  * Never includes secret values — safe to surface in API responses.
  */
-export function getAiConfigStatus(): { configured: boolean; missing: string[] } {
-  if (process.env.OPENAI_API_KEY) return { configured: true, missing: [] };
-  const missing: string[] = [];
-  if (!process.env.AI_INTEGRATIONS_OPENAI_BASE_URL) missing.push("AI_INTEGRATIONS_OPENAI_BASE_URL");
-  if (!process.env.AI_INTEGRATIONS_OPENAI_API_KEY) missing.push("AI_INTEGRATIONS_OPENAI_API_KEY");
-  return { configured: missing.length === 0, missing };
+export function getAiConfigStatus(): {
+  configured: boolean;
+  missing: string[];
+  chat: {
+    provider: MainChatProvider;
+    model: string;
+    source: MainChatModelResolution["source"];
+    clientSource: MainChatClientConfigStatus["source"];
+    configured: boolean;
+    missing: string[];
+  };
+} {
+  // Top-level configured/missing reflects the global OpenAI client credentials
+  // used by non-chat routes (plans, routines-browse, etc.) and /api/health/ai.
+  const globalConfigured = !!(
+    (process.env.AI_INTEGRATIONS_OPENAI_BASE_URL && process.env.AI_INTEGRATIONS_OPENAI_API_KEY) ||
+    process.env.OPENAI_API_KEY
+  );
+  const globalMissing: string[] = globalConfigured
+    ? []
+    : ["AI_INTEGRATIONS_OPENAI_BASE_URL", "AI_INTEGRATIONS_OPENAI_API_KEY", "OPENAI_API_KEY"];
+
+  const mainChatClient = _resolveMainChatClientConfigStatus();
+  const chatModel = resolveMainChatModel();
+  return {
+    configured: globalConfigured,
+    missing: globalMissing,
+    chat: {
+      provider: chatModel.provider,
+      model: chatModel.model,
+      source: chatModel.source,
+      clientSource: mainChatClient.source,
+      configured: mainChatClient.apiKeyConfigured,
+      missing: [...mainChatClient.missing],
+    },
+  };
 }
 
 interface ChatMessage {
@@ -2089,29 +2408,75 @@ Calm over speed.`;
   ];
 
   try {
-    const response = await openai.chat.completions.create({
-      // gpt-4o-mini: 10x higher rate limits than gpt-4o, faster, perfect for chat
-      model: "gpt-4o-mini",
-      messages,
-      tools,
-      tool_choice: "auto",
-      max_completion_tokens: 1200,
-      temperature: 0.7,
+    const mainClient = _buildMainChatClient();
+    const chatModel = resolveMainChatModel();
+    const createMainCompletion = async (model: string) => {
+      if (!mainClient) throw new Error("Main chat provider is not configured");
+      return await _withRetry(
+        () =>
+          mainClient.chat.completions.create({
+            model,
+            messages,
+            tools,
+            tool_choice: "auto",
+            max_completion_tokens: 1200,
+            temperature: 0.7,
+          }),
+        3,
+        400,
+      );
+    };
+    const createOpenAiFallbackCompletion = async (model: string) => {
+      return await _withRetry(
+        () =>
+          _originalCreate({
+            model,
+            messages,
+            tools,
+            tool_choice: "auto",
+            max_completion_tokens: 1200,
+            temperature: 0.7,
+          }),
+        3,
+        400,
+      );
+    };
+    const createPerplexityFallback = async () => {
+      const perp = _buildPerplexityClient();
+      if (!perp) throw new Error("Perplexity fallback is not configured");
+      return await _withRetry(
+        () =>
+          perp.chat.completions.create({
+            model: "sonar",
+            messages,
+            tools,
+            tool_choice: "auto",
+            max_tokens: 1200,
+            temperature: 0.7,
+          } as Parameters<typeof perp.chat.completions.create>[0]),
+        3,
+        400,
+      );
+    };
+    const { result: response } = await runMainChatFallbackChain({
+      primaryModel: chatModel.model,
+      openAiFallbackModel: OPENAI_MAIN_CHAT_FALLBACK_MODEL,
+      primaryIsOpenAiDirect: ["openai-direct", "ai-integrations"].includes(_resolveMainChatClientConfigStatus().source),
+      callWithModel: createMainCompletion,
+      callOpenAiFallbackModel: createOpenAiFallbackCompletion,
+      callPerplexity: createPerplexityFallback,
     });
 
-    const message = response.choices[0]?.message;
-    
-    if (message?.tool_calls && message.tool_calls.length > 0) {
+    const message = (response as any)?.choices?.[0]?.message;
+    const normalizedToolCalls = normalizeToolCallsFromAssistantMessage(message);
+    if (normalizedToolCalls.length > 0) {
       return {
-        content: message.content || "Let me help you with that.",
-        toolCalls: message.tool_calls.map(tc => ({
-          name: (tc as any).function?.name || tc.type,
-          arguments: JSON.parse((tc as any).function?.arguments || '{}')
-        }))
+        content: _extractAssistantText(message) || "Let me help you with that.",
+        toolCalls: normalizedToolCalls,
       };
     }
 
-    const rawContent = message?.content || "I'm here with you. Take your time - there's no rush.";
+    const rawContent = _extractAssistantText(message) || "I'm here with you. Take your time - there's no rush.";
     return typeof rawContent === "string" ? enforceOneQuestion(rawContent) : rawContent;
   } catch (error: any) {
     const msg: string = error?.message || String(error);
@@ -3066,82 +3431,78 @@ RESPONSE FORMATTING:
   ];
 
   try {
-    const stream = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages,
-      tools,
-      tool_choice: "auto",
-      stream: true,
-      max_completion_tokens: 1200,
-      temperature: 0.7,
+    const mainClient = _buildMainChatClient();
+    const chatModel = resolveMainChatModel();
+    const createMainStream = async (model: string) => {
+      if (!mainClient) throw new Error("Main chat provider is not configured");
+      return await _withRetry(
+        () =>
+          mainClient.chat.completions.create({
+            model,
+            messages,
+            tools,
+            tool_choice: "auto",
+            stream: true,
+            max_completion_tokens: 1200,
+            temperature: 0.7,
+          }),
+        3,
+        400,
+      );
+    };
+    const createPerplexityFallbackStream = async () => {
+      const perp = _buildPerplexityClient();
+      if (!perp) throw new Error("Perplexity fallback is not configured");
+      return await _withRetry(
+        () =>
+          perp.chat.completions.create({
+            model: "sonar",
+            messages,
+            tools,
+            tool_choice: "auto",
+            stream: true,
+            max_tokens: 1200,
+            temperature: 0.7,
+          } as Parameters<typeof perp.chat.completions.create>[0]),
+        3,
+        400,
+      );
+    };
+    const createOpenAiFallbackStream = async (model: string) => {
+      return await _withRetry(
+        () =>
+          _originalCreate({
+            model,
+            messages,
+            tools,
+            tool_choice: "auto",
+            stream: true,
+            max_completion_tokens: 1200,
+            temperature: 0.7,
+          }),
+        3,
+        400,
+      );
+    };
+
+    const { result: stream } = await runMainChatFallbackChain({
+      primaryModel: chatModel.model,
+      openAiFallbackModel: OPENAI_MAIN_CHAT_FALLBACK_MODEL,
+      primaryIsOpenAiDirect: ["openai-direct", "ai-integrations"].includes(_resolveMainChatClientConfigStatus().source),
+      callWithModel: createMainStream,
+      callOpenAiFallbackModel: createOpenAiFallbackStream,
+      callPerplexity: createPerplexityFallbackStream,
     });
 
-    let fullResponse = "";
-    let toolCalls: { name: string; arguments: Record<string, any> }[] = [];
-    let currentToolCall: { id: string; name: string; arguments: string } | null = null;
-
-    for await (const chunk of stream) {
-      const delta = chunk.choices[0]?.delta;
-      
-      // Handle text content
-      if (delta?.content) {
-        fullResponse += delta.content;
-        res.write(`data: ${JSON.stringify({ content: delta.content })}\n\n`);
-      }
-      
-      // Handle tool calls
-      if (delta?.tool_calls) {
-        for (const toolCall of delta.tool_calls) {
-          if (toolCall.function) {
-            if (!currentToolCall || toolCall.id) {
-              // New tool call
-              if (currentToolCall) {
-                // Finish previous tool call
-                try {
-                  toolCalls.push({
-                    name: currentToolCall.name,
-                    arguments: JSON.parse(currentToolCall.arguments)
-                  });
-                } catch (e) {
-                  console.error("Failed to parse tool arguments:", currentToolCall.arguments);
-                }
-              }
-              currentToolCall = {
-                id: toolCall.id || "",
-                name: toolCall.function.name || "",
-                arguments: toolCall.function.arguments || ""
-              };
-            } else if (currentToolCall) {
-              // Continue current tool call
-              if (toolCall.function.name) {
-                currentToolCall.name += toolCall.function.name;
-              }
-              if (toolCall.function.arguments) {
-                currentToolCall.arguments += toolCall.function.arguments;
-              }
-            }
-          }
-        }
-      }
+    return await consumeChatCompletionStream(stream as AsyncIterable<OpenAIStyleChatChunk>, res);
+  } catch (error: any) {
+    const msg: string = error?.message || String(error);
+    if (msg.includes("DW_AI_UNAVAILABLE")) {
+      console.warn("[generateChatResponseStreaming] All providers unavailable — returning graceful message");
+      return {
+        response: "I'm here — just had a brief moment of interrupted thinking. Send that again and I'll pick right up.",
+      };
     }
-    
-    // Finish last tool call if any
-    if (currentToolCall) {
-      try {
-        toolCalls.push({
-          name: currentToolCall.name,
-          arguments: JSON.parse(currentToolCall.arguments)
-        });
-      } catch (e) {
-        console.error("Failed to parse tool arguments:", currentToolCall.arguments);
-      }
-    }
-
-    return {
-      response: fullResponse || "I'm here with you. Take your time - there's no rush.",
-      toolCalls: toolCalls.length > 0 ? toolCalls : undefined
-    };
-  } catch (error) {
     console.error("OpenAI streaming error:", error);
     throw error;
   }

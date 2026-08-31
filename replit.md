@@ -90,6 +90,24 @@ Lightweight, non-conversational AI tasks run through `chatComplete()` in `server
 3. `DW_AI_MODEL_LIGHTWEIGHT` — global lightweight-task default
 4. `"gpt-4o-mini"` — hardcoded fallback
 
+## Main DW Chat Provider Configuration (Phase 3)
+
+Main coaching chat in `server/openai.ts` is now provider-configurable with OpenAI-compatible routing:
+
+1. `DW_AI_MODEL_CHAT` — explicit model for main DW chat (e.g. `claude-sonnet-4-5`)
+2. If `DW_AI_MODEL_CHAT` is unset:
+   - anthropic-compatible provider defaults to `claude-sonnet-4-5`
+   - openai provider defaults to `gpt-4o-mini`
+3. Optional chat-only endpoint override:
+   - `DW_AI_CHAT_BASE_URL`
+   - `DW_AI_CHAT_API_KEY`
+
+Fallback chain for main chat:
+
+1. configured chat model (`DW_AI_MODEL_CHAT` or provider default)
+2. OpenAI fallback model (`gpt-4o-mini`)
+3. Perplexity fallback (`sonar`)
+
 ### Task names
 
 | Task name          | Endpoint / function                                  |
@@ -107,4 +125,4 @@ Lightweight, non-conversational AI tasks run through `chatComplete()` in `server
 
 ### Paths NOT migrated (still on the original OpenAI path)
 
-Main chat, streaming responses, tool-calling, all audio (TTS, Whisper, realtime voice), life-system analysis, meal-plan parsing, and elevation plans all continue to run on the existing `openai.ts` / `ai-engine.ts` `aiCall`/`aiStream` infrastructure.
+All audio (TTS, Whisper, realtime voice), life-system analysis, meal-plan parsing, and elevation plans all continue to run on the existing `openai.ts` / `ai-engine.ts` `aiCall`/`aiStream` infrastructure.
