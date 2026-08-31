@@ -178,7 +178,7 @@ export default function WearableManagerPage() {
                   </CardHeader>
                   <CardContent className="pt-0 space-y-3">
                     <p className="text-xs text-muted-foreground">{s.description}</p>
-                    <div className="text-[11px] text-muted-foreground flex flex-wrap gap-x-3 gap-y-1">
+                    <div className="text-xs text-muted-foreground flex flex-wrap gap-x-3 gap-y-1">
                       <span data-testid={`text-last-sync-${s.source}`}>Last sync: {formatLastSync(s.lastSyncAt)}</span>
                       {s.recordsImported > 0 && <span>{s.recordsImported} records</span>}
                       {s.errorText && <span className="text-destructive">⚠ {s.errorText}</span>}

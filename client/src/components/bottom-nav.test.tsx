@@ -2,18 +2,66 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 
+let mockLocation = "/command-center";
+let mockHabits: any[] = [];
+let mockOnboardingProfile: { profile?: { suggestedStructure?: Array<{ status?: string }> } | null } | undefined;
+
 vi.mock("wouter", () => ({
-  useLocation: () => ["/command-center", vi.fn()],
+  useLocation: () => [mockLocation, vi.fn()],
 }));
 
 vi.mock("@tanstack/react-query", () => ({
-  useQuery: () => ({ data: [] }),
+  useQuery: () => ({ data: mockHabits }),
+  useQueryClient: () => ({
+    getQueryData: (queryKey: unknown[]) => queryKey[0] === "/api/onboarding/profile" ? mockOnboardingProfile : undefined,
+  }),
 }));
 
 import { BottomNav } from "./bottom-nav";
 
 describe("BottomNav", () => {
+  it("shows a habits attention dot on Today only when Today is inactive", () => {
+    mockLocation = "/my-life";
+    mockHabits = [{ id: 1, isActive: true, completedToday: false }];
+    mockOnboardingProfile = undefined;
+
+    render(<BottomNav />);
+
+    expect(screen.getByLabelText("Habits need attention")).toBeTruthy();
+  });
+
+  it("shows a setup attention dot on My Life when pending suggestions exist and tab is inactive", () => {
+    mockLocation = "/command-center";
+    mockHabits = [];
+    mockOnboardingProfile = {
+      profile: {
+        suggestedStructure: [{ id: "s1", status: "pending" }],
+      },
+    };
+
+    render(<BottomNav />);
+
+    expect(screen.getByLabelText("Setup suggestions are waiting")).toBeTruthy();
+  });
+
+  it("does not show the setup attention dot when My Life is active", () => {
+    mockLocation = "/my-life";
+    mockHabits = [];
+    mockOnboardingProfile = {
+      profile: {
+        suggestedStructure: [{ id: "s1", status: "pending" }],
+      },
+    };
+
+    render(<BottomNav />);
+
+    expect(screen.queryByLabelText("Setup suggestions are waiting")).toBeNull();
+  });
+
   it("renders the 4-tab navigation with Today and no Calendar tab", () => {
+    mockLocation = "/command-center";
+    mockHabits = [];
+    mockOnboardingProfile = undefined;
     render(<BottomNav />);
 
     expect(screen.getByTestId("nav-bottom")).toBeTruthy();

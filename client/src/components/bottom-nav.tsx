@@ -1,6 +1,6 @@
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { BOTTOM_NAV_ITEMS } from "@/config/navigation";
 
 const tourDataMap: Record<string, string> = {
@@ -12,6 +12,7 @@ const tourDataMap: Record<string, string> = {
 
 export function BottomNav() {
   const [location, setLocation] = useLocation();
+  const queryClient = useQueryClient();
 
   const { data: habits = [] } = useQuery<any[]>({
     queryKey: ["/api/habits"],
@@ -20,6 +21,11 @@ export function BottomNav() {
 
   const hasUnfinishedHabits = Array.isArray(habits) &&
     habits.some((h: any) => h.isActive !== false && !h.completedToday);
+  const onboardingProfile = queryClient.getQueryData<{ profile?: { suggestedStructure?: Array<{ status?: string }> } | null }>(
+    ["/api/onboarding/profile"],
+  )?.profile;
+  const hasPendingSetupSuggestions = Array.isArray(onboardingProfile?.suggestedStructure) &&
+    onboardingProfile.suggestedStructure.some((item) => item?.status === "pending");
 
   const navItems = BOTTOM_NAV_ITEMS;
 
@@ -44,7 +50,9 @@ export function BottomNav() {
             (p) => p && (location === p || (p !== "/" && location.startsWith(p + "/")))
           );
           const tourAttr = item.path ? tourDataMap[item.path] : undefined;
-          const showAttentionDot = item.path === "/command-center" && hasUnfinishedHabits && !isActive;
+          const showTodayDot = item.path === "/command-center" && hasUnfinishedHabits && !isActive;
+          const showMyLifeDot = item.path === "/my-life" && hasPendingSetupSuggestions && !isActive;
+          const showAttentionDot = showTodayDot || showMyLifeDot;
 
           return (
             <button
@@ -82,7 +90,7 @@ export function BottomNav() {
                 {showAttentionDot && (
                   <span
                     className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-orange-500 border-2 border-background"
-                    aria-label="Habits need attention"
+                    aria-label={showTodayDot ? "Habits need attention" : "Setup suggestions are waiting"}
                   />
                 )}
               </div>
