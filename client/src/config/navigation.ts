@@ -34,6 +34,9 @@ import {
   Home,
   User,
   Moon,
+  LayoutGrid,
+  Star,
+  Rss,
   type LucideIcon,
 } from "lucide-react";
 
@@ -181,16 +184,33 @@ export interface BottomNavItem {
 
 /** Bottom navigation tabs. Labels use canonical names. */
 export const BOTTOM_NAV_ITEMS: BottomNavItem[] = [
-  { id: "command-center", path: "/command-center", icon: Home, label: "Today" },
   {
     id: "talk",
     path: "/talk",
     icon: MessageCircle,
-    label: "Talk to DW",
-    aliases: ["/chat"],
+    label: "DW",
+    aliases: ["/chat", "/command-center", "/"],
   },
-  { id: "my-life", path: "/my-life", icon: Map, label: "My Life" },
-  { id: "profile", path: "/profile", icon: User, label: "Profile" },
+  {
+    id: "feed",
+    path: "/feed",
+    icon: Rss,
+    label: "Current",
+    aliases: ["/browse"],
+  },
+  {
+    id: "zones",
+    path: "/zones",
+    icon: LayoutGrid,
+    label: "Zones",
+  },
+  {
+    id: "cosmic",
+    path: "/cosmic",
+    icon: Star,
+    label: "Cosmic",
+    aliases: ["/cosmic-insights", "/astrology"],
+  },
 ];
 
 export interface OrbitModule {

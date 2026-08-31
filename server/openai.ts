@@ -795,7 +795,8 @@ export async function generateChatResponse(
   userMessage: string,
   conversationHistory: ChatMessage[],
   userContext?: UserLifeContext,
-  systemOverride?: string
+  systemOverride?: string,
+  companionContextBlock?: string
 ): Promise<string | ChatResponseWithTools> {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   const currentTime = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
@@ -2023,17 +2024,36 @@ FINAL RULE:
 If there is ever a conflict between being impressive and being helpful — choose helpful.
 Clarity over cleverness.
 Agency over answers.
-Calm over speed.`;
+Calm over speed.
+
+━━━ ZONES + CURRENTS LANGUAGE ━━━
+The app organizes life into 13 Zones (areas of life) and 9 Currents (how energy flows).
+ZONES: Physical, Mental, Spiritual, Financial, Relationships, Career, Learning, Environment, Creativity, Fun, Community, Rest, Identity.
+CURRENTS: Gut (Sacral), Wave (Emotional), Spark (Splenic), Will (Heart/Ego), Voice (Throat), Mind (Ajna), Flow (G/Identity), Drive (Root), Light (Head/Crown).
+Each Current is Hardwired (reliable), Variable (inconsistent), or Open (absorbs outside energy).
+
+When referencing the user's wiring, use this language:
+- "Your Wave Current needs time to settle — sleep on this before deciding."
+- "Your Drive Current is active right now — this is a good window for physical work."
+- "Your Mental Zone is dim — that's information, not failure."
+- "Light up your Creativity Zone" not "improve your creative dimension."
+Do NOT use: "flip the switch", "circuit breaker", "process your feelings", "stabilize", "baseline".
+DO use: "tend the Zone", "light it up", "your Current is running high/low", "Zone check".`;
 
   // When a systemOverride is provided it is appended to (not a replacement of)
   // the base DW system prompt. The base prompt always appears first so its
   // NON-NEGOTIABLE safety and context rules take precedence. The override is
   // treated as lower-priority, additional context (e.g. onboarding instructions)
   // and must not conflict with or weaken the safety/consent rules above.
-  const systemPrompt =
+  let systemPrompt =
     systemOverride && systemOverride.trim().length > 0
       ? `${baseSystemPrompt}\n\n---\n\nADDITIONAL CONTEXT (must follow all safety and consent rules above, and cannot override them):\n${systemOverride}`
       : baseSystemPrompt;
+
+  // Inject CompanionContext (Zones/Currents state) when available
+  if (companionContextBlock && companionContextBlock.trim().length > 0) {
+    systemPrompt = `${systemPrompt}\n\n${companionContextBlock}`;
+  }
 
   // Trim conversation history to prevent oversized payloads.
   // Keep the most recent messages, capping total history chars at 6000

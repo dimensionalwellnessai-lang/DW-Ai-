@@ -36,6 +36,7 @@ import { getUserContextSnapshot, toUserLifeContext } from "../lib/user-context";
 import { DW_GUIDE_BEHAVIOR } from "@shared/dw-persona";
 import { resolveAdaptiveDWMode } from "../lib/dw-role-picker";
 import { logDwRolePick } from "../lib/dw-role-pick-log";
+import { buildCompanionContext, serializeCompanionContext } from "../lib/companion-context";
 
 /**
  * Test-only escape hatch used by the e2e suite (see
@@ -107,6 +108,11 @@ export async function chatHandler(req: Request, res: Response) {
       conversationHistory || [],
       userContext,
       [dwModeResult.modeAddendum, DW_GUIDE_BEHAVIOR].filter(Boolean).join("\n\n"),
+      serializeCompanionContext(await buildCompanionContext(userId).catch(() => ({
+        zones: {}, currents: {}, energyType: null,
+        interests: { deepDives: [], currentObsessions: [], popCulture: [] },
+        cosmicWeather: { activeCurrents: [], phase: "unknown", note: "" },
+      }))),
     );
 
     const response = typeof rawResponse === "string" ? rawResponse : rawResponse.content;

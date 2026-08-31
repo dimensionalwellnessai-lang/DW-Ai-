@@ -183,6 +183,8 @@ import ActionCenterPage from "@/pages/action-center";
 import VoiceModePage from "@/pages/voice-mode";
 import DayStartPage from "@/pages/day-start";
 const LibraryPage = lazy(() => import("@/pages/library"));
+const ZonesPage = lazy(() => import("@/pages/zones/index"));
+const ZoneDetailPage = lazy(() => import("@/pages/zones/zone-detail"));
 const RelationshipsPage = lazy(() => import("@/pages/relationships"));
 const LifeSystemPage = lazy(() => import("@/pages/life-system"));
 const LifeSystemDocumentPage = lazy(() => import("@/pages/life-system-document"));
@@ -307,7 +309,7 @@ function HomeRedirect() {
   }
 
   const last = getLastRoute();
-  return <Redirect to={last ?? "/command-center"} />;
+  return <Redirect to={last ?? "/talk"} />;
 }
 
 function Router() {
@@ -416,6 +418,11 @@ function Router() {
       {isRouteEnabled("/browse") && <Route path="/browse"><Redirect to="/feed" /></Route>}
       {isRouteEnabled("/energy-transmutation") && <Route path="/energy-transmutation" component={EnergyTransmutationPage} />}
       {isRouteEnabled("/library") && <Route path="/library" component={LibraryPage} />}
+      {/* The House — Zones architecture */}
+      <Route path="/zones/:zoneId" component={ZoneDetailPage} />
+      <Route path="/zones" component={ZonesPage} />
+      {/* Legacy redirects → Zones */}
+      <Route path="/life-dimensions"><Redirect to="/zones" /></Route>
       {isRouteEnabled("/relationships") && <Route path="/relationships" component={RelationshipsPage} />}
       
       {isRouteEnabled("/challenges") && <Route path="/challenges" component={ChallengesPage} />}

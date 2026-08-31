@@ -1,21 +1,37 @@
-import { useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+/**
+ * The Current — `/feed`
+ *
+ * Infinite scroll stream mixing constructive (40%), recreational (40%),
+ * and social/cosmic (20%) content. Each card surfaces a "Why for you"
+ * context line connecting the item to the user's Zones and Currents.
+ */
+
+import { useMemo, useState, useEffect, useRef, useCallback } from "react";
+import { useMutation, useQuery, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/page-header";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, parseApiError } from "@/lib/queryClient";
-import { Bookmark, ExternalLink, Heart, Loader2, Search, ShieldOff, Star } from "lucide-react";
+import { Constellation } from "@/components/constellation";
+import {
+  Bookmark, ExternalLink, Heart, Loader2, ShieldOff, RefreshCw, Sparkles,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { ZoneId } from "@/components/constellation";
+
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 interface FeedItem {
   id: string;
   title: string;
   description: string;
   type: string;
+  /** "constructive" | "recreational" | "social" */
+  mix?: string;
   category: string | null;
   source: string;
   duration: string | null;
@@ -25,45 +41,105 @@ interface FeedItem {
   liked: boolean;
   favorited: boolean;
   saved: boolean;
+  /** Zone this item feeds */
+  zone?: ZoneId;
+  /** Human-readable reason this appears in the user's feed */
+  whyForYou?: string;
+  /** Optional cosmic timing note */
+  timingNote?: string;
 }
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+const MIX_LABELS: Record<string, string> = {
+  constructive: "Zone fuel",
+  recreational: "Enjoy",
+  social: "What's happening",
+};
+
+const MIX_COLORS: Record<string, string> = {
+  constructive: "bg-sky-500/10 text-sky-400 border-sky-500/20",
+  recreational: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+  social: "bg-violet-500/10 text-violet-400 border-violet-500/20",
+};
+
+// ── Infinite scroll hook ──────────────────────────────────────────────────────
+
+function useFeedInfinite(filter: string) {
+  return useInfiniteQuery<{ items: FeedItem[]; nextCursor: string | null }>({
+    queryKey: ["/api/feed/infinite", filter],
+    queryFn: async ({ pageParam }) => {
+      const params = new URLSearchParams();
+      params.set("filter", filter);
+      params.set("sort", "relevant");
+      if (pageParam) params.set("cursor", String(pageParam));
+      // Prefer the new paginated endpoint; fall back gracefully to /api/feed
+      try {
+        const res = await apiRequest("GET", `/api/feed/stream?${params}`);
+        return res.json();
+      } catch {
+        const res2 = await apiRequest("GET", `/api/feed?${params}`);
+        const data = await res2.json();
+        return { items: data.items ?? [], nextCursor: null };
+      }
+    },
+    initialPageParam: null as string | null,
+    getNextPageParam: (last) => last.nextCursor ?? undefined,
+  });
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
 
 const FILTERS = [
   { id: "all", label: "All" },
+  { id: "constructive", label: "Zone fuel" },
+  { id: "recreational", label: "Enjoy" },
   { id: "article", label: "Articles" },
   { id: "video", label: "Videos" },
-  { id: "exercise", label: "Exercises" },
-  { id: "emotional", label: "Emotional" },
-  { id: "physical", label: "Physical" },
+  { id: "saved", label: "Saved" },
 ];
 
 export default function FeedPage() {
-  usePageMeta("Feed", "A unified, supportive feed of wellness ideas, reflections, and practical next steps.");
+  usePageMeta(
+    "The Current",
+    "A stream of things worth your attention — constructive, recreational, and in the moment."
+  );
 
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
-  const [sort, setSort] = useState<"relevant" | "latest">("relevant");
+  const loaderRef = useRef<HTMLDivElement>(null);
 
-  const queryString = useMemo(() => {
-    const params = new URLSearchParams();
-    if (search.trim()) params.set("search", search.trim());
-    params.set("filter", filter);
-    params.set("sort", sort);
-    return params.toString();
-  }, [filter, search, sort]);
+  const feedQuery = useFeedInfinite(filter);
 
-  const feedQuery = useQuery<{ items: FeedItem[] }>({
-    queryKey: ["/api/feed", queryString],
-    queryFn: async () => {
-      const response = await apiRequest("GET", `/api/feed?${queryString}`);
-      return response.json();
+  // Intersection Observer for infinite scroll
+  const handleObserver = useCallback(
+    (entries: IntersectionObserverEntry[]) => {
+      const [entry] = entries;
+      if (entry.isIntersecting && feedQuery.hasNextPage && !feedQuery.isFetchingNextPage) {
+        feedQuery.fetchNextPage();
+      }
     },
-  });
+    [feedQuery]
+  );
+
+  useEffect(() => {
+    const el = loaderRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(handleObserver, { threshold: 0.1 });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [handleObserver]);
 
   const interactionMutation = useMutation({
-    mutationFn: async ({ item, action }: { item: FeedItem; action: "like" | "favorite" | "save" | "hide" }) => {
+    mutationFn: async ({
+      item,
+      action,
+    }: {
+      item: FeedItem;
+      action: "like" | "favorite" | "save" | "hide";
+    }) => {
       await apiRequest("POST", "/api/feed/interactions", {
         contentId: item.id,
         contentTitle: item.title,
@@ -89,15 +165,19 @@ export default function FeedPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/feed"] });
       queryClient.invalidateQueries({ queryKey: ["/api/saved-content"] });
       const messages: Record<string, string> = {
-        like: "We'll keep noticing what feels supportive.",
-        favorite: "Added to your favorites signal.",
-        save: "Saved for later.",
-        hide: "We'll make a little more space from content like this.",
+        like: "This hit your Zone — noted.",
+        favorite: "Added to your signal.",
+        save: "Saved.",
+        hide: "Making space.",
       };
-      toast({ title: "Noted", description: messages[variables.action] });
+      toast({ title: "Got it", description: messages[variables.action] });
     },
     onError: (error) => {
-      toast({ title: "Couldn't update that yet", description: parseApiError(error), variant: "destructive" });
+      toast({
+        title: "Couldn't update that yet",
+        description: parseApiError(error),
+        variant: "destructive",
+      });
     },
   });
 
@@ -106,130 +186,206 @@ export default function FeedPage() {
       window.open(item.url, "_blank", "noopener,noreferrer");
       return;
     }
-    if (item.route) {
-      setLocation(item.route);
-    }
+    if (item.route) setLocation(item.route);
   };
 
-  const items = feedQuery.data?.items ?? [];
+  const allItems = feedQuery.data?.pages.flatMap((p) => p.items) ?? [];
 
   return (
     <div className="min-h-screen bg-background">
-      <PageHeader title="Feed" showBack={false} />
-      <div className="mx-auto max-w-4xl space-y-4 px-4 pb-24 pt-4">
-        <Card>
-          <CardContent className="space-y-4 p-4">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search for something steadying, practical, or inspiring"
-                className="pl-9"
-              />
-            </div>
+      <PageHeader
+        title="The Current"
+        subtitle="Your stream — fuel and flow, not homework"
+        showBack={false}
+        icon={<Constellation state="idle" size={24} className="opacity-70" />}
+      />
 
-            <div className="flex flex-wrap gap-2">
-              {FILTERS.map((chip) => (
-                <Button
-                  key={chip.id}
-                  type="button"
-                  size="sm"
-                  variant={filter === chip.id ? "default" : "outline"}
-                  onClick={() => setFilter(chip.id)}
-                >
-                  {chip.label}
-                </Button>
-              ))}
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Sort</span>
-              <Button size="sm" variant={sort === "relevant" ? "default" : "ghost"} onClick={() => setSort("relevant")}>Relevant</Button>
-              <Button size="sm" variant={sort === "latest" ? "default" : "ghost"} onClick={() => setSort("latest")}>Latest</Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {feedQuery.isLoading && (
-          <Card>
-            <CardContent className="flex items-center gap-3 p-6 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Gathering a calm mix for your feed…
-            </CardContent>
-          </Card>
-        )}
-
-        {feedQuery.isError && (
-          <Card>
-            <CardContent className="space-y-3 p-6">
-              <p className="font-medium text-foreground">Your feed needs a moment.</p>
-              <p className="text-sm text-muted-foreground">Nothing is wrong on your end. Try again in a moment.</p>
-              <Button variant="outline" onClick={() => feedQuery.refetch()}>Try again</Button>
-            </CardContent>
-          </Card>
-        )}
-
-        {!feedQuery.isLoading && !feedQuery.isError && items.length === 0 && (
-          <Card>
-            <CardContent className="space-y-2 p-6 text-center">
-              <p className="font-medium text-foreground">Nothing matches that filter yet.</p>
-              <p className="text-sm text-muted-foreground">Try a broader search or switch back to all so DW can offer a wider mix.</p>
-            </CardContent>
-          </Card>
-        )}
-
-        <div className="grid gap-4 md:grid-cols-2">
-          {items.map((item) => (
-            <Card key={`${item.id}-${item.url}`} className="h-full border-border/60">
-              <CardHeader className="space-y-3 pb-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant="secondary">{item.type}</Badge>
-                  {item.category && <Badge variant="outline">{item.category}</Badge>}
-                  {item.duration && <span className="text-xs text-muted-foreground">{item.duration}</span>}
-                </div>
-                <CardTitle className="text-lg leading-snug">{item.title}</CardTitle>
-                <p className="text-sm text-muted-foreground">{item.description}</p>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>{item.source}</span>
-                  {item.route && !item.url.startsWith("http") && <span>In app</span>}
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                  <Button variant={item.liked ? "default" : "outline"} size="sm" onClick={() => interactionMutation.mutate({ item, action: "like" })}>
-                    <Heart className="mr-1.5 h-3.5 w-3.5" />
-                    Like
-                  </Button>
-                  <Button variant={item.favorited ? "default" : "outline"} size="sm" onClick={() => interactionMutation.mutate({ item, action: "favorite" })}>
-                    <Star className="mr-1.5 h-3.5 w-3.5" />
-                    Favorite
-                  </Button>
-                  <Button variant={item.saved ? "secondary" : "outline"} size="sm" onClick={() => interactionMutation.mutate({ item, action: "save" })}>
-                    <Bookmark className="mr-1.5 h-3.5 w-3.5" />
-                    Save
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => interactionMutation.mutate({ item, action: "hide" })}>
-                    <ShieldOff className="mr-1.5 h-3.5 w-3.5" />
-                    Hide
-                  </Button>
-                </div>
-
-                <Button
-                  className="w-full"
-                  variant="ghost"
-                  onClick={() => handleOpen(item)}
-                  disabled={!item.route && !item.url.startsWith("http")}
-                >
-                  <ExternalLink className="mr-2 h-4 w-4" />
-                  Open
-                </Button>
-              </CardContent>
-            </Card>
+      {/* Filter chips */}
+      <div className="px-4 pb-3 pt-1 overflow-x-auto">
+        <div className="flex gap-2 min-w-max">
+          {FILTERS.map((chip) => (
+            <button
+              key={chip.id}
+              onClick={() => setFilter(chip.id)}
+              className={cn(
+                "rounded-full px-4 py-1.5 text-xs font-medium border transition-all",
+                filter === chip.id
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "border-border/50 text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {chip.label}
+            </button>
           ))}
         </div>
       </div>
+
+      <div className="mx-auto max-w-2xl px-4 pb-28 space-y-3">
+        {/* Loading state */}
+        {feedQuery.isLoading && (
+          <div className="flex items-center justify-center py-12 text-muted-foreground gap-2 text-sm">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Pulling your stream…
+          </div>
+        )}
+
+        {/* Error state */}
+        {feedQuery.isError && (
+          <Card>
+            <CardContent className="space-y-3 p-6">
+              <p className="font-medium">The Current paused.</p>
+              <p className="text-sm text-muted-foreground">
+                Nothing wrong on your end — try refreshing.
+              </p>
+              <Button variant="outline" size="sm" onClick={() => feedQuery.refetch()}>
+                <RefreshCw className="mr-2 h-3.5 w-3.5" />
+                Refresh
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Empty state */}
+        {!feedQuery.isLoading && !feedQuery.isError && allItems.length === 0 && (
+          <div className="py-12 text-center text-muted-foreground text-sm">
+            <p>Nothing here yet.</p>
+            <p className="mt-1 text-xs">Try a different filter or pull to refresh.</p>
+          </div>
+        )}
+
+        {/* Feed cards */}
+        {allItems.map((item) => (
+          <FeedCard
+            key={`${item.id}-${item.url}`}
+            item={item}
+            onOpen={handleOpen}
+            onInteract={(action) => interactionMutation.mutate({ item, action })}
+          />
+        ))}
+
+        {/* Infinite scroll trigger */}
+        <div ref={loaderRef} className="h-8 flex items-center justify-center">
+          {feedQuery.isFetchingNextPage && (
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          )}
+          {!feedQuery.hasNextPage && allItems.length > 0 && (
+            <p className="text-xs text-muted-foreground">You're caught up.</p>
+          )}
+        </div>
+      </div>
     </div>
+  );
+}
+
+// ── Feed Card ─────────────────────────────────────────────────────────────────
+
+interface FeedCardProps {
+  item: FeedItem;
+  onOpen: (item: FeedItem) => void;
+  onInteract: (action: "like" | "favorite" | "save" | "hide") => void;
+}
+
+function FeedCard({ item, onOpen, onInteract }: FeedCardProps) {
+  const mixKey = item.mix ?? "constructive";
+  const mixLabel = MIX_LABELS[mixKey] ?? mixKey;
+  const mixColor = MIX_COLORS[mixKey] ?? MIX_COLORS.constructive;
+
+  return (
+    <Card className="border-border/50 overflow-hidden">
+      <CardContent className="p-4 space-y-3">
+        {/* Top row: mix badge + zone constellation */}
+        <div className="flex items-center justify-between">
+          <span
+            className={cn(
+              "text-[11px] font-medium px-2 py-0.5 rounded-full border",
+              mixColor
+            )}
+          >
+            {mixLabel}
+          </span>
+          {item.zone && (
+            <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+              <Constellation zone={item.zone} state="idle" size={14} />
+              <span className="capitalize">{item.zone}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Content */}
+        <div>
+          <h3 className="font-semibold text-sm leading-snug">{item.title}</h3>
+          <p className="text-xs text-muted-foreground mt-1 leading-relaxed line-clamp-2">
+            {item.description}
+          </p>
+        </div>
+
+        {/* Why for you */}
+        {item.whyForYou && (
+          <div className="flex items-start gap-1.5 rounded-lg bg-muted/40 px-3 py-2">
+            <Sparkles className="h-3 w-3 text-primary mt-0.5 shrink-0" />
+            <p className="text-[11px] text-muted-foreground leading-snug">{item.whyForYou}</p>
+          </div>
+        )}
+
+        {/* Timing note */}
+        {item.timingNote && (
+          <p className="text-[11px] text-muted-foreground/60 italic">{item.timingNote}</p>
+        )}
+
+        {/* Meta + actions */}
+        <div className="flex items-center justify-between pt-1">
+          <span className="text-[11px] text-muted-foreground">{item.source}</span>
+          <div className="flex items-center gap-1">
+            {/* This hit my Zone */}
+            <button
+              onClick={() => onInteract("like")}
+              aria-label="This hit my Zone"
+              className={cn(
+                "p-1.5 rounded-lg transition-colors",
+                item.liked
+                  ? "text-rose-500 bg-rose-500/10"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <Heart className="h-4 w-4" strokeWidth={item.liked ? 2.5 : 1.8} />
+            </button>
+
+            {/* Save */}
+            <button
+              onClick={() => onInteract("save")}
+              aria-label="Save"
+              className={cn(
+                "p-1.5 rounded-lg transition-colors",
+                item.saved
+                  ? "text-sky-500 bg-sky-500/10"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <Bookmark className="h-4 w-4" strokeWidth={item.saved ? 2.5 : 1.8} />
+            </button>
+
+            {/* Hide */}
+            <button
+              onClick={() => onInteract("hide")}
+              aria-label="Not for me"
+              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ShieldOff className="h-4 w-4" strokeWidth={1.8} />
+            </button>
+
+            {/* Open */}
+            {(item.route || item.url.startsWith("http")) && (
+              <button
+                onClick={() => onOpen(item)}
+                aria-label="Open"
+                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <ExternalLink className="h-4 w-4" strokeWidth={1.8} />
+              </button>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
