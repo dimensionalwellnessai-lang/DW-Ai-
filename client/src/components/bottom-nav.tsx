@@ -1,6 +1,6 @@
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { BOTTOM_NAV_ITEMS } from "@/config/navigation";
 
 const tourDataMap: Record<string, string> = {
@@ -12,18 +12,19 @@ const tourDataMap: Record<string, string> = {
 
 export function BottomNav() {
   const [location, setLocation] = useLocation();
-  const queryClient = useQueryClient();
 
   const { data: habits = [] } = useQuery<any[]>({
     queryKey: ["/api/habits"],
     staleTime: 60000,
   });
+  const { data: onboardingProfileData } = useQuery<{ profile?: { suggestedStructure?: Array<{ status?: string }> } | null }>({
+    queryKey: ["/api/onboarding/profile"],
+    enabled: false,
+  });
 
   const hasUnfinishedHabits = Array.isArray(habits) &&
     habits.some((h: any) => h.isActive !== false && !h.completedToday);
-  const onboardingProfile = queryClient.getQueryData<{ profile?: { suggestedStructure?: Array<{ status?: string }> } | null }>(
-    ["/api/onboarding/profile"],
-  )?.profile;
+  const onboardingProfile = onboardingProfileData?.profile;
   const hasPendingSetupSuggestions = Array.isArray(onboardingProfile?.suggestedStructure) &&
     onboardingProfile.suggestedStructure.some((item) => item?.status === "pending");
 
@@ -53,6 +54,11 @@ export function BottomNav() {
           const showTodayDot = item.path === "/command-center" && hasUnfinishedHabits && !isActive;
           const showMyLifeDot = item.path === "/my-life" && hasPendingSetupSuggestions && !isActive;
           const showAttentionDot = showTodayDot || showMyLifeDot;
+          const attentionLabel = showTodayDot
+            ? "Habits need attention"
+            : showMyLifeDot
+              ? "Setup suggestions are waiting"
+              : null;
 
           return (
             <button
@@ -66,7 +72,7 @@ export function BottomNav() {
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               )}
               data-testid={`nav-${item.id}`}
-              aria-label={item.label}
+              aria-label={attentionLabel ? `${item.label}, ${attentionLabel}` : item.label}
               aria-current={isActive ? "page" : undefined}
               {...(tourAttr && { "data-tour": tourAttr })}
             >
@@ -90,7 +96,7 @@ export function BottomNav() {
                 {showAttentionDot && (
                   <span
                     className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-orange-500 border-2 border-background"
-                    aria-label={showTodayDot ? "Habits need attention" : "Setup suggestions are waiting"}
+                    aria-hidden="true"
                   />
                 )}
               </div>

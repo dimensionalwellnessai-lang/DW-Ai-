@@ -11,9 +11,8 @@ vi.mock("wouter", () => ({
 }));
 
 vi.mock("@tanstack/react-query", () => ({
-  useQuery: () => ({ data: mockHabits }),
-  useQueryClient: () => ({
-    getQueryData: (queryKey: unknown[]) => queryKey[0] === "/api/onboarding/profile" ? mockOnboardingProfile : undefined,
+  useQuery: ({ queryKey }: { queryKey: unknown[] }) => ({
+    data: queryKey[0] === "/api/onboarding/profile" ? mockOnboardingProfile : mockHabits,
   }),
 }));
 
@@ -27,7 +26,7 @@ describe("BottomNav", () => {
 
     render(<BottomNav />);
 
-    expect(screen.getByLabelText("Habits need attention")).toBeTruthy();
+    expect(screen.getByLabelText("Today, Habits need attention")).toBeTruthy();
   });
 
   it("shows a setup attention dot on My Life when pending suggestions exist and tab is inactive", () => {
@@ -41,7 +40,7 @@ describe("BottomNav", () => {
 
     render(<BottomNav />);
 
-    expect(screen.getByLabelText("Setup suggestions are waiting")).toBeTruthy();
+    expect(screen.getByLabelText("My Life, Setup suggestions are waiting")).toBeTruthy();
   });
 
   it("does not show the setup attention dot when My Life is active", () => {
@@ -55,7 +54,7 @@ describe("BottomNav", () => {
 
     render(<BottomNav />);
 
-    expect(screen.queryByLabelText("Setup suggestions are waiting")).toBeNull();
+    expect(screen.queryByLabelText("My Life, Setup suggestions are waiting")).toBeNull();
   });
 
   it("renders the 4-tab navigation with Today and no Calendar tab", () => {
