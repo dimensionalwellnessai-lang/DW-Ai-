@@ -1,3 +1,11 @@
+/**
+ * Builds the CompanionContext injected into DW prompts.
+ *
+ * Data is sourced from persisted user records that already exist in the app
+ * (birth chart, life-dimension assessments, interests, wellness preferences,
+ * onboarding profile, and goals). Each lookup degrades gracefully so user-bound
+ * prompts still work when optional records are missing or malformed.
+ */
 import { storage } from "../storage";
 import {
   calculateEnergyCurrents,

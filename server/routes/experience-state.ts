@@ -7,6 +7,8 @@ import { DISCOVER_STATIC_LIBRARY } from "../discover-static";
 import { buildCompanionContext } from "../lib/companion-context";
 import { rankFeedItems } from "../feed-engine";
 
+const STATIC_FEED_CREATED_AT = "2026-08-31T00:00:00.000Z";
+
 function inferRoute(type: string, category?: string | null): string | null {
   const key = `${type} ${category ?? ""}`.toLowerCase();
   if (key.includes("workout") || key.includes("exercise")) return "/workout";
@@ -89,7 +91,7 @@ export function registerExperienceStateRoutes(app: Express): void {
           thumbnail: null,
           url: "dw:cosmic-update",
           route: "/cosmic",
-          createdAt: new Date().toISOString(),
+          createdAt: STATIC_FEED_CREATED_AT,
         },
         {
           id: "dw-audio-reset",
@@ -102,7 +104,7 @@ export function registerExperienceStateRoutes(app: Express): void {
           thumbnail: null,
           url: "dw:audio-reset",
           route: "/spiritual",
-          createdAt: new Date().toISOString(),
+          createdAt: STATIC_FEED_CREATED_AT,
         },
         {
           id: "dw-meme-static",
@@ -115,7 +117,7 @@ export function registerExperienceStateRoutes(app: Express): void {
           thumbnail: null,
           url: "dw:meme-static",
           route: null,
-          createdAt: new Date().toISOString(),
+          createdAt: STATIC_FEED_CREATED_AT,
         },
       ]
         .map((item) => {
