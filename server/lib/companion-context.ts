@@ -7,6 +7,7 @@
  */
 
 import { db } from "../db";
+import { sql } from "drizzle-orm";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -100,25 +101,32 @@ export async function buildCompanionContext(userId: number): Promise<CompanionCo
     } | null = null;
 
     try {
-      zoneRows = await (db as any)
-        .execute(
-          `SELECT zone_id, COALESCE(level, 50) AS level, COALESCE(trend, 'stable') AS trend
-           FROM user_zone_states WHERE user_id = $1`,
-          [userId]
-        )
-        .then((r: any) => r.rows ?? []);
+      const result = await db.execute(
+        sql`SELECT zone_id,
+               COALESCE(level, 50) AS level,
+               COALESCE(trend, 'stable') AS trend
+            FROM user_zone_states
+            WHERE user_id = ${userId}`
+      );
+      zoneRows = (result.rows ?? []) as typeof zoneRows;
     } catch {
       // Table may not exist yet — silently skip
     }
 
     try {
-      const rows = await (db as any)
-        .execute(
-          `SELECT energy_type, currents_json AS currents, interests_json AS interests
-           FROM user_wiring_profiles WHERE user_id = $1 LIMIT 1`,
-          [userId]
-        )
-        .then((r: any) => r.rows ?? []);
+      const result = await db.execute(
+        sql`SELECT energy_type,
+               currents_json AS currents,
+               interests_json AS interests
+            FROM user_wiring_profiles
+            WHERE user_id = ${userId}
+            LIMIT 1`
+      );
+      const rows = (result.rows ?? []) as Array<{
+        energy_type?: string;
+        currents?: string;
+        interests?: string;
+      }>;
       profileRow = rows[0] ?? null;
     } catch {
       // Table may not exist yet — silently skip

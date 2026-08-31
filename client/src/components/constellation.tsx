@@ -10,7 +10,7 @@
  *   size   — Overall diameter in px (default 80)
  */
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useId } from "react";
 import { cn } from "@/lib/utils";
 
 export type ConstellationState = "idle" | "listening" | "speaking" | "alert";
@@ -25,6 +25,7 @@ interface ConstellationProps {
   state?: ConstellationState;
   size?: number;
   className?: string;
+  /** Highlight a specific zone's point when state is "alert" */
   alertZone?: ZoneId;
 }
 
@@ -67,12 +68,18 @@ export function Constellation({
   state = "idle",
   size = 80,
   className,
-  alertZone,
 }: ConstellationProps) {
+  // Unique ID per instance to avoid SVG def collisions when multiple
+  // Constellation instances render on the same page.
+  const uid = useId().replace(/:/g, "");
+  const bgId = `cst-bg-${uid}`;
+  const glowId = `cst-glow-${uid}`;
+  const pointGlowId = `cst-pt-${uid}`;
+
   const accent = zone ? ZONE_COLORS[zone] : DEFAULT_COLOR;
   const svgRef = useRef<SVGSVGElement>(null);
 
-  // Continuous rotation for idle
+  // Continuous rotation for idle / alert states
   useEffect(() => {
     const svg = svgRef.current;
     if (!svg) return;
@@ -85,7 +92,6 @@ export function Constellation({
 
     const tick = (ts: number) => {
       if (!start) start = ts;
-      // Slow gentle rotation: full revolution ~30s in idle, faster in alert
       const speed = state === "alert" ? 0.6 : state === "idle" ? 0.2 : 0;
       angle = ((ts - start) * speed) % 360;
       group.setAttribute("transform", `rotate(${angle}, 50, 50)`);
@@ -107,10 +113,13 @@ export function Constellation({
     state === "speaking" ? 0.55 :
     0.45;
 
-  const pointScale =
-    state === "listening" ? 1.5 :
-    state === "speaking" ? 1.2 :
-    1;
+  // Keyframe class selection — static names, no interpolation
+  const pointAnimClass =
+    state === "speaking" ? "cst-point--speaking" :
+    state === "listening" ? "cst-point--listening" :
+    "";
+
+  const alertAnimClass = state === "alert" ? "cst-point--alert" : "";
 
   return (
     <svg
@@ -118,24 +127,17 @@ export function Constellation({
       width={size}
       height={size}
       viewBox="0 0 100 100"
-      className={cn(
-        "constellation",
-        state === "idle" && "constellation--idle",
-        state === "listening" && "constellation--listening",
-        state === "speaking" && "constellation--speaking",
-        state === "alert" && "constellation--alert",
-        className
-      )}
+      className={cn("constellation", className)}
       aria-label={`DW Constellation — ${state}`}
       role="img"
     >
       <defs>
-        <radialGradient id="cst-bg" cx="50%" cy="50%" r="50%">
+        <radialGradient id={bgId} cx="50%" cy="50%" r="50%">
           <stop offset="0%" stopColor="#1a1a2e" stopOpacity="0.8" />
           <stop offset="100%" stopColor="#0a0a0f" stopOpacity="0.95" />
         </radialGradient>
 
-        <filter id="cst-glow" x="-50%" y="-50%" width="200%" height="200%">
+        <filter id={glowId} x="-50%" y="-50%" width="200%" height="200%">
           <feGaussianBlur stdDeviation="2.5" result="blur" />
           <feMerge>
             <feMergeNode in="blur" />
@@ -143,7 +145,7 @@ export function Constellation({
           </feMerge>
         </filter>
 
-        <filter id="cst-point-glow" x="-100%" y="-100%" width="300%" height="300%">
+        <filter id={pointGlowId} x="-100%" y="-100%" width="300%" height="300%">
           <feGaussianBlur stdDeviation="1.5" result="blur" />
           <feMerge>
             <feMergeNode in="blur" />
@@ -151,22 +153,22 @@ export function Constellation({
           </feMerge>
         </filter>
 
-        {/* Pulse keyframe for speaking state */}
+        {/* All keyframe variants defined statically — no interpolation */}
         <style>{`
-          .constellation--speaking .cst-point {
-            animation: cst-pulse 0.8s ease-in-out infinite alternate;
+          .cst-point--speaking {
+            animation: cst-pulse-speaking 0.8s ease-in-out infinite alternate;
           }
-          .constellation--listening .cst-point {
-            animation: cst-breathe 1.6s ease-in-out infinite alternate;
+          .cst-point--listening {
+            animation: cst-pulse-listening 1.6s ease-in-out infinite alternate;
           }
-          .constellation--alert .cst-alert-point {
+          .cst-point--alert {
             animation: cst-flash 0.6s ease-in-out infinite alternate;
           }
-          @keyframes cst-pulse {
-            from { r: ${2.5 * pointScale}; opacity: 0.8; }
-            to   { r: ${3.8 * pointScale}; opacity: 1; }
+          @keyframes cst-pulse-speaking {
+            from { r: 2.5; opacity: 0.8; }
+            to   { r: 4.5; opacity: 1; }
           }
-          @keyframes cst-breathe {
+          @keyframes cst-pulse-listening {
             from { r: 2.5; opacity: 0.7; }
             to   { r: 4;   opacity: 1; }
           }
@@ -178,7 +180,7 @@ export function Constellation({
       </defs>
 
       {/* Background disc */}
-      <circle cx="50" cy="50" r="48" fill="url(#cst-bg)" />
+      <circle cx="50" cy="50" r="48" fill={`url(#${bgId})`} />
 
       {/* Outer subtle ring */}
       <circle
@@ -202,26 +204,26 @@ export function Constellation({
             stroke={accent}
             strokeWidth="0.4"
             opacity={lineOpacity}
-            filter="url(#cst-glow)"
+            filter={`url(#${glowId})`}
           />
         ))}
 
         {/* Points */}
-        {BASE_POINTS.map((pt, i) => {
-          const isAlertPoint = state === "alert" && i === 0;
-          return (
-            <circle
-              key={i}
-              cx={pt.x}
-              cy={pt.y}
-              r={i === 0 ? 3.5 : 2.5}
-              fill={accent}
-              opacity={state === "idle" ? 0.7 : 0.95}
-              filter="url(#cst-point-glow)"
-              className={cn("cst-point", isAlertPoint && "cst-alert-point")}
-            />
-          );
-        })}
+        {BASE_POINTS.map((pt, i) => (
+          <circle
+            key={i}
+            cx={pt.x}
+            cy={pt.y}
+            r={i === 0 ? 3.5 : 2.5}
+            fill={accent}
+            opacity={state === "idle" ? 0.7 : 0.95}
+            filter={`url(#${pointGlowId})`}
+            className={cn(
+              pointAnimClass,
+              i === 0 && alertAnimClass
+            )}
+          />
+        ))}
       </g>
 
       {/* Central anchor point */}
@@ -230,7 +232,7 @@ export function Constellation({
         r="1.8"
         fill={accent}
         opacity="0.9"
-        filter="url(#cst-point-glow)"
+        filter={`url(#${pointGlowId})`}
       />
     </svg>
   );

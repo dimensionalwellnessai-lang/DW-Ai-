@@ -121,7 +121,8 @@ export default function FeedPage() {
         feedQuery.fetchNextPage();
       }
     },
-    [feedQuery]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [feedQuery.hasNextPage, feedQuery.isFetchingNextPage, feedQuery.fetchNextPage]
   );
 
   useEffect(() => {
