@@ -165,6 +165,7 @@ import AdminAnalyticsPage from "@/pages/admin-analytics";
 import MoodTrackerPage from "@/pages/mood-tracker";
 import HomeCommandCenter from "@/features/home/home-command-center";
 import LifeBlueprintV2Page from "@/pages/life-blueprint-v2";
+import LifeDimensionsPage from "@/pages/life-dimensions";
 import InsightsDashboard from "@/pages/insights";
 import WellnessPreferencesPage from "@/pages/wellness-preferences";
 import ValuesRulesProfilePage from "@/pages/values-rules-profile";
@@ -352,7 +353,7 @@ function Router() {
           summary) now lives on the canonical /life-blueprint page, so both
           redirect there. */}
       <Route path="/life-dashboard"><Redirect to="/life-blueprint" /></Route>
-      <Route path="/life-dimensions"><Redirect to="/life-blueprint" /></Route>
+      <Route path="/life-dimensions" component={LifeDimensionsPage} />
       {/* Sub-routes stay live: they're still linked from active surfaces and
           must keep working. Only the bare /switchboard parent redirects. */}
       <Route path="/switchboard/intake" component={SwitchboardIntakePage} />

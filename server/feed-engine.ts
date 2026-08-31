@@ -75,13 +75,19 @@ function buildWhyForYou(item: FeedEngineItem, context: CompanionContext): string
     ? `${context.cosmicWeather.activeCurrents[0]} is active`
     : `${context.decisionCompass} decision compass timing`;
 
-  const interest =
-    context.interests.deepDives[0] ??
-    context.interests.currentObsessions[0] ??
-    context.interests.popCulture[0] ??
-    "your current focus";
+  const interest = [
+    ...context.interests.deepDives,
+    ...context.interests.currentObsessions,
+    ...context.interests.popCulture,
+    ...context.interests.spiritualCuriosity,
+  ].find((entry) => {
+    const needle = entry.trim().toLowerCase();
+    if (!needle) return false;
+    const haystack = `${item.title} ${item.description} ${item.category ?? ""} ${item.type}`.toLowerCase();
+    return haystack.includes(needle);
+  });
 
-  return `${zoneLine} • ${currentLine} • matches ${interest}`;
+  return interest ? `${zoneLine} • ${currentLine} • matches ${interest}` : `${zoneLine} • ${currentLine}`;
 }
 
 function withElectricalRules(score: number, item: FeedEngineItem, context: CompanionContext): number {
@@ -106,12 +112,36 @@ function withElectricalRules(score: number, item: FeedEngineItem, context: Compa
   return next;
 }
 
+function buildBucketTargets(limit: number): Record<FeedStreamBucket, number> {
+  const ratios: Record<FeedStreamBucket, number> = {
+    constructive: 0.4,
+    recreational: 0.4,
+    social: 0.2,
+  };
+  const buckets: FeedStreamBucket[] = ["constructive", "recreational", "social"];
+  const targets = Object.fromEntries(
+    buckets.map((bucket) => [bucket, Math.floor(limit * ratios[bucket])]),
+  ) as Record<FeedStreamBucket, number>;
+  let remaining = limit - Object.values(targets).reduce((sum, count) => sum + count, 0);
+
+  while (remaining > 0) {
+    const nextBucket = buckets
+      .map((bucket) => ({
+        bucket,
+        remainder: limit * ratios[bucket] - targets[bucket],
+      }))
+      .sort((a, b) => b.remainder - a.remainder)[0]?.bucket;
+
+    if (!nextBucket) break;
+    targets[nextBucket] += 1;
+    remaining -= 1;
+  }
+
+  return targets;
+}
+
 function rebalanceMix(items: RankedFeedItem[], limit: number): RankedFeedItem[] {
-  const targets = {
-    constructive: Math.round(limit * 0.4),
-    recreational: Math.round(limit * 0.4),
-    social: Math.max(1, limit - Math.round(limit * 0.4) - Math.round(limit * 0.4)),
-  } as const;
+  const targets = buildBucketTargets(limit);
 
   const pools: Record<FeedStreamBucket, RankedFeedItem[]> = {
     constructive: [],
@@ -120,19 +150,37 @@ function rebalanceMix(items: RankedFeedItem[], limit: number): RankedFeedItem[] 
   };
 
   for (const item of items) pools[item.streamBucket].push(item);
-  (Object.keys(pools) as FeedStreamBucket[]).forEach((k) => pools[k].sort((a, b) => b.relevance - a.relevance));
 
   const picked: RankedFeedItem[] = [];
-  (Object.keys(targets) as FeedStreamBucket[]).forEach((bucket) => {
-    picked.push(...pools[bucket].slice(0, targets[bucket]));
-  });
+  const counts: Record<FeedStreamBucket, number> = {
+    constructive: 0,
+    recreational: 0,
+    social: 0,
+  };
+  const poolIndexes: Record<FeedStreamBucket, number> = {
+    constructive: 0,
+    recreational: 0,
+    social: 0,
+  };
+  const buckets: FeedStreamBucket[] = ["constructive", "recreational", "social"];
 
-  if (picked.length < limit) {
-    const remaining = items.filter((item) => !picked.includes(item));
-    picked.push(...remaining.slice(0, limit - picked.length));
+  while (picked.length < limit) {
+    const available = buckets.filter((bucket) => poolIndexes[bucket] < pools[bucket].length);
+    if (available.length === 0) break;
+
+    const nextBucket = available
+      .map((bucket) => ({
+        bucket,
+        deficit: (targets[bucket] * (picked.length + 1)) / Math.max(limit, 1) - counts[bucket],
+      }))
+      .sort((a, b) => b.deficit - a.deficit)[0]?.bucket;
+
+    if (!nextBucket) break;
+    picked.push(pools[nextBucket][poolIndexes[nextBucket]++]);
+    counts[nextBucket] += 1;
   }
 
-  return picked.slice(0, limit);
+  return picked;
 }
 
 export function rankFeedItems(
@@ -148,10 +196,12 @@ export function rankFeedItems(
 ): { items: RankedFeedItem[]; hasMore: boolean; nextCursor: number | null } {
   const ranked = items
     .map((item) => {
-      const base =
+      const textRelevance =
         scoreText(item.title, options.query) +
         scoreText(item.description, options.query) +
-        scoreText(item.category, options.query) +
+        scoreText(item.category, options.query);
+      const base =
+        textRelevance +
         (item.favorited ? 3 : 0) +
         (item.liked ? 1 : 0);
 
@@ -159,6 +209,7 @@ export function rankFeedItems(
       return {
         ...item,
         relevance,
+        textRelevance,
         streamBucket: inferBucket(item),
         whyForYou: buildWhyForYou(item, options.context),
       };
@@ -168,7 +219,7 @@ export function rankFeedItems(
       const normalized = options.filter.toLowerCase();
       return item.type.toLowerCase() === normalized || (item.category ?? "").toLowerCase() === normalized;
     })
-    .filter((item) => (options.query ? item.relevance > 0 : true))
+    .filter((item) => (options.query ? item.textRelevance > 0 : true))
     .sort((a, b) => {
       if (options.sort === "latest") {
         return (b.createdAt ?? "").localeCompare(a.createdAt ?? "");
@@ -181,7 +232,7 @@ export function rankFeedItems(
   const nextOffset = options.offset + options.limit;
 
   return {
-    items: paged,
+    items: paged.map(({ textRelevance: _textRelevance, ...item }) => item),
     hasMore: nextOffset < mixed.length,
     nextCursor: nextOffset < mixed.length ? nextOffset : null,
   };

@@ -177,6 +177,9 @@ export function registerExperienceStateRoutes(app: Express): void {
 
       res.json({ items: ranked.items, hasMore: ranked.hasMore, nextCursor: ranked.nextCursor });
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.flatten() });
+      }
       console.error("GET /api/feed error:", error);
       res.status(500).json({ error: "Failed to build your feed" });
     }

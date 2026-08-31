@@ -27,7 +27,7 @@ export interface CompanionContext {
   energyType: EnergyType;
   decisionCompass: DecisionCompass;
   zones: Record<ZoneId, { level: number; trend: string; lastAction?: string }>;
-  cosmicWeather: { activeCurrents: string[]; moonPhase: string };
+  cosmicWeather: { activeCurrents: string[]; moonPhase: string | null };
   interests: {
     deepDives: string[];
     currentObsessions: string[];
@@ -73,24 +73,39 @@ function scoreToZoneState(score?: number | null): { level: number; trend: string
   return { level, trend: "radiant" };
 }
 
-function parseInterests(profile: any): CompanionContext["interests"] {
-  const interests = Array.isArray(profile?.interests)
-    ? profile.interests.filter((v: unknown): v is string => typeof v === "string" && v.trim().length > 0)
+function takeStrings(values: string[] | null | undefined): string[] {
+  return Array.isArray(values)
+    ? values.filter((value): value is string => typeof value === "string" && value.trim().length > 0)
     : [];
+}
+
+function parseInterests(input: {
+  deepDives?: string[] | null;
+  currentObsessions?: string[] | null;
+  popCulture?: string[] | null;
+  spiritualCuriosity?: string[] | null;
+  traditions?: string[] | null;
+}): CompanionContext["interests"] {
+  const spiritualCuriosity = takeStrings(input.spiritualCuriosity);
 
   return {
-    deepDives: interests.slice(0, 4),
-    currentObsessions: interests.slice(4, 8),
-    popCulture: [],
-    spiritualCuriosity: Array.isArray(profile?.traditions) ? profile.traditions.slice(0, 4) : [],
+    deepDives: takeStrings(input.deepDives).slice(0, 4),
+    currentObsessions: takeStrings(input.currentObsessions).slice(0, 4),
+    popCulture: takeStrings(input.popCulture).slice(0, 4),
+    spiritualCuriosity: (spiritualCuriosity.length > 0 ? spiritualCuriosity : takeStrings(input.traditions)).slice(0, 4),
   };
 }
 
-export async function buildCompanionContext(userId: string): Promise<CompanionContext> {
-  const [chart, assessments, profile, goals] = await Promise.all([
+export async function buildCompanionContext(
+  userId: string,
+  options?: { useAstrologyInGuidance?: boolean },
+): Promise<CompanionContext> {
+  const [chart, assessments, interestsRow, wellnessPreferences, onboardingProfile, goals] = await Promise.all([
     storage.getBirthChart(userId),
     storage.getLifeDimensionAssessments(userId),
-    storage.getUserProfile(userId),
+    storage.getUserInterests(userId),
+    storage.getWellnessPreferences(userId),
+    storage.getOnboardingProfile(userId),
     storage.getGoals(userId),
   ]);
 
@@ -104,10 +119,12 @@ export async function buildCompanionContext(userId: string): Promise<CompanionCo
   const zones = Object.fromEntries(
     DEFAULT_ZONES.map((zone) => [zone, { level: 2, trend: "dim" }]),
   ) as CompanionContext["zones"];
+  const seenZones = new Set<ZoneId>();
 
   assessments.forEach((row) => {
     const zone = DIMENSION_TO_ZONE[(row.dimension ?? "").toLowerCase()];
-    if (!zone) return;
+    if (!zone || seenZones.has(zone)) return;
+    seenZones.add(zone);
     zones[zone] = {
       ...scoreToZoneState(row.score),
       lastAction: goals.find((goal) => (goal.wellnessDimension ?? "").toLowerCase() === row.dimension.toLowerCase())?.title,
@@ -120,18 +137,26 @@ export async function buildCompanionContext(userId: string): Promise<CompanionCo
   if (zones.identity.trend === "dim") zones.identity = { level: zones.mental.level, trend: zones.mental.trend };
   if (zones.creativity.trend === "dim") zones.creativity = { level: zones.learning.level, trend: zones.learning.trend };
 
+  const useAstrologyInGuidance = options?.useAstrologyInGuidance ?? Boolean(wellnessPreferences?.useAstrologyInGuidance);
+
   return {
     currents: energy.currents,
     energyType: energy.energyType,
     decisionCompass: energy.decisionCompass,
     zones,
     cosmicWeather: {
-      activeCurrents: energy.activeCurrents,
-      moonPhase: energy.moonPhase,
+      activeCurrents: useAstrologyInGuidance ? energy.activeCurrents : [],
+      moonPhase: useAstrologyInGuidance ? energy.moonPhase : null,
     },
-    interests: parseInterests(profile),
+    interests: parseInterests({
+      deepDives: interestsRow?.deepDives,
+      currentObsessions: interestsRow?.currentObsessions,
+      popCulture: interestsRow?.popCulture,
+      spiritualCuriosity: interestsRow?.spiritualCuriosity,
+      traditions: wellnessPreferences?.traditions,
+    }),
     patterns: {
-      bestDecisionTime: (profile as any)?.peakFocusTime ?? (profile as any)?.peakMotivationTime ?? undefined,
+      bestDecisionTime: onboardingProfile?.peakMotivationTime ?? undefined,
       energyCrashRisk: zones.rest.level <= 2 ? "high" : zones.rest.level === 3 ? "medium" : "low",
     },
   };
@@ -148,7 +173,9 @@ export function companionContextPromptBlock(context: CompanionContext): string {
     `Zones: ${Object.entries(context.zones)
       .map(([zone, value]) => `${zone}:${value.trend}(${value.level})`)
       .join(", ")}`,
-    `Cosmic Weather: moon=${context.cosmicWeather.moonPhase}; active=${context.cosmicWeather.activeCurrents.join(", ") || "none"}`,
+    context.cosmicWeather.moonPhase
+      ? `Cosmic Weather: moon=${context.cosmicWeather.moonPhase}; active=${context.cosmicWeather.activeCurrents.join(", ") || "none"}`
+      : "Cosmic Weather: off",
     `Interests: deepDives=${context.interests.deepDives.join(", ") || "none"}; obsessions=${context.interests.currentObsessions.join(", ") || "none"}; popCulture=${context.interests.popCulture.join(", ") || "none"}`,
     "WIRING EXAMPLES:",
     "- Gut Current: e.g., You said yes to plans but your stomach clenched.",

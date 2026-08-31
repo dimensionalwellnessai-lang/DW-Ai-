@@ -1,3 +1,5 @@
+import { isMercuryRetrogradeWindow } from "@shared/cosmic-ephemeris";
+
 export type CurrentType =
   | "gut"
   | "wave"
@@ -26,13 +28,6 @@ export interface EnergyCurrentsResult {
   activeCurrents: string[];
   moonPhase: string;
 }
-
-const MERCURY_RETROGRADE_WINDOWS: Record<number, Array<{ start: string; end: string }>> = {
-  2026: [
-    { start: "2026-03-25T00:00:00Z", end: "2026-04-14T23:59:59Z" },
-    { start: "2026-08-05T00:00:00Z", end: "2026-08-28T23:59:59Z" },
-  ],
-};
 
 const CURRENT_ORDER: CurrentType[] = [
   "gut",
@@ -70,17 +65,6 @@ export function getCurrentMoonPhase(now = new Date()): string {
   ] as const;
   const idx = Math.floor((daysSince % 29.53) / (29.53 / phases.length)) % phases.length;
   return phases[(idx + phases.length) % phases.length];
-}
-
-export function isMercuryRetrogradeWindow(now = new Date()): boolean {
-  const year = now.getFullYear();
-  const t = now.getTime();
-  const windows = MERCURY_RETROGRADE_WINDOWS[year] ?? [];
-  return windows.some(({ start, end }) => {
-    const startTs = new Date(start).getTime();
-    const endTs = new Date(end).getTime();
-    return t >= startTs && t <= endTs;
-  });
 }
 
 export function calculateEnergyCurrents(input: BirthCircuitInput, now = new Date()): EnergyCurrentsResult {

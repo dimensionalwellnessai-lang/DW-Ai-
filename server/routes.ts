@@ -2319,10 +2319,12 @@ export async function registerRoutes(
         ? `${message}\n${documentContext}`
         : message;
 
-      const [snapshot, companion] = await Promise.all([
-        getUserContextSnapshot(userId),
-        buildCompanionContext(userId),
-      ]);
+      const snapshot = await getUserContextSnapshot(userId);
+      const companion = await buildCompanionContext(userId, {
+        useAstrologyInGuidance: cosmicConsent && typeof cosmicConsent === "object"
+          ? Boolean(cosmicConsent.useAstrologyInGuidance)
+          : snapshot.spirit.cosmicConsent.useAstrologyInGuidance,
+      });
       const userContext = {
         ...toUserLifeContext(snapshot, {
           category: context,

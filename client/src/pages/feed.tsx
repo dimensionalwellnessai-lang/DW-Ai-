@@ -212,8 +212,15 @@ export default function FeedPage() {
               <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Sort</span>
               <Button size="sm" variant={sort === "relevant" ? "default" : "ghost"} onClick={() => setSort("relevant")}>Relevant</Button>
               <Button size="sm" variant={sort === "latest" ? "default" : "ghost"} onClick={() => setSort("latest")}>Latest</Button>
-              <Button size="sm" variant="outline" onClick={() => refetch()}>
-                Refresh
+              <Button size="sm" variant="outline" disabled={isRefetching} onClick={() => void refetch()}>
+                {isRefetching ? (
+                  <>
+                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                    Refreshing…
+                  </>
+                ) : (
+                  "Refresh"
+                )}
               </Button>
             </div>
           </CardContent>

@@ -20,7 +20,7 @@ describe("calculateEnergyCurrents", () => {
   });
 
   it("flags mercury retrograde windows", () => {
-    expect(isMercuryRetrogradeWindow(new Date("2026-04-01T12:00:00Z"))).toBe(true);
+    expect(isMercuryRetrogradeWindow(new Date("2026-03-01T12:00:00Z"))).toBe(true);
     expect(isMercuryRetrogradeWindow(new Date("2026-06-01T12:00:00Z"))).toBe(false);
     expect(isMercuryRetrogradeWindow(new Date("2027-04-01T12:00:00Z"))).toBe(false);
   });

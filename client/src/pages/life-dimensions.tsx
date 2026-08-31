@@ -68,7 +68,7 @@ export default function LifeDimensionsPage() {
       const level = source ? Math.max(1, Math.min(5, Math.round(source.score))) : 2;
       const lastAction =
         blueprint.data?.actions?.find((action) =>
-          (action.dimensionTags ?? []).some((tag) => tag.toLowerCase() === zone.label.toLowerCase()),
+          (action.dimensionTags ?? []).some((tag) => tag.toLowerCase() === (zone.dimensionKey ?? zone.id)),
         )?.actionName ?? undefined;
       return { ...zone, level, trend: zoneTrend(level), lastAction };
     });

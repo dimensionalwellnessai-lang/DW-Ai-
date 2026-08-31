@@ -40,6 +40,7 @@ import { PageHeader } from "@/components/page-header";
 import { CosmicCalendarView } from "@/components/cosmic-calendar-view";
 import { useCosmicConsent, loadConsent, saveConsent } from "@/hooks/use-cosmic-consent";
 import { useAuth } from "@/hooks/use-auth";
+import { getMercuryRetrogradeWindows, isMercuryRetrogradeWindow } from "@shared/cosmic-ephemeris";
 import {
   calcLifePath,
   calcExpression,
@@ -239,14 +240,7 @@ function getCurrentMoonPhase(): string {
   return MOON_PHASES[idx];
 }
 
-const MERCURY_RETROGRADE_WINDOWS: Record<number, Array<{ start: string; end: string }>> = {
-  2026: [
-    { start: "2026-03-25T00:00:00Z", end: "2026-04-14T23:59:59Z" },
-    { start: "2026-08-05T00:00:00Z", end: "2026-08-28T23:59:59Z" },
-  ],
-};
-
-function getCurrentActivationAlerts(moonPhase: string): string[] {
+function getCurrentActivationAlerts(moonPhase: string, astrologyConsent: boolean): string[] {
   const alerts: string[] = [];
   if (moonPhase === "Full Moon" || moonPhase === "Waxing Gibbous") {
     alerts.push("Wave Current activation: avoid snap decisions and let emotional voltage settle.");
@@ -254,15 +248,7 @@ function getCurrentActivationAlerts(moonPhase: string): string[] {
   if (moonPhase === "New Moon") {
     alerts.push("Gut Current activation: low-noise day for grounded body-led choices.");
   }
-  const now = new Date();
-  const year = now.getFullYear();
-  const isRetrograde = (MERCURY_RETROGRADE_WINDOWS[year] ?? []).some(({ start, end }) => {
-    const startTs = new Date(start).getTime();
-    const endTs = new Date(end).getTime();
-    const nowTs = now.getTime();
-    return nowTs >= startTs && nowTs <= endTs;
-  });
-  if (isRetrograde) {
+  if (astrologyConsent && isMercuryRetrogradeWindow()) {
     alerts.push("Mercury retrograde static on the Voice Current: double-check messages and keep communication simple.");
   }
   return alerts;
@@ -313,9 +299,23 @@ function getUpcomingEvents(days = 30): PlanetaryEvent[] {
     { date: new Date(`${year}-06-21`), label: "Summer Solstice", type: "season", description: "Longest day of the year. Peak energy and vitality.", prompt: "Where in your life are you at full bloom?" },
     { date: new Date(`${year}-09-22`), label: "Autumn Equinox", type: "season", description: "Harvest and letting go begin.", prompt: "What are you harvesting? What will you release?" },
     { date: new Date(`${year}-12-21`), label: "Winter Solstice", type: "season", description: "The longest night. Rest, reflection, and renewal.", prompt: "What wants to be born from the stillness?" },
-    { date: new Date(`${year}-04-01`), label: "Mercury Retrograde", type: "retrograde", description: "Communication and technology may feel scattered. Slow down, review, revise.", prompt: "What needs re-examination in your life right now?" },
-    { date: new Date(`${year}-08-05`), label: "Mercury Direct", type: "retrograde", description: "Mercury stations direct. Move forward with renewed clarity.", prompt: "What insight emerged during the retrograde?" },
   ];
+  getMercuryRetrogradeWindows(year).forEach(({ start, end }) => {
+    statics.push({
+      date: new Date(start),
+      label: "Mercury Retrograde",
+      type: "retrograde",
+      description: "Communication and technology may feel scattered. Slow down, review, revise.",
+      prompt: "What needs re-examination in your life right now?",
+    });
+    statics.push({
+      date: new Date(end),
+      label: "Mercury Direct",
+      type: "retrograde",
+      description: "Mercury stations direct. Move forward with renewed clarity.",
+      prompt: "What insight emerged during the retrograde?",
+    });
+  });
 
   const cutoff = new Date(now);
   cutoff.setDate(cutoff.getDate() + days);
@@ -552,7 +552,7 @@ function InsightsTab({
   const { consent } = useCosmicConsent();
   const astrologyConsent = consent?.useAstrologyInGuidance ?? false;
   const numerologyConsent = consent?.useNumerologyInGuidance ?? false;
-  const activationAlerts = getCurrentActivationAlerts(moonPhase);
+  const activationAlerts = getCurrentActivationAlerts(moonPhase, astrologyConsent);
 
   const [aiReading, setAiReading] = useState<string | null>(null);
 

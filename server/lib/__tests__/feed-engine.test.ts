@@ -79,4 +79,67 @@ describe("rankFeedItems", () => {
     expect(result.items[0].whyForYou).toContain("Zone");
     expect(typeof result.hasMore).toBe("boolean");
   });
+
+  it("filters searches by text match before personalization boosts", () => {
+    const result = rankFeedItems(
+      [
+        {
+          ...items[0],
+          favorited: true,
+        },
+      ],
+      {
+        context,
+        query: "nostalgia",
+        filter: "all",
+        sort: "relevant",
+        offset: 0,
+        limit: 5,
+      },
+    );
+
+    expect(result.items).toHaveLength(0);
+  });
+
+  it("preserves latest ordering within each bucket while balancing the mix", () => {
+    const result = rankFeedItems(
+      [
+        {
+          ...items[0],
+          id: "constructive-new",
+          createdAt: "2026-01-04",
+        },
+        {
+          ...items[0],
+          id: "constructive-old",
+          createdAt: "2026-01-01",
+        },
+        {
+          ...items[1],
+          id: "recreational-new",
+          createdAt: "2026-01-03",
+        },
+        {
+          ...items[1],
+          id: "recreational-old",
+          createdAt: "2026-01-02",
+        },
+      ],
+      {
+        context,
+        query: "",
+        filter: "all",
+        sort: "latest",
+        offset: 0,
+        limit: 4,
+      },
+    );
+
+    expect(result.items.map((item) => item.id)).toEqual([
+      "constructive-new",
+      "recreational-new",
+      "constructive-old",
+      "recreational-old",
+    ]);
+  });
 });
