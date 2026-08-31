@@ -28,7 +28,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  process.env = { ...ORIGINAL_ENV };
+  process.env = { ...TEST_ENV_BASELINE };
   vi.restoreAllMocks();
 });
 
@@ -151,7 +151,7 @@ describe("consumeChatCompletionStream", () => {
         choices: [
           {
             delta: {
-              tool_calls: [{ id: "call_1", function: { name: "navigate", arguments: "{\"path\":\"/today\"" } }],
+              tool_calls: [{ index: 0, id: "call_1", function: { name: "navigate_to", arguments: "{\"path\":\"/today\"" } }],
             },
           },
         ],
@@ -160,7 +160,7 @@ describe("consumeChatCompletionStream", () => {
         choices: [
           {
             delta: {
-              tool_calls: [{ id: "call_1", function: { name: "_to", arguments: ",\"tab\":\"focus\"}" } }],
+              tool_calls: [{ index: 0, function: { arguments: ",\"tab\":\"focus\"}" } }],
             },
           },
         ],

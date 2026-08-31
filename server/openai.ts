@@ -159,7 +159,7 @@ export function normalizeToolCallsFromAssistantMessage(message: any): { name: st
         parsedArgs = rawArgs;
       }
       normalized.push({
-        name: (tc as any)?.function?.name || (tc as any)?.name || "",
+        name: (tc as any)?.function?.name || "",
         arguments: parsedArgs,
       });
     }
@@ -203,6 +203,14 @@ function _extractAssistantText(message: any): string {
 export async function runMainChatFallbackChain<T>(args: {
   primaryModel: string;
   openAiFallbackModel?: string;
+  /**
+   * When true, the primary client IS the direct-OpenAI client (e.g. source is
+   * "openai-direct" or "ai-integrations"), so the OpenAI fallback step would
+   * use the same credentials and can be skipped.  When false (default), an
+   * independent `callOpenAiFallbackModel` caller should be provided that uses
+   * `_originalCreate` instead of the primary client.
+   */
+  primaryIsOpenAiDirect?: boolean;
   callWithModel: (model: string) => Promise<T>;
   callOpenAiFallbackModel?: (model: string) => Promise<T>;
   callPerplexity: () => Promise<T>;
@@ -216,7 +224,14 @@ export async function runMainChatFallbackChain<T>(args: {
     console.warn(`[openai] Primary chat model failed (${args.primaryModel}), trying OpenAI fallback model:`, (primaryError as Error).message);
   }
 
-  if (args.primaryModel !== openAiFallbackModel) {
+  // Skip OpenAI fallback when:
+  // - The primary client already IS the direct-OpenAI client (same credentials, would fail again), or
+  // - No separate OpenAI fallback caller was provided AND the primary model is identical (nothing different to try)
+  const skipOpenAiFallback =
+    args.primaryIsOpenAiDirect ||
+    (!args.callOpenAiFallbackModel && args.primaryModel === openAiFallbackModel);
+
+  if (!skipOpenAiFallback) {
     try {
       const fallbackCaller = args.callOpenAiFallbackModel ?? args.callWithModel;
       const result = await fallbackCaller(openAiFallbackModel);
@@ -240,6 +255,7 @@ type OpenAIStyleChatChunk = {
     delta?: {
       content?: string;
       tool_calls?: Array<{
+        index?: number;
         id?: string;
         function?: {
           name?: string;
@@ -256,7 +272,8 @@ export async function consumeChatCompletionStream(
 ): Promise<{ response: string; toolCalls?: { name: string; arguments: Record<string, any> }[] }> {
   let fullResponse = "";
   const toolCalls: { name: string; arguments: Record<string, any> }[] = [];
-  let currentToolCall: { id: string; name: string; arguments: string } | null = null;
+  // Accumulate each parallel tool call independently by its index
+  const toolCallMap = new Map<number, { id: string; name: string; arguments: string }>();
 
   for await (const chunk of stream) {
     const delta = chunk.choices?.[0]?.delta;
@@ -269,42 +286,32 @@ export async function consumeChatCompletionStream(
     if (delta?.tool_calls) {
       for (const toolCall of delta.tool_calls) {
         if (toolCall.function) {
-          const isNewToolCall =
-            !currentToolCall ||
-            (toolCall.id != null && toolCall.id !== "" && toolCall.id !== currentToolCall.id);
-          if (isNewToolCall) {
-            if (currentToolCall) {
-              try {
-                toolCalls.push({
-                  name: currentToolCall.name,
-                  arguments: JSON.parse(currentToolCall.arguments),
-                });
-              } catch {
-                console.error("Failed to parse tool arguments:", currentToolCall.arguments);
-              }
-            }
-            currentToolCall = {
+          const idx = toolCall.index ?? 0;
+          const existing = toolCallMap.get(idx);
+          if (!existing) {
+            toolCallMap.set(idx, {
               id: toolCall.id || "",
               name: toolCall.function.name || "",
               arguments: toolCall.function.arguments || "",
-            };
-          } else if (currentToolCall) {
-            if (toolCall.function.name) currentToolCall.name += toolCall.function.name;
-            if (toolCall.function.arguments) currentToolCall.arguments += toolCall.function.arguments;
+            });
+          } else {
+            if (toolCall.function.name) existing.name += toolCall.function.name;
+            if (toolCall.function.arguments) existing.arguments += toolCall.function.arguments;
           }
         }
       }
     }
   }
 
-  if (currentToolCall) {
+  // Parse completed tool calls in index order
+  for (const [, tc] of [...toolCallMap.entries()].sort(([a], [b]) => a - b)) {
     try {
       toolCalls.push({
-        name: currentToolCall.name,
-        arguments: JSON.parse(currentToolCall.arguments),
+        name: tc.name,
+        arguments: JSON.parse(tc.arguments),
       });
     } catch {
-      console.error("Failed to parse tool arguments:", currentToolCall.arguments);
+      console.error("Failed to parse tool arguments:", tc.arguments);
     }
   }
 
@@ -521,12 +528,21 @@ export function getAiConfigStatus(): {
     missing: string[];
   };
 } {
+  // Top-level configured/missing reflects the global OpenAI client credentials
+  // used by non-chat routes (plans, routines-browse, etc.) and /api/health/ai.
+  const globalConfigured = !!(
+    (process.env.AI_INTEGRATIONS_OPENAI_BASE_URL && process.env.AI_INTEGRATIONS_OPENAI_API_KEY) ||
+    process.env.OPENAI_API_KEY
+  );
+  const globalMissing: string[] = globalConfigured
+    ? []
+    : ["AI_INTEGRATIONS_OPENAI_BASE_URL", "AI_INTEGRATIONS_OPENAI_API_KEY", "OPENAI_API_KEY"];
+
   const mainChatClient = _resolveMainChatClientConfigStatus();
   const chatModel = resolveMainChatModel();
-  const missing = [...mainChatClient.missing];
   return {
-    configured: mainChatClient.apiKeyConfigured,
-    missing,
+    configured: globalConfigured,
+    missing: globalMissing,
     chat: {
       provider: chatModel.provider,
       model: chatModel.model,
@@ -2445,6 +2461,7 @@ Calm over speed.`;
     const { result: response } = await runMainChatFallbackChain({
       primaryModel: chatModel.model,
       openAiFallbackModel: OPENAI_MAIN_CHAT_FALLBACK_MODEL,
+      primaryIsOpenAiDirect: ["openai-direct", "ai-integrations"].includes(_resolveMainChatClientConfigStatus().source),
       callWithModel: createMainCompletion,
       callOpenAiFallbackModel: createOpenAiFallbackCompletion,
       callPerplexity: createPerplexityFallback,
@@ -3471,6 +3488,7 @@ RESPONSE FORMATTING:
     const { result: stream } = await runMainChatFallbackChain({
       primaryModel: chatModel.model,
       openAiFallbackModel: OPENAI_MAIN_CHAT_FALLBACK_MODEL,
+      primaryIsOpenAiDirect: ["openai-direct", "ai-integrations"].includes(_resolveMainChatClientConfigStatus().source),
       callWithModel: createMainStream,
       callOpenAiFallbackModel: createOpenAiFallbackStream,
       callPerplexity: createPerplexityFallbackStream,
