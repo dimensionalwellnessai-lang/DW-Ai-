@@ -96,13 +96,7 @@ export default function FeedPage() {
     item: FeedItem;
     action: "like" | "favorite" | "save" | "hide";
   }>({
-    mutationFn: async ({
-      item,
-      action,
-    }: {
-      item: FeedItem;
-      action: "like" | "favorite" | "save" | "hide";
-    }) => {
+    mutationFn: async ({ item, action }) => {
       await apiRequest("POST", "/api/feed/interactions", {
         contentId: item.id,
         contentTitle: item.title,

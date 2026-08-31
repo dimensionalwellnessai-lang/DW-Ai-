@@ -145,55 +145,6 @@ export function Constellation({
           </feMerge>
         </filter>
 
-        {/* All keyframe variants defined statically — no interpolation */}
-        <style>{`
-          .cst-point--speaking {
-            animation: cst-pulse-speaking 0.8s ease-in-out infinite alternate;
-          }
-          .cst-point--listening {
-            animation: cst-pulse-listening 1.6s ease-in-out infinite alternate;
-          }
-          .cst-point--alert {
-            animation: cst-flash 0.6s ease-in-out infinite alternate;
-          }
-          .cst-group--idle {
-            animation: cst-rotate-idle 32s linear infinite;
-            transform-origin: 50px 50px;
-          }
-          .cst-group--alert {
-            animation: cst-rotate-alert 12s linear infinite;
-            transform-origin: 50px 50px;
-          }
-          @keyframes cst-pulse-speaking {
-            from { r: 2.5; opacity: 0.8; }
-            to   { r: 4.5; opacity: 1; }
-          }
-          @keyframes cst-pulse-listening {
-            from { r: 2.5; opacity: 0.7; }
-            to   { r: 4;   opacity: 1; }
-          }
-          @keyframes cst-flash {
-            from { opacity: 0.3; }
-            to   { opacity: 1; }
-          }
-          @keyframes cst-rotate-idle {
-            from { transform: rotate(0deg); }
-            to   { transform: rotate(360deg); }
-          }
-          @keyframes cst-rotate-alert {
-            from { transform: rotate(0deg); }
-            to   { transform: rotate(360deg); }
-          }
-          @media (prefers-reduced-motion: reduce) {
-            .cst-group--idle,
-            .cst-group--alert,
-            .cst-point--speaking,
-            .cst-point--listening,
-            .cst-point--alert {
-              animation: none !important;
-            }
-          }
-        `}</style>
       </defs>
 
       {/* Background disc */}

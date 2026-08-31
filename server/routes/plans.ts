@@ -34,7 +34,7 @@ import { getPlanTemplate, PLAN_TEMPLATES } from "@shared/planTemplates";
 import { requireAuth } from "./_shared";
 import { getUserContextSnapshot, toUserLifeContext } from "../lib/user-context";
 import { generateChatResponse, openai, getAiConfigStatus } from "../openai";
-import { buildCompanionContext, serializeCompanionContext } from "../lib/companion-context";
+import { buildCompanionContext, emptyCompanionContext, serializeCompanionContext } from "../lib/companion-context";
 
 type ChatTurn = { role: "user" | "assistant"; content: string };
 
@@ -738,12 +738,7 @@ export function registerPlansRoutes(app: Express): void {
         const snapshot = await getUserContextSnapshot(userId);
         const userContext = toUserLifeContext(snapshot, { category: "plan" });
         const companionContextBlock = serializeCompanionContext(
-          await buildCompanionContext(userId).catch(() => ({
-            zones: {},
-            currents: {},
-            energyType: null,
-            interests: { deepDives: [], currentObsessions: [], popCulture: [] },
-          }))
+          await buildCompanionContext(userId).catch(() => emptyCompanionContext())
         );
         try {
           const result = await generateChatResponse(

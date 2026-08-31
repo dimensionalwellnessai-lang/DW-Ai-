@@ -104,7 +104,7 @@ function mergeUniqueLists(...lists: string[][]): string[] {
   return items;
 }
 
-function emptyCompanionContext(): CompanionContext {
+export function emptyCompanionContext(): CompanionContext {
   const empty: CompanionContext = {
     zones: {},
     currents: {},
@@ -157,6 +157,8 @@ export async function buildCompanionContext(userId: string): Promise<CompanionCo
     };
 
     return {
+      // These richer wiring fields are intentionally left empty until the app
+      // persists explicit zone state / current reliability data.
       zones: {},
       currents: {},
       energyType: null,

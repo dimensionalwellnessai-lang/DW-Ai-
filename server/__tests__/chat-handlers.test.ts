@@ -112,9 +112,16 @@ const buildCompanionContext = vi.fn(async () => ({
   energyType: null,
   interests: { deepDives: [], currentObsessions: [], popCulture: [] },
 }));
+const emptyCompanionContext = vi.fn(() => ({
+  zones: {},
+  currents: {},
+  energyType: null,
+  interests: { deepDives: [], currentObsessions: [], popCulture: [] },
+}));
 const serializeCompanionContext = vi.fn(() => "");
 vi.mock("../lib/companion-context", () => ({
   buildCompanionContext,
+  emptyCompanionContext,
   serializeCompanionContext,
 }));
 
@@ -233,6 +240,12 @@ beforeEach(() => {
     energyType: null,
     interests: { deepDives: [], currentObsessions: [], popCulture: [] },
   });
+  emptyCompanionContext.mockReturnValue({
+    zones: {},
+    currents: {},
+    energyType: null,
+    interests: { deepDives: [], currentObsessions: [], popCulture: [] },
+  });
   serializeCompanionContext.mockReturnValue("");
   getAiConfigStatus.mockReturnValue({ configured: true });
 });
@@ -242,6 +255,7 @@ afterEach(() => {
   detectIntentAndRespond.mockReset();
   resolveAdaptiveDWMode.mockReset();
   buildCompanionContext.mockReset();
+  emptyCompanionContext.mockReset();
   serializeCompanionContext.mockReset();
   logDwRolePick.mockReset();
   getUserContextSnapshot.mockReset();

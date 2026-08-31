@@ -36,16 +36,7 @@ import { getUserContextSnapshot, toUserLifeContext } from "../lib/user-context";
 import { DW_GUIDE_BEHAVIOR } from "@shared/dw-persona";
 import { resolveAdaptiveDWMode } from "../lib/dw-role-picker";
 import { logDwRolePick } from "../lib/dw-role-pick-log";
-import { buildCompanionContext, serializeCompanionContext } from "../lib/companion-context";
-
-function emptyCompanionContext() {
-  return {
-    zones: {},
-    currents: {},
-    energyType: null,
-    interests: { deepDives: [], currentObsessions: [], popCulture: [] },
-  };
-}
+import { buildCompanionContext, emptyCompanionContext, serializeCompanionContext } from "../lib/companion-context";
 
 /**
  * Test-only escape hatch used by the e2e suite (see

@@ -138,6 +138,7 @@ export default function ZoneDetailPage({ params }: Props) {
         <div className="flex flex-col gap-2">
           {zone.tools.map((tool) => (
             <button
+              type="button"
               key={tool.path}
               onClick={() => setLocation(tool.path)}
               className={cn(
