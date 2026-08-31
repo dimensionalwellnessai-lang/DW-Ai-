@@ -40,7 +40,7 @@ import { useInteractiveTour } from "@/components/interactive-tour";
 import { PremiumFeaturesDialog } from "@/components/premium-features-dialog";
 import { saveEnhancedOnboarding } from "@/lib/guest-storage";
 import { isDemoMode, initializeDemoMode, exitDemoMode } from "@/lib/demo-mode";
-import { isFeatureEnabled } from "@/config/featureFlags";
+import { isFeatureEnabled, type FeatureFlags } from "@/config/featureFlags";
 import { useLearningProfile } from "@/hooks/use-learning-profile";
 import { useCoachMode, COACHING_MODES, COACHING_MODE_LABELS, COACHING_MODE_DESCRIPTIONS, type CoachingMode } from "@/hooks/use-coach-mode";
 import { useCosmicConsent } from "@/hooks/use-cosmic-consent";
@@ -82,6 +82,34 @@ const MENU_TUTORIAL_STEP_KEY = "dw:menuTutorialStep";
 /** App-level preference key: user can disable browser notifications without revoking permission */
 const BROWSER_NOTIF_ENABLED_KEY = "dw_browser_notif_enabled";
 
+interface LabsFlagConfig {
+  id: keyof FeatureFlags;
+  storageKey: string;
+  label: string;
+  description: string;
+}
+
+const LABS_FLAGS: LabsFlagConfig[] = [
+  { id: "exploreCard", storageKey: "dw_explore_card", label: "Explore doorway card", description: "Shows a gentle card for hobbies and curiosities on Today." },
+  { id: "entertainmentCard", storageKey: "dw_entertainment_card", label: "Entertainment doorway card", description: "Adds an unwind-focused card on Today." },
+  { id: "creatorsCard", storageKey: "dw_creators_card", label: "Creators doorway card", description: "Adds a card for creator content and people you follow." },
+  { id: "companionshipCard", storageKey: "dw_companionship_card", label: "Companionship doorway card", description: "Adds a social-support card so you do not have to do this alone." },
+  { id: "dwProactiveNotices", storageKey: "dw_proactive_notices", label: "DW proactive notices", description: "Enables the \"DW noticed…\" suggestion layer on Today." },
+  { id: "actionEngine", storageKey: "dw_action_engine", label: "Action engine", description: "Turns on client-side action suggestions inside agentic cards." },
+  { id: "sharedAttention", storageKey: "dw_shared_attention", label: "Shared attention modes", description: "Enables co-watch and shared-presence actions." },
+  { id: "DW_READING_CARD", storageKey: "dw_reading_card", label: "Daily reading card", description: "Shows the dimensional reading card on Today." },
+  { id: "MILESTONE_MOMENTS", storageKey: "dw_milestone_moments", label: "Milestone moments", description: "Shows celebration moments for meaningful progress." },
+  { id: "ONBOARDING_VALUE_PREVIEW", storageKey: "dw_onboarding_value_preview", label: "Onboarding value preview", description: "Adds the value-preview step before onboarding conversation." },
+  { id: "WEEKLY_REVIEW", storageKey: "dw_weekly_review", label: "Weekly review", description: "Turns on weekly reflection with a next-week proposal." },
+  { id: "SHARE_EXPORT", storageKey: "dw_share_export", label: "Share and export", description: "Enables sharing and export actions for plans and summaries." },
+  { id: "DW_INSIGHT_JOURNAL", storageKey: "dw_insight_journal_enabled", label: "DW insight journal", description: "Turns on DW insight and journal intelligence surfaces." },
+  { id: "JOURNAL_AUTOGEN", storageKey: "dw_journal_autogen", label: "Journal autogen", description: "Auto-generates draft journal entries and insight cards." },
+  { id: "ELEVATION_ENGINE", storageKey: "dw_elevation_engine", label: "Elevation engine", description: "Enables stagnation detection and elevation nudges." },
+  { id: "ELEVATION_PLAN", storageKey: "dw_elevation_plan", label: "Elevation plan", description: "Turns on the 7-day elevation plan builder." },
+  { id: "MULTI_PLAN", storageKey: "dw_multi_plan", label: "Multi-plan history", description: "Enables plan history and multiple plan support." },
+  { id: "INTERACTION_ENGINE", storageKey: "dw_interaction_engine", label: "Interaction engine", description: "Turns on concise A→B→C style interaction shaping in chat." },
+];
+
 export function SettingsPage() {
   usePageMeta("Settings", "Customize your DW.ai preferences and account settings.");
   useTutorialStart("settings", 1000);
@@ -92,6 +120,9 @@ export function SettingsPage() {
   const [showAnalyticsDebug, setShowAnalyticsDebug] = useState(false);
   const [showPremiumDialog, setShowPremiumDialog] = useState(false);
   const [demoActive, setDemoActive] = useState(() => isDemoMode());
+  const [labsState, setLabsState] = useState<Record<string, boolean>>(
+    () => Object.fromEntries(LABS_FLAGS.map((flag) => [flag.id, isFeatureEnabled(flag.id)])),
+  );
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const { isOpen, startTour, completeTour, skipTour } = useInteractiveTour();
@@ -244,13 +275,28 @@ export function SettingsPage() {
       setLocation("/login");
     }
   };
+
+  const handleLabsToggle = (flag: LabsFlagConfig, checked: boolean) => {
+    try {
+      localStorage.setItem(flag.storageKey, String(checked));
+    } catch {
+      toast({
+        title: "Could not save that toggle",
+        description: "Your browser blocked local storage for this setting.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setLabsState((prev) => ({ ...prev, [flag.id]: checked }));
+    window.location.reload();
+  };
   
   return (
     <div className="flex flex-col h-full bg-background">
       <PageHeader title="Settings" backPath="/" />
 
       <div className="flex-1 overflow-auto">
-        <main className="p-4 max-w-2xl mx-auto space-y-4 page-enter" data-tour="settings">
+        <main className="p-4 pb-24 max-w-2xl mx-auto space-y-4 page-enter" data-tour="settings">
         <Card>
           <CardHeader>
             <div className="flex items-center gap-3">
@@ -773,6 +819,37 @@ export function SettingsPage() {
             </CardContent>
           </Card>
         )}
+
+        <Card data-testid="card-labs-flags">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <TestTube className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <CardTitle className="text-base">Labs</CardTitle>
+                <CardDescription>Experimental features you can opt into locally.</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {LABS_FLAGS.map((flag) => (
+              <div key={flag.id} className="flex items-start justify-between gap-3">
+                <Label htmlFor={`labs-${flag.id}`} className="flex flex-col gap-0.5 cursor-pointer pr-2">
+                  <span>{flag.label}</span>
+                  <span className="text-xs text-muted-foreground font-normal">{flag.description}</span>
+                </Label>
+                <Switch
+                  id={`labs-${flag.id}`}
+                  checked={labsState[flag.id] ?? false}
+                  onCheckedChange={(checked) => handleLabsToggle(flag, checked)}
+                  data-testid={`switch-labs-${flag.id}`}
+                />
+              </div>
+            ))}
+            <p className="text-xs text-muted-foreground">
+              Changes apply after reload.
+            </p>
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>

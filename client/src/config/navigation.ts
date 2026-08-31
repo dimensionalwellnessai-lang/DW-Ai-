@@ -106,7 +106,7 @@ export const NAV_SECTIONS: NavSection[] = [
       { id: "insights", name: "Insights", path: "/insights", icon: Brain, dimension: "mind" },
       { id: "tracking", name: "Tracking", path: "/tracking", icon: BarChart3, dimension: "mind" },
       { id: "mood", name: "Mood", path: "/mood-tracker", icon: Sun, dimension: "mind" },
-      { id: "browse", name: "Browse", path: "/browse", icon: Search, dimension: "mind" },
+      { id: "browse", name: "Browse", path: "/feed", icon: Search, dimension: "mind" },
       { id: "library", name: "Library", path: "/library", icon: BookOpen, dimension: "mind" },
     ],
   },

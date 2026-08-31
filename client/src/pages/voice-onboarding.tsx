@@ -423,7 +423,7 @@ function SuggestionCard({ suggestion: s, index, onUpdate, disabled }: Suggestion
         <motion.p
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: "auto" }}
-          className="text-[11px] text-muted-foreground italic leading-relaxed"
+          className="text-xs text-muted-foreground italic leading-relaxed"
           data-testid={`reason-${s.id}`}
         >
           {s.sourceReason}

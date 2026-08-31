@@ -17,9 +17,16 @@ export function BottomNav() {
     queryKey: ["/api/habits"],
     staleTime: 60000,
   });
+  const { data: onboardingProfileData } = useQuery<{ profile?: { suggestedStructure?: Array<{ status?: string }> } | null }>({
+    queryKey: ["/api/onboarding/profile"],
+    enabled: false,
+  });
 
   const hasUnfinishedHabits = Array.isArray(habits) &&
     habits.some((h: any) => h.isActive !== false && !h.completedToday);
+  const onboardingProfile = onboardingProfileData?.profile;
+  const hasPendingSetupSuggestions = Array.isArray(onboardingProfile?.suggestedStructure) &&
+    onboardingProfile.suggestedStructure.some((item) => item?.status === "pending");
 
   const navItems = BOTTOM_NAV_ITEMS;
 
@@ -44,7 +51,14 @@ export function BottomNav() {
             (p) => p && (location === p || (p !== "/" && location.startsWith(p + "/")))
           );
           const tourAttr = item.path ? tourDataMap[item.path] : undefined;
-          const showAttentionDot = item.path === "/command-center" && hasUnfinishedHabits && !isActive;
+          const showTodayDot = item.path === "/command-center" && hasUnfinishedHabits && !isActive;
+          const showMyLifeDot = item.path === "/my-life" && hasPendingSetupSuggestions && !isActive;
+          const showAttentionDot = showTodayDot || showMyLifeDot;
+          const attentionLabel = showTodayDot
+            ? "Habits need attention"
+            : showMyLifeDot
+              ? "Setup suggestions are waiting"
+              : null;
 
           return (
             <button
@@ -58,7 +72,7 @@ export function BottomNav() {
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               )}
               data-testid={`nav-${item.id}`}
-              aria-label={item.label}
+              aria-label={attentionLabel ? `${item.label}, ${attentionLabel}` : item.label}
               aria-current={isActive ? "page" : undefined}
               {...(tourAttr && { "data-tour": tourAttr })}
             >
@@ -82,7 +96,7 @@ export function BottomNav() {
                 {showAttentionDot && (
                   <span
                     className="absolute top-0.5 right-0.5 w-2 h-2 rounded-full bg-orange-500 border-2 border-background"
-                    aria-label="Habits need attention"
+                    aria-hidden="true"
                   />
                 )}
               </div>

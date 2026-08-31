@@ -8,7 +8,6 @@
 export interface FeatureFlags {
   NEW_NAVIGATION: boolean;          // ✅ Context-aware hamburger menu
   NEW_ONBOARDING: boolean;          // ✅ Conversational onboarding flow
-  ALL_FEATURES_VIEW: boolean;       // ✅ Searchable feature directory
   AI_PERSONALIZATION: boolean;      // ✅ "Most Used" learning
   LIFE_BLUEPRINT: boolean;          // ⏸️ Life Blueprint (long-term plan view) — off by default
   HOME_CONSOLIDATION: boolean;      // ✅ Unified home, remove switchboard
@@ -396,10 +395,141 @@ function resolveMilestoneMomentsFlag(): boolean {
   return false;
 }
 
+/**
+ * Resolves the initial value for the exploreCard feature flag.
+ * Default is OFF; enable locally via:
+ *   localStorage.setItem('dw_explore_card', 'true')
+ *   ?exploreCard=1 query param
+ */
+function resolveExploreCardFlag(): boolean {
+  try {
+    if (typeof localStorage !== "undefined" && localStorage.getItem("dw_explore_card") === "true") {
+      return true;
+    }
+  } catch {
+    // Ignore storage failures and fall back to query param.
+  }
+  try {
+    if (typeof location !== "undefined") {
+      return new URLSearchParams(location.search).get("exploreCard") === "1";
+    }
+  } catch {
+    // URL parsing failed – fail safely.
+  }
+  return false;
+}
+
+function resolveEntertainmentCardFlag(): boolean {
+  try {
+    if (typeof localStorage !== "undefined" && localStorage.getItem("dw_entertainment_card") === "true") {
+      return true;
+    }
+  } catch {
+    // Ignore storage failures and fall back to query param.
+  }
+  try {
+    if (typeof location !== "undefined") {
+      return new URLSearchParams(location.search).get("entertainmentCard") === "1";
+    }
+  } catch {
+    // URL parsing failed – fail safely.
+  }
+  return false;
+}
+
+function resolveCreatorsCardFlag(): boolean {
+  try {
+    if (typeof localStorage !== "undefined" && localStorage.getItem("dw_creators_card") === "true") {
+      return true;
+    }
+  } catch {
+    // Ignore storage failures and fall back to query param.
+  }
+  try {
+    if (typeof location !== "undefined") {
+      return new URLSearchParams(location.search).get("creatorsCard") === "1";
+    }
+  } catch {
+    // URL parsing failed – fail safely.
+  }
+  return false;
+}
+
+function resolveCompanionshipCardFlag(): boolean {
+  try {
+    if (typeof localStorage !== "undefined" && localStorage.getItem("dw_companionship_card") === "true") {
+      return true;
+    }
+  } catch {
+    // Ignore storage failures and fall back to query param.
+  }
+  try {
+    if (typeof location !== "undefined") {
+      return new URLSearchParams(location.search).get("companionshipCard") === "1";
+    }
+  } catch {
+    // URL parsing failed – fail safely.
+  }
+  return false;
+}
+
+function resolveDwProactiveNoticesFlag(): boolean {
+  try {
+    if (typeof localStorage !== "undefined" && localStorage.getItem("dw_proactive_notices") === "true") {
+      return true;
+    }
+  } catch {
+    // Ignore storage failures and fall back to query param.
+  }
+  try {
+    if (typeof location !== "undefined") {
+      return new URLSearchParams(location.search).get("dwProactiveNotices") === "1";
+    }
+  } catch {
+    // URL parsing failed – fail safely.
+  }
+  return false;
+}
+
+function resolveActionEngineFlag(): boolean {
+  try {
+    if (typeof localStorage !== "undefined" && localStorage.getItem("dw_action_engine") === "true") {
+      return true;
+    }
+  } catch {
+    // Ignore storage failures and fall back to query param.
+  }
+  try {
+    if (typeof location !== "undefined") {
+      return new URLSearchParams(location.search).get("actionEngine") === "1";
+    }
+  } catch {
+    // URL parsing failed – fail safely.
+  }
+  return false;
+}
+
+function resolveSharedAttentionFlag(): boolean {
+  try {
+    if (typeof localStorage !== "undefined" && localStorage.getItem("dw_shared_attention") === "true") {
+      return true;
+    }
+  } catch {
+    // Ignore storage failures and fall back to query param.
+  }
+  try {
+    if (typeof location !== "undefined") {
+      return new URLSearchParams(location.search).get("sharedAttention") === "1";
+    }
+  } catch {
+    // URL parsing failed – fail safely.
+  }
+  return false;
+}
+
 export const FEATURE_FLAGS: FeatureFlags = {
   NEW_NAVIGATION: true,
   NEW_ONBOARDING: true,
-  ALL_FEATURES_VIEW: true,
   AI_PERSONALIZATION: true,
   LIFE_BLUEPRINT: false,
   HOME_CONSOLIDATION: true,
@@ -420,14 +550,14 @@ export const FEATURE_FLAGS: FeatureFlags = {
   DW_READING_CARD: resolveDwReadingCardFlag(),
   ONBOARDING_VALUE_PREVIEW: resolveOnboardingValuePreviewFlag(),
   MILESTONE_MOMENTS: resolveMilestoneMomentsFlag(),
-  // ── Agentic Companion (SPEC_14) — all OFF by default ─────────────────────
-  exploreCard: false,
-  entertainmentCard: false,
-  creatorsCard: false,
-  companionshipCard: false,
-  dwProactiveNotices: false,
-  actionEngine: false,
-  sharedAttention: false,
+  // ── Agentic Companion (SPEC_14) — all OFF by default unless explicitly enabled ─
+  exploreCard: resolveExploreCardFlag(),
+  entertainmentCard: resolveEntertainmentCardFlag(),
+  creatorsCard: resolveCreatorsCardFlag(),
+  companionshipCard: resolveCompanionshipCardFlag(),
+  dwProactiveNotices: resolveDwProactiveNoticesFlag(),
+  actionEngine: resolveActionEngineFlag(),
+  sharedAttention: resolveSharedAttentionFlag(),
 };
 
 /**
