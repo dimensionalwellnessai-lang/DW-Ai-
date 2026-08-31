@@ -9,9 +9,9 @@ const storageStub = {
     birthCountry: "USA",
   })),
   getLifeDimensionAssessments: vi.fn(async () => ([
-    { dimension: "physical", score: 5 },
-    { dimension: "physical", score: 1 },
-    { dimension: "social", score: 4 },
+    { dimension: "physical", score: 5, assessedAt: "2026-08-31T10:00:00Z" },
+    { dimension: "physical", score: 1, assessedAt: "2026-08-30T10:00:00Z" },
+    { dimension: "social", score: 4, assessedAt: "2026-08-31T09:00:00Z" },
   ])),
   getUserInterests: vi.fn(async () => ({
     deepDives: ["fitness"],

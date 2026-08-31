@@ -227,13 +227,14 @@ export function rankFeedItems(
       return b.relevance - a.relevance || a.title.localeCompare(b.title);
     });
 
-  const mixed = rebalanceMix(ranked, ranked.length);
+  const mixed = rebalanceMix(ranked, Math.min(ranked.length, options.offset + options.limit));
   const paged = mixed.slice(options.offset, options.offset + options.limit);
   const nextOffset = options.offset + options.limit;
+  const hasMore = nextOffset < ranked.length;
 
   return {
     items: paged.map(({ textRelevance: _textRelevance, ...item }) => item),
-    hasMore: nextOffset < mixed.length,
-    nextCursor: nextOffset < mixed.length ? nextOffset : null,
+    hasMore,
+    nextCursor: hasMore ? nextOffset : null,
   };
 }

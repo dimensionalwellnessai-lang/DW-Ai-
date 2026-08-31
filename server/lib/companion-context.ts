@@ -121,7 +121,12 @@ export async function buildCompanionContext(
   ) as CompanionContext["zones"];
   const seenZones = new Set<ZoneId>();
 
-  assessments.forEach((row) => {
+  [...assessments]
+    .sort(
+      (a, b) =>
+        new Date(b.assessedAt ?? 0).getTime() - new Date(a.assessedAt ?? 0).getTime(),
+    )
+    .forEach((row) => {
     const zone = DIMENSION_TO_ZONE[(row.dimension ?? "").toLowerCase()];
     if (!zone || seenZones.has(zone)) return;
     seenZones.add(zone);
@@ -129,7 +134,7 @@ export async function buildCompanionContext(
       ...scoreToZoneState(row.score),
       lastAction: goals.find((goal) => (goal.wellnessDimension ?? "").toLowerCase() === row.dimension.toLowerCase())?.title,
     };
-  });
+    });
 
   if (zones.community.trend === "dim") zones.community = { level: 3, trend: "flickering" };
   if (zones.fun.trend === "dim") zones.fun = { level: 3, trend: "flickering" };

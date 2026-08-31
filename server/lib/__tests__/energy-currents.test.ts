@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { calculateEnergyCurrents, isMercuryRetrogradeWindow } from "../energy-currents";
+import { isMercuryRetrogradeWindow } from "@shared/cosmic-ephemeris";
+import { calculateEnergyCurrents } from "../energy-currents";
 
 describe("calculateEnergyCurrents", () => {
   it("returns deterministic type/compass/currents for same input", () => {
