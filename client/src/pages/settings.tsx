@@ -277,17 +277,18 @@ export function SettingsPage() {
   };
 
   const handleLabsToggle = (flag: LabsFlagConfig, checked: boolean) => {
-    setLabsState((prev) => ({ ...prev, [flag.id]: checked }));
     try {
       localStorage.setItem(flag.storageKey, String(checked));
-      window.location.reload();
     } catch {
       toast({
         title: "Could not save that toggle",
         description: "Your browser blocked local storage for this setting.",
         variant: "destructive",
       });
+      return;
     }
+    setLabsState((prev) => ({ ...prev, [flag.id]: checked }));
+    window.location.reload();
   };
   
   return (
