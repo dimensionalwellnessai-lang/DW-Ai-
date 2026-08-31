@@ -53,11 +53,14 @@ export function UserBroadcastDialog({ open, onOpenChange }: UserBroadcastDialogP
   const { endSession } = useSharedAttentionContext();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const openRef = useRef(open);
+  const captureRequestIdRef = useRef(0);
   const [step, setStep] = useState<Step>("consent");
   const [captureMode, setCaptureMode] = useState<CaptureMode>(null);
   const [errorMessage, setErrorMessage] = useState<string>("");
 
   const stopCapture = useCallback(() => {
+    captureRequestIdRef.current += 1;
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
@@ -70,6 +73,10 @@ export function UserBroadcastDialog({ open, onOpenChange }: UserBroadcastDialogP
     endSession();
     onOpenChange(false);
   }, [endSession, onOpenChange]);
+
+  useEffect(() => {
+    openRef.current = open;
+  }, [open]);
 
   // Stop capture when dialog is closed externally
   useEffect(() => {
@@ -84,8 +91,13 @@ export function UserBroadcastDialog({ open, onOpenChange }: UserBroadcastDialogP
       return;
     }
     setCaptureMode(mode);
+    const requestId = ++captureRequestIdRef.current;
     try {
       const stream = await requestCapture(mode);
+      if (!openRef.current || requestId !== captureRequestIdRef.current) {
+        stream.getTracks().forEach((t) => t.stop());
+        return;
+      }
       streamRef.current = stream;
       setStep("active");
       // Attach to video element on next tick (ref may not be in DOM yet)
@@ -126,8 +138,8 @@ export function UserBroadcastDialog({ open, onOpenChange }: UserBroadcastDialogP
             <div className="flex items-start gap-3 rounded-xl bg-muted/50 px-4 py-3">
               <ShieldCheck className="h-5 w-5 text-primary shrink-0 mt-0.5" />
               <p className="text-sm text-muted-foreground leading-relaxed">
-                DW will see your screen or camera in real time. Nothing is recorded unless you
-                explicitly turn on recording. You can stop at any time.
+                You&apos;ll see a local preview only on this device. In this version, DW does not
+                receive this stream. Nothing is recorded, and you can stop at any time.
               </p>
             </div>
             <p className="text-sm text-foreground font-medium">What would you like to share?</p>
@@ -167,7 +179,7 @@ export function UserBroadcastDialog({ open, onOpenChange }: UserBroadcastDialogP
               />
             </div>
             <p className="text-xs text-center text-muted-foreground">
-              Local preview only — DW can guide you, nothing is being recorded.
+              Local preview only on this device — not sent to DW, and nothing is being recorded.
             </p>
             <Button
               variant="destructive"

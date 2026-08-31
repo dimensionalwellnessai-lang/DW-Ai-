@@ -16,6 +16,7 @@ export type AgentActionStatus =
   | "awaiting-consent"
   | "executing"
   | "done"
+  | "failed"
   | "declined"
   | "undone";
 
@@ -43,7 +44,7 @@ export interface AgentAction {
   consentTier: ConsentTier;
   /** ISO 8601 timestamp when the action was first proposed. */
   createdAt: string;
-  /** ISO 8601 timestamp when the action reached a terminal state (done/declined/undone). */
+  /** ISO 8601 timestamp when the action reached a terminal state (done/failed/declined/undone). */
   completedAt?: string;
   /**
    * Whether this action can be undone after execution.

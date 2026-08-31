@@ -102,11 +102,16 @@ export function TodayCard({ summary }: TodayCardProps) {
         <button
           type="button"
           onClick={async () => {
-            const brief = `Today is ${todayLabel}. Your next event is ${displayEvent.title} at ${displayEvent.time}. Priority: ${mock.priority}.`;
+            const briefParts = [`Today is ${todayLabel}.`];
+            if (nextEvent) {
+              const eventTime = formatEventTime(nextEvent.startTime, nextEvent.isAllDay);
+              briefParts.push(`Your next event is ${nextEvent.title} at ${eventTime}.`);
+            }
+            const brief = briefParts.join(" ");
             const action = proposeAction({ type: "read", label: "Read my brief aloud", consentTier: "silent", readText: brief });
             await executeAction(requestConsent(action));
           }}
-          className="w-full text-left text-xs text-primary font-medium py-1.5 px-1 hover:underline focus:outline-none"
+          className="w-full text-left text-xs text-primary font-medium py-1.5 px-1 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-sm"
         >
           Read my brief aloud
         </button>

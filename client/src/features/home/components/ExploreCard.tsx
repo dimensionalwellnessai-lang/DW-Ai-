@@ -47,7 +47,7 @@ function ExploreCardInner() {
 
   function handleCoWatch() {
     startCoWatchDW(
-      "https://www.youtube-nocookie.com/results?search_query=learn+something+new",
+      "https://www.youtube.com/watch?v=1La4QzGeaaQ",
       "Explore with DW",
     );
   }

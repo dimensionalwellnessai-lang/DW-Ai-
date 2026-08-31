@@ -465,6 +465,17 @@ export const ROUTE_REGISTRY: RouteRegistryItem[] = [
     enabled: true,
   },
   {
+    id: "shared-attention",
+    path: "/shared-attention",
+    label: "Shared Attention",
+    icon: "eye",
+    type: "page",
+    description: "Co-watch and shared presence experiences",
+    showInMenu: false,
+    enabled: true,
+    requiredFlag: "sharedAttention",
+  },
+  {
     id: "browse",
     path: "/browse",
     label: "Browse",

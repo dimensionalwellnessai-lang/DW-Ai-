@@ -279,7 +279,7 @@ export function ReadingCard({
             const action = proposeAction({ type: "open", label: "Open today's plan", consentTier: "silent", targetUrl: "/elevation-plan" });
             await executeAction(requestConsent(action));
           }}
-          className="w-full text-left text-[10px] text-primary font-medium py-1 px-0 hover:underline focus:outline-none"
+          className="w-full text-left text-[10px] text-primary font-medium py-1 px-0 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-sm"
         >
           Open today's plan →
         </button>

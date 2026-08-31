@@ -25,6 +25,8 @@ function StatusIcon({ status }: { status: AgentAction["status"] }) {
   switch (status) {
     case "done":
       return <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />;
+    case "failed":
+      return <XCircle className="h-4 w-4 text-destructive shrink-0" />;
     case "declined":
     case "undone":
       return <XCircle className="h-4 w-4 text-muted-foreground shrink-0" />;
@@ -43,6 +45,7 @@ function StatusBadge({ status }: { status: AgentAction["status"] }) {
     "awaiting-consent": "Waiting for you",
     executing: "Executing",
     done: "Done",
+    failed: "Failed",
     declined: "Declined",
     undone: "Undone",
   };
@@ -51,6 +54,7 @@ function StatusBadge({ status }: { status: AgentAction["status"] }) {
     "awaiting-consent": "secondary",
     executing: "default",
     done: "secondary",
+    failed: "destructive",
     declined: "outline",
     undone: "outline",
   };
@@ -95,37 +99,46 @@ export function DwBroadcastPanel({ live = true, className }: DwBroadcastPanelPro
   return (
     <ScrollArea className={`${className ?? ""}`}>
       <ul className="flex flex-col gap-2 p-4">
-        {entries.map((entry, i) => (
-          <li
-            key={`${entry.action.id}-${i}`}
-            className="flex items-start gap-3 rounded-xl border border-border bg-card px-4 py-3"
-          >
-            <StatusIcon status={entry.action.status} />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium leading-snug text-foreground truncate">
-                {entry.action.label}
-              </p>
-              <div className="mt-1 flex flex-wrap items-center gap-2">
-                <StatusBadge status={entry.action.status} />
-                <span className="text-xs text-muted-foreground">{formatTime(entry.timestamp)}</span>
-                {entry.note && (
-                  <span className="text-xs text-muted-foreground italic">{entry.note}</span>
-                )}
-              </div>
-            </div>
-            {entry.action.undoable && entry.action.status === "done" && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="shrink-0 h-8 w-8"
-                onClick={() => handleUndo(entry.action)}
-                aria-label={`Undo: ${entry.action.label}`}
+        {(() => {
+          const seenUndoneIds = new Set<string>();
+          return entries.map((entry, i) => {
+            const hasNewerUndone = entry.action.status === "done" && seenUndoneIds.has(entry.action.id);
+            if (entry.action.status === "undone") {
+              seenUndoneIds.add(entry.action.id);
+            }
+            return (
+              <li
+                key={`${entry.action.id}-${i}`}
+                className="flex items-start gap-3 rounded-xl border border-border bg-card px-4 py-3"
               >
-                <Undo2 className="h-4 w-4" />
-              </Button>
-            )}
-          </li>
-        ))}
+                <StatusIcon status={entry.action.status} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium leading-snug text-foreground truncate">
+                    {entry.action.label}
+                  </p>
+                  <div className="mt-1 flex flex-wrap items-center gap-2">
+                    <StatusBadge status={entry.action.status} />
+                    <span className="text-xs text-muted-foreground">{formatTime(entry.timestamp)}</span>
+                    {entry.note && (
+                      <span className="text-xs text-muted-foreground italic">{entry.note}</span>
+                    )}
+                  </div>
+                </div>
+                {entry.action.undoable && entry.action.status === "done" && !hasNewerUndone && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="shrink-0 h-8 w-8"
+                    onClick={() => handleUndo(entry.action)}
+                    aria-label={`Undo: ${entry.action.label}`}
+                  >
+                    <Undo2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </li>
+            );
+          });
+        })()}
       </ul>
     </ScrollArea>
   );

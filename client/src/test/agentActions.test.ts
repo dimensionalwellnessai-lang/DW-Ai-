@@ -8,17 +8,26 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
+const {
+  mockSpeak,
+  mockScheduleReminderTimer,
+  mockClearReminderTimer,
+  mockWindowOpen,
+} = vi.hoisted(() => ({
+  mockSpeak: vi.fn().mockResolvedValue(undefined),
+  mockScheduleReminderTimer: vi.fn(),
+  mockClearReminderTimer: vi.fn(),
+  mockWindowOpen: vi.fn(),
+}));
+
 // ── Mock TTS service ──────────────────────────────────────────────────────────
 
-const mockSpeak = vi.fn().mockResolvedValue(undefined);
 vi.mock("@/lib/tts-service", () => ({
   ttsService: { speak: mockSpeak },
 }));
 
 // ── Mock reminder scheduler ───────────────────────────────────────────────────
 
-const mockScheduleReminderTimer = vi.fn();
-const mockClearReminderTimer = vi.fn();
 vi.mock("@/lib/reminder-scheduler", () => ({
   scheduleReminderTimer: mockScheduleReminderTimer,
   clearReminderTimer: mockClearReminderTimer,
@@ -37,7 +46,6 @@ Object.defineProperty(globalThis, "localStorage", { value: mockLocalStorage, wri
 
 // ── window.open mock ──────────────────────────────────────────────────────────
 
-const mockWindowOpen = vi.fn();
 Object.defineProperty(globalThis, "window", {
   value: { open: mockWindowOpen, location: { href: "" } },
   writable: true,
@@ -80,13 +88,13 @@ describe("proposeAction", () => {
   });
 
   it("sets createdAt to a valid ISO timestamp", () => {
-    const action = proposeAction({ type: "open", label: "x", consentTier: "silent" });
+    const action = proposeAction({ type: "open", label: "x", consentTier: "silent", targetUrl: "/" });
     expect(() => new Date(action.createdAt)).not.toThrow();
     expect(Number.isNaN(new Date(action.createdAt).getTime())).toBe(false);
   });
 
   it("logs the action to the audit log", () => {
-    proposeAction({ type: "open", label: "Logged", consentTier: "silent" });
+    proposeAction({ type: "open", label: "Logged", consentTier: "silent", targetUrl: "/logged" });
     const log = readAuditLog();
     expect(log.length).toBe(1);
     expect(log[0].action.label).toBe("Logged");
@@ -97,25 +105,30 @@ describe("proposeAction", () => {
 
 describe("requestConsent", () => {
   it("advances 'silent' tier directly to 'executing'", () => {
-    const action = proposeAction({ type: "open", label: "silent test", consentTier: "silent" });
+    const action = proposeAction({ type: "open", label: "silent test", consentTier: "silent", targetUrl: "/silent" });
     const result = requestConsent(action);
     expect(result.status).toBe("executing");
   });
 
   it("advances 'notify' tier directly to 'executing'", () => {
-    const action = proposeAction({ type: "open", label: "notify test", consentTier: "notify" });
+    const action = proposeAction({ type: "open", label: "notify test", consentTier: "notify", targetUrl: "/notify" });
     const result = requestConsent(action);
     expect(result.status).toBe("executing");
   });
 
   it("holds 'witness' tier at 'awaiting-consent'", () => {
-    const action = proposeAction({ type: "order", label: "witness test", consentTier: "witness" });
+    const action = proposeAction({ type: "order", label: "witness test", consentTier: "witness", targetUrl: "https://shop.example.com" });
     const result = requestConsent(action);
     expect(result.status).toBe("awaiting-consent");
   });
 
+  it("forces 'order' actions to witness consent", () => {
+    const action = proposeAction({ type: "order", label: "must witness", consentTier: "silent", targetUrl: "https://shop.example.com" });
+    expect(action.consentTier).toBe("witness");
+  });
+
   it("is a no-op for non-proposed actions", () => {
-    const action = proposeAction({ type: "open", label: "x", consentTier: "silent" });
+    const action = proposeAction({ type: "open", label: "x", consentTier: "silent", targetUrl: "/x" });
     const executing = requestConsent(action);
     const again = requestConsent(executing);
     // Should not change since it's no longer 'proposed'
@@ -211,7 +224,7 @@ describe("executeAction — guard: skips if not in executable state", () => {
 
 describe("declineAction", () => {
   it("marks an action as 'declined'", () => {
-    const action = proposeAction({ type: "order", label: "Decline me", consentTier: "witness" });
+    const action = proposeAction({ type: "order", label: "Decline me", consentTier: "witness", targetUrl: "https://shop.example.com/decline" });
     const awaiting = requestConsent(action);
     const declined = declineAction(awaiting);
     expect(declined.status).toBe("declined");
@@ -219,7 +232,7 @@ describe("declineAction", () => {
   });
 
   it("logs the declined action", () => {
-    const action = proposeAction({ type: "order", label: "Logged decline", consentTier: "witness" });
+    const action = proposeAction({ type: "order", label: "Logged decline", consentTier: "witness", targetUrl: "https://shop.example.com/logged" });
     const awaiting = requestConsent(action);
     declineAction(awaiting);
     const log = readAuditLog();
@@ -253,7 +266,7 @@ describe("undoAction", () => {
   });
 
   it("is a no-op for actions that are not yet 'done'", () => {
-    const action = { ...proposeAction({ type: "schedule", label: "Not done", consentTier: "notify" }), undoable: true };
+    const action = { ...proposeAction({ type: "schedule", label: "Not done", consentTier: "notify", scheduledFor: new Date(Date.now() + 120_000).toISOString() }), undoable: true };
     const result = undoAction(action);
     expect(result.status).toBe("proposed");
   });
@@ -267,7 +280,7 @@ describe("readAuditLog", () => {
   });
 
   it("accumulates multiple entries", () => {
-    proposeAction({ type: "open", label: "A", consentTier: "silent" });
+    proposeAction({ type: "open", label: "A", consentTier: "silent", targetUrl: "/a" });
     proposeAction({ type: "read", label: "B", consentTier: "notify" });
     expect(readAuditLog().length).toBe(2);
   });

@@ -48,7 +48,7 @@ function SharedAttentionHubInner() {
     switch (mode) {
       case "co-watch-dw":
         startCoWatchDW(
-          "https://www.youtube-nocookie.com/results?search_query=relaxing+ambient+music",
+          "https://www.youtube.com/watch?v=5qap5aO4i9A",
           "Watch with DW",
         );
         break;
@@ -88,7 +88,15 @@ function SharedAttentionHubInner() {
               <Card
                 key={info.mode}
                 className="cursor-pointer hover:border-primary/40 transition-colors"
+                role="button"
+                tabIndex={0}
                 onClick={() => handleLaunch(info.mode)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    handleLaunch(info.mode);
+                  }
+                }}
               >
                 <CardContent className="px-4 py-4 flex items-start gap-4">
                   <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">

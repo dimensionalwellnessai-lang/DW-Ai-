@@ -19,6 +19,13 @@ import { scheduleReminderTimer, clearReminderTimer } from "@/lib/reminder-schedu
 
 export type { AgentAction, AgentActionLog, AgentActionType, AgentActionStatus, ConsentTier };
 
+type ProposeActionInput =
+  | { type: "open"; label: string; consentTier: ConsentTier; targetUrl: string; undoable?: boolean }
+  | { type: "order"; label: string; consentTier: ConsentTier; targetUrl: string; undoable?: boolean }
+  | { type: "search"; label: string; consentTier: ConsentTier; targetUrl: string; undoable?: boolean }
+  | { type: "read"; label: string; consentTier: ConsentTier; readText?: string; undoable?: boolean }
+  | { type: "schedule"; label: string; consentTier: ConsentTier; scheduledFor: string; undoable?: boolean };
+
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const AUDIT_LOG_KEY = "dw-agent-action-log";
@@ -36,6 +43,16 @@ function generateId(): string {
 
 function generateReminderId(): string {
   return `reminder-agent-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function isSafeExternalUrl(url: unknown): url is string {
+  if (typeof url !== "string" || !url) return false;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "https:" && !!parsed.hostname;
+  } catch {
+    return false;
+  }
 }
 
 // ── Audit log ─────────────────────────────────────────────────────────────────
@@ -78,17 +95,29 @@ function appendAuditLog(action: AgentAction, note?: string): void {
  * Returns the action in `proposed` state — nothing has been executed yet.
  */
 export function proposeAction(
-  partial: Pick<AgentAction, "type" | "label" | "consentTier"> &
-    Partial<Pick<AgentAction, "targetUrl" | "scheduledFor" | "readText" | "undoable">>,
+  partial: ProposeActionInput,
 ): AgentAction {
+  if (
+    (partial.type === "open" || partial.type === "order" || partial.type === "search")
+    && !partial.targetUrl.trim()
+  ) {
+    throw new Error(`"${partial.type}" actions require targetUrl`);
+  }
+
+  if (partial.type === "schedule" && !partial.scheduledFor.trim()) {
+    throw new Error('"schedule" actions require scheduledFor');
+  }
+
+  const consentTier = partial.type === "order" ? "witness" : partial.consentTier;
+
   const action: AgentAction = {
     id: generateId(),
     type: partial.type,
     label: partial.label,
-    consentTier: partial.consentTier,
-    targetUrl: partial.targetUrl,
-    scheduledFor: partial.scheduledFor,
-    readText: partial.readText,
+    consentTier,
+    targetUrl: partial.type === "read" || partial.type === "schedule" ? undefined : partial.targetUrl,
+    scheduledFor: partial.type === "schedule" ? partial.scheduledFor : undefined,
+    readText: partial.type === "read" ? partial.readText : undefined,
     undoable: partial.undoable ?? false,
     status: "proposed",
     createdAt: nowISO(),
@@ -128,7 +157,7 @@ export function requestConsent(action: AgentAction): AgentAction {
  * confirmed via the UI (i.e., the action is in `awaiting-consent` state).
  * For other tiers, this is called after `requestConsent` returns `executing`.
  *
- * Returns the action in `done` state (or original state if execution fails).
+ * Returns the action in `done` state (or `failed` if execution fails).
  */
 export async function executeAction(
   action: AgentAction,
@@ -142,15 +171,18 @@ export async function executeAction(
 
     switch (action.type) {
       case "open": {
-        const url = action.targetUrl ?? "/";
+        const url = action.targetUrl;
+        if (!url) throw new Error('"open" action missing targetUrl');
         if (url.startsWith("/")) {
           if (navigate) {
             navigate(url);
           } else {
             window.location.href = url;
           }
-        } else {
+        } else if (isSafeExternalUrl(url)) {
           window.open(url, "_blank", "noopener,noreferrer");
+        } else {
+          throw new Error("Unsafe external URL");
         }
         break;
       }
@@ -162,11 +194,12 @@ export async function executeAction(
       }
 
       case "schedule": {
+        if (!action.scheduledFor) throw new Error('"schedule" action missing scheduledFor');
         reminderId = generateReminderId();
         scheduleReminderTimer({
           id: reminderId,
           title: action.label,
-          scheduledAt: action.scheduledFor ?? nowISO(),
+          scheduledAt: action.scheduledFor,
         });
         break;
       }
@@ -175,8 +208,10 @@ export async function executeAction(
       case "search": {
         // v1: open the target URL after consent (real provider integrations are out of scope)
         const url = action.targetUrl;
-        if (url) {
+        if (url && isSafeExternalUrl(url)) {
           window.open(url, "_blank", "noopener,noreferrer");
+        } else {
+          throw new Error("Unsafe external URL");
         }
         break;
       }
@@ -193,8 +228,9 @@ export async function executeAction(
     appendAuditLog(done, "executed");
     return done;
   } catch {
-    appendAuditLog(action, "execution-error");
-    return action;
+    const failed: AgentAction = { ...action, status: "failed", completedAt: nowISO() };
+    appendAuditLog(failed, "execution-error");
+    return failed;
   }
 }
 

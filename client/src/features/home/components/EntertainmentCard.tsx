@@ -49,7 +49,7 @@ function EntertainmentCardInner() {
 
   function handleCoWatch() {
     startCoWatchDW(
-      "https://www.youtube-nocookie.com/results?search_query=relaxing+ambient+music",
+      "https://www.youtube.com/watch?v=DWcJFNfaw9c",
       "Unwind with DW",
     );
   }

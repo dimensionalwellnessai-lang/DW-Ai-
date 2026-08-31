@@ -460,7 +460,7 @@ function Router() {
       {isRouteEnabled("/expand-my-week") && <Route path="/expand-my-week" component={ExpandMyWeekPage} />}
       
       <Route path="/dev/routes" component={DevRoutesPage} />
-      <Route path="/shared-attention" component={SharedAttentionPage} />
+      {isRouteEnabled("/shared-attention") && <Route path="/shared-attention" component={SharedAttentionPage} />}
       <Route path="/privacy-terms" component={PrivacyTermsPage} />
       <Route path="/support/report" component={SupportReportPage} />
       <Route path="/404" component={NotFound404Page} />

@@ -112,9 +112,11 @@ interface Suggestion {
   route: string;
 }
 
-function useSuggestion(): Suggestion | null {
-  const { todayCheckin } = useDailyCheckin();
-  const { reminders } = useReminders();
+function useSuggestion(enabled: boolean): Suggestion | null {
+  const { todayCheckin, isLoading: checkinLoading } = useDailyCheckin();
+  const { reminders, isLoading: remindersLoading } = useReminders();
+
+  if (!enabled || checkinLoading || remindersLoading) return null;
 
   // Heuristic 1: no check-in today
   const checkinKey = "heuristic-no-checkin";
@@ -167,18 +169,17 @@ function useSuggestion(): Suggestion | null {
 
 export function DwNoticed() {
   const [, navigate] = useLocation();
+  const proactiveNoticesEnabled = isFeatureEnabled("dwProactiveNotices");
   const [dismissed, setDismissed] = useState(false);
-  const suggestion = useSuggestion();
+  const suggestion = useSuggestion(proactiveNoticesEnabled);
 
   useEffect(() => {
-    if (suggestion && !dismissed) {
+    if (proactiveNoticesEnabled && suggestion && !dismissed) {
       trackEvent(EVENTS.PROACTIVE_NOTICE_SHOWN, { suggestionKey: suggestion.key });
     }
-  // Only fire once per suggestion key mount
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [suggestion?.key]);
+  }, [proactiveNoticesEnabled, suggestion?.key, dismissed]);
 
-  if (!isFeatureEnabled("dwProactiveNotices")) return null;
+  if (!proactiveNoticesEnabled) return null;
   if (dismissed || !suggestion) return null;
 
   function handleAccept() {

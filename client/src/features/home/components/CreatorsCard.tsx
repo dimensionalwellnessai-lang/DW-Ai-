@@ -54,7 +54,7 @@ function CreatorsCardInner() {
 
   function handleCoWatch() {
     startCoWatchDW(
-      "https://www.youtube-nocookie.com/feed/subscriptions",
+      "https://www.youtube.com/watch?v=jfKfPfyJRdk",
       "Watch with DW",
     );
   }
