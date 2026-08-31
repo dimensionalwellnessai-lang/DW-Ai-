@@ -4,15 +4,8 @@ import { z } from "zod";
 import { storage } from "../storage";
 import { requireAuth } from "./_shared";
 import { DISCOVER_STATIC_LIBRARY } from "../discover-static";
-
-function scoreText(value: string | null | undefined, query: string): number {
-  const haystack = (value ?? "").toLowerCase();
-  if (!haystack || !query) return 0;
-  if (haystack === query) return 40;
-  if (haystack.startsWith(query)) return 20;
-  if (haystack.includes(query)) return 10;
-  return 0;
-}
+import { buildCompanionContext } from "../lib/companion-context";
+import { rankFeedItems } from "../feed-engine";
 
 function inferRoute(type: string, category?: string | null): string | null {
   const key = `${type} ${category ?? ""}`.toLowerCase();
@@ -29,17 +22,20 @@ export function registerExperienceStateRoutes(app: Express): void {
       search: z.string().optional(),
       filter: z.string().optional(),
       sort: z.enum(["relevant", "latest"]).optional(),
+      cursor: z.coerce.number().int().min(0).optional(),
+      limit: z.coerce.number().int().min(1).max(50).optional(),
     });
 
     try {
-      const { search = "", filter = "all", sort = "relevant" } = querySchema.parse(req.query);
+      const { search = "", filter = "all", sort = "relevant", cursor = 0, limit = 12 } = querySchema.parse(req.query);
       const userId = req.session.userId;
-      const [wellness, interactions, savedContent] = await Promise.all([
+      const [wellness, interactions, savedContent, companionContext] = await Promise.all([
         storage.getWellnessContent(),
         userId
           ? storage.getFeedInteractions(userId, ["like", "favorite", "save", "hide", "not_interested"])
           : Promise.resolve([]),
         userId ? storage.getSavedContent(userId) : Promise.resolve([]),
+        userId ? buildCompanionContext(userId) : Promise.resolve(null),
       ]);
 
       const latestActions = new Map<string, Set<string>>();
@@ -55,8 +51,7 @@ export function registerExperienceStateRoutes(app: Express): void {
       }
       const savedKeys = new Set(savedContent.map((item) => item.url));
       const query = search.trim().toLowerCase();
-
-      const items = [
+      const baseItems = [
         ...wellness.map((item) => ({
           id: item.id,
           title: item.title,
@@ -83,6 +78,45 @@ export function registerExperienceStateRoutes(app: Express): void {
           route: inferRoute(item.type, item.dimension),
           createdAt: null,
         })),
+        {
+          id: "dw-cosmic-update",
+          title: "Current Activation Update",
+          description: "Quick read on today's active currents and likely static points.",
+          type: "cosmic_update",
+          category: "cosmic",
+          source: "DW Signals",
+          duration: "1 min",
+          thumbnail: null,
+          url: "dw:cosmic-update",
+          route: "/cosmic",
+          createdAt: new Date().toISOString(),
+        },
+        {
+          id: "dw-audio-reset",
+          title: "3-minute grounding audio reset",
+          description: "A short audio to ground the wire when zones feel flickery.",
+          type: "audio",
+          category: "rest",
+          source: "DW Audio",
+          duration: "3 min",
+          thumbnail: null,
+          url: "dw:audio-reset",
+          route: "/spiritual",
+          createdAt: new Date().toISOString(),
+        },
+        {
+          id: "dw-meme-static",
+          title: "Mercury static meme drop",
+          description: "Light, nostalgic meme content for communication static days.",
+          type: "meme",
+          category: "fun",
+          source: "DW Fun",
+          duration: "quick",
+          thumbnail: null,
+          url: "dw:meme-static",
+          route: null,
+          createdAt: new Date().toISOString(),
+        },
       ]
         .map((item) => {
           const actionKey = item.url || item.id;
@@ -93,32 +127,55 @@ export function registerExperienceStateRoutes(app: Express): void {
             favorited: actions.has("favorite"),
             saved: savedKeys.has(item.url) || actions.has("save"),
             hidden: actions.has("hide") || actions.has("not_interested"),
-            relevance:
-              scoreText(item.title, query) +
-              scoreText(item.description, query) +
-              scoreText(item.category, query) +
-              (actions.has("favorite") ? 3 : 0) +
-              (actions.has("like") ? 1 : 0),
           };
         })
         .filter((item) => !item.hidden)
-        .filter((item) => {
-          if (filter === "all") return true;
-          const normalized = filter.toLowerCase();
-          return item.type.toLowerCase() === normalized || item.category?.toLowerCase() === normalized;
-        })
-        .filter((item) => {
-          if (!query) return true;
-          return item.relevance > 0;
-        })
-        .sort((a, b) => {
-          if (sort === "latest") {
-            return (b.createdAt ?? "").localeCompare(a.createdAt ?? "");
-          }
-          return b.relevance - a.relevance || a.title.localeCompare(b.title);
-        });
+        .map(({ hidden, ...item }) => item);
 
-      res.json({ items });
+      const fallbackContext = {
+        currents: {
+          gut: "variable",
+          wave: "variable",
+          spark: "open",
+          will: "variable",
+          voice: "open",
+          mind: "hardwired",
+          flow: "variable",
+          drive: "hardwired",
+          light: "open",
+        } as const,
+        energyType: "Builder" as const,
+        decisionCompass: "Gut" as const,
+        zones: {
+          physical: { level: 3, trend: "flickering" },
+          mental: { level: 3, trend: "flickering" },
+          spiritual: { level: 3, trend: "flickering" },
+          financial: { level: 3, trend: "flickering" },
+          relationships: { level: 3, trend: "flickering" },
+          career: { level: 3, trend: "flickering" },
+          learning: { level: 3, trend: "flickering" },
+          environment: { level: 3, trend: "flickering" },
+          creativity: { level: 3, trend: "flickering" },
+          fun: { level: 3, trend: "flickering" },
+          community: { level: 3, trend: "flickering" },
+          rest: { level: 3, trend: "flickering" },
+          identity: { level: 3, trend: "flickering" },
+        },
+        cosmicWeather: { activeCurrents: [], moonPhase: "Unknown" },
+        interests: { deepDives: [], currentObsessions: [], popCulture: [], spiritualCuriosity: [] },
+        patterns: {},
+      };
+
+      const ranked = rankFeedItems(baseItems, {
+        context: companionContext ?? fallbackContext,
+        query,
+        filter,
+        sort,
+        offset: cursor,
+        limit,
+      });
+
+      res.json({ items: ranked.items, hasMore: ranked.hasMore, nextCursor: ranked.nextCursor });
     } catch (error) {
       console.error("GET /api/feed error:", error);
       res.status(500).json({ error: "Failed to build your feed" });

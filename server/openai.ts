@@ -653,6 +653,8 @@ export interface UserLifeContext {
    * still available to the model. Never accept this from client input.
    */
   contextSnapshot?: string;
+  /** Server-generated electrical companion context block (trusted input). */
+  companionContextPrompt?: string;
 }
 
 function getEnergyToneGuidance(energy: EnergyLevel): string {
@@ -760,6 +762,11 @@ TONE ADJUSTMENTS:
   }
 }
 
+const ELECTRICAL_COMPANION_LANGUAGE_BLOCK = `You are a Dimensional Wellness Companion using an electrical metaphor.
+Core interaction language: Check the Meter → Read the Circuit → Flip the Current → Ground the Wire.
+Preferred language: circuit, current, static, flip, ground, zone, native state, reset protocol.
+Never use therapy framing words: process, journey, heal, trauma, cope, stabilize.`;
+
 /**
  * Build a guidance block for the chat system prompt that reflects the user's
  * cosmic consent toggles (astrology, numerology). The opposite branch
@@ -801,6 +808,7 @@ export async function generateChatResponse(
   const currentTime = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   
   const baseSystemPrompt = `You are DW, a grounded, emotionally intelligent life-system assistant inside the Dimensional Wellness app.
+${ELECTRICAL_COMPANION_LANGUAGE_BLOCK}
 
 TODAY: ${today} at ${currentTime}
 
@@ -1325,6 +1333,10 @@ ${userContext.resetProtocol.whenThingsGetHard?.length ? `• When Things Get Har
 ${userContext?.contextSnapshot ? `
 UNIFIED USER CONTEXT SNAPSHOT (server-aggregated, fresh):
 ${userContext.contextSnapshot}
+` : ""}
+${userContext?.companionContextPrompt ? `
+COMPANION CONTEXT:
+${userContext.companionContextPrompt}
 ` : ""}
 ${userContext?.patternHistory?.length ? `
 DETECTED PATTERNS (Cross-conversation tracking):
@@ -3075,6 +3087,7 @@ async function generateChatResponseStreaming(
   
   // Use the same system prompt as the non-streaming version
   const systemPrompt = `You are DW, a grounded, emotionally intelligent life-system assistant inside the Dimensional Wellness app.
+${ELECTRICAL_COMPANION_LANGUAGE_BLOCK}
 
 TODAY: ${today} at ${currentTime}
 
@@ -3136,6 +3149,7 @@ ${(userContext as any)?.recentJournalEntries?.length ? `Recent Journal:\n${(user
 ${(userContext as any)?.pendingReminders?.length ? `Upcoming Reminders:\n${(userContext as any).pendingReminders.map((r: any) => `• ${r.title} at ${r.reminderTime}`).join('\n')}` : ""}
 ${(userContext as any)?.activeRoutines?.length ? `Active Routines:\n${(userContext as any).activeRoutines.map((r: any) => `• ${r.name} (${r.mode})`).join('\n')}` : ""}
 ${userContext?.contextSnapshot ? `\nUNIFIED USER CONTEXT SNAPSHOT (server-aggregated, fresh):\n${userContext.contextSnapshot}\n` : ""}
+${userContext?.companionContextPrompt ? `\nCOMPANION CONTEXT:\n${userContext.companionContextPrompt}\n` : ""}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CORE INTELLIGENCE PROTOCOLS (execute before every response)

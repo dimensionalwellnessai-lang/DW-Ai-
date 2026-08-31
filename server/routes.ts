@@ -39,6 +39,7 @@ import { registerBillingRoutes } from "./routes/billing";
 import { requirePaidOrQuota, makeIcalToken, verifyIcalToken } from "./routes/_shared";
 import { registerPlansRoutes } from "./routes/plans";
 import { getUserContextSnapshot, toUserLifeContext } from "./lib/user-context";
+import { buildCompanionContext, companionContextPromptBlock } from "./lib/companion-context";
 import { resolveAdaptiveDWMode } from "./lib/dw-role-picker";
 import { logDwRolePick } from "./lib/dw-role-pick-log";
 import { buildExploreIntelligenceFeed, type ExploreMixWeights } from "./lib/explore-intelligence";
@@ -2318,13 +2319,17 @@ export async function registerRoutes(
         ? `${message}\n${documentContext}`
         : message;
 
-      const snapshot = await getUserContextSnapshot(userId);
+      const [snapshot, companion] = await Promise.all([
+        getUserContextSnapshot(userId),
+        buildCompanionContext(userId),
+      ]);
       const userContext = {
         ...toUserLifeContext(snapshot, {
           category: context,
           energyContext: energyContext || undefined,
           lifeSystem: lifeSystemContext || undefined,
         }),
+        companionContextPrompt: companionContextPromptBlock(companion),
         profile: clientProfile || null,
         cosmicConsent: cosmicConsent && typeof cosmicConsent === "object"
           ? {

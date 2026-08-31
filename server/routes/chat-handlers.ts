@@ -33,6 +33,7 @@ import {
   extractSyncableItems,
 } from "./_shared";
 import { getUserContextSnapshot, toUserLifeContext } from "../lib/user-context";
+import { buildCompanionContext, companionContextPromptBlock } from "../lib/companion-context";
 import { DW_GUIDE_BEHAVIOR } from "@shared/dw-persona";
 import { resolveAdaptiveDWMode } from "../lib/dw-role-picker";
 import { logDwRolePick } from "../lib/dw-role-pick-log";
@@ -83,8 +84,14 @@ export async function chatHandler(req: Request, res: Response) {
 
     const userId = req.session.userId!;
 
-    const snapshot = await getUserContextSnapshot(userId);
-    const userContext = toUserLifeContext(snapshot, { category: context });
+    const [snapshot, companion] = await Promise.all([
+      getUserContextSnapshot(userId),
+      buildCompanionContext(userId),
+    ]);
+    const userContext = {
+      ...toUserLifeContext(snapshot, { category: context }),
+      companionContextPrompt: companionContextPromptBlock(companion),
+    };
 
     // Adaptive role: pick the right DW lane unless the client locked one.
     // Hysteresis against `previousMode` is handled inside the resolver.
@@ -314,13 +321,17 @@ export async function smartChatHandler(req: Request, res: Response) {
       ? `${message}\n${documentContext}`
       : message;
 
-    const snapshot = await getUserContextSnapshot(userId);
+    const [snapshot, companion] = await Promise.all([
+      getUserContextSnapshot(userId),
+      buildCompanionContext(userId),
+    ]);
     const userContext = {
       ...toUserLifeContext(snapshot, {
         category: context,
         energyContext: energyContext || undefined,
         lifeSystem: lifeSystemContext || undefined,
       }),
+      companionContextPrompt: companionContextPromptBlock(companion),
       profile: clientProfile || null,
       cosmicConsent: cosmicConsent && typeof cosmicConsent === "object"
         ? {

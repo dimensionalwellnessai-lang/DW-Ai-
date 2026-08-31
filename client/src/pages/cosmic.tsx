@@ -239,6 +239,35 @@ function getCurrentMoonPhase(): string {
   return MOON_PHASES[idx];
 }
 
+const MERCURY_RETROGRADE_WINDOWS: Record<number, Array<{ start: string; end: string }>> = {
+  2026: [
+    { start: "2026-03-25T00:00:00Z", end: "2026-04-14T23:59:59Z" },
+    { start: "2026-08-05T00:00:00Z", end: "2026-08-28T23:59:59Z" },
+  ],
+};
+
+function getCurrentActivationAlerts(moonPhase: string): string[] {
+  const alerts: string[] = [];
+  if (moonPhase === "Full Moon" || moonPhase === "Waxing Gibbous") {
+    alerts.push("Wave Current activation: avoid snap decisions and let emotional voltage settle.");
+  }
+  if (moonPhase === "New Moon") {
+    alerts.push("Gut Current activation: low-noise day for grounded body-led choices.");
+  }
+  const now = new Date();
+  const year = now.getFullYear();
+  const isRetrograde = (MERCURY_RETROGRADE_WINDOWS[year] ?? []).some(({ start, end }) => {
+    const startTs = new Date(start).getTime();
+    const endTs = new Date(end).getTime();
+    const nowTs = now.getTime();
+    return nowTs >= startTs && nowTs <= endTs;
+  });
+  if (isRetrograde) {
+    alerts.push("Mercury retrograde static on the Voice Current: double-check messages and keep communication simple.");
+  }
+  return alerts;
+}
+
 // ─── Planetary event data ──────────────────────────────────────────────────────
 interface PlanetaryEvent {
   date: Date;
@@ -523,6 +552,7 @@ function InsightsTab({
   const { consent } = useCosmicConsent();
   const astrologyConsent = consent?.useAstrologyInGuidance ?? false;
   const numerologyConsent = consent?.useNumerologyInGuidance ?? false;
+  const activationAlerts = getCurrentActivationAlerts(moonPhase);
 
   const [aiReading, setAiReading] = useState<string | null>(null);
 
@@ -538,15 +568,15 @@ function InsightsTab({
       if (numerologyConsent && personalDay !== null) contextParts.push(`Personal Day: ${personalDay}`);
 
       const context = contextParts.join(", ");
-      const prompt = `You are a gentle cosmic guide speaking in a warm, grounded voice. Using this person's cosmic context (${context}), provide a short, personalized daily reading.
-
-Follow this 4-step structure:
-1. GROUND: Start with a grounding phrase
-2. NAME: Name the energy or theme present today
-3. SHIFT: Offer a gentle perspective or insight
-4. NEXT STEP: End with one small, optional action
-
-Rules: Max 80 words total. Use words like "notice", "shift", "steady", "grounded". Never use "you should", "fix", "broken", "optimize", "maximize". Do not create goals, habits, schedule blocks, or log anything.`;
+      const prompt = `You are DW's cosmic current reader. Using this person's context (${context}), provide a short personalized Current activation readout.
+Use electrical language only: current, circuit, static, zone, flip, ground.
+Avoid therapy words: process, journey, heal, trauma, cope, stabilize.
+Structure:
+1) Check the meter
+2) Read the circuit
+3) Flip the current
+4) Ground the wire with one optional action
+Max 90 words. Do not create goals, habits, schedule blocks, or logs.`;
 
       const response = await apiRequest("POST", "/api/chat/smart", {
         message: prompt,
@@ -604,6 +634,24 @@ Rules: Max 80 words total. Use words like "notice", "shift", "steady", "grounded
           <p className="text-xs text-muted-foreground">{MOON_PHASE_GUIDANCE[moonPhase]}</p>
         </CardContent>
       </Card>
+
+      {activationAlerts.length > 0 && (
+        <Card className="border-primary/30 bg-primary/5">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Lightbulb className="h-4 w-4 text-primary" />
+              Current activation alerts
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1">
+            {activationAlerts.map((alert) => (
+              <p key={alert} className="text-xs text-muted-foreground">
+                • {alert}
+              </p>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Cosmic insight (if birth data available) */}
       {sunSign ? (
@@ -1537,7 +1585,7 @@ const READING_TIMEFRAMES = [
     id: "lifePhase",
     label: "Life Phase",
     emoji: "🌱",
-    desc: "Where you are in your larger life journey",
+    desc: "Where you are in your larger life circuit",
   },
   {
     id: "lifePattern",
@@ -1586,15 +1634,15 @@ function buildReadingPrompt(
 
   const ctx = cosmic.join(" | ");
 
-  const style = `You are a thoughtful, grounded cosmic guide. Your tone is warm, direct, and poetic without being vague. Max 150 words. No bullet points. Never say "you should" — speak in invitations. Avoid "optimize", "maximize", "fix", "broken". If you know the person's active goals, habits, or life situation from context, weave one or two specific references into the reading to make it feel genuinely personal — not generic cosmic advice.`;
+  const style = `You are a thoughtful, grounded current reader. Use electrical metaphors only: circuit, current, static, zone, flip, ground. Max 150 words. No bullet points. Never say "you should". Avoid therapy words: process, journey, heal, trauma, cope, stabilize. If the person's goals or habits are visible, weave one specific reference so the reading feels personal.`;
 
   const frames: Record<ReadingTimeframe, string> = {
-    today: `${style} Context: ${ctx}. Give a personal reading for TODAY. Name the energy at play today, one specific invitation for this person grounded in their actual goals or habits if visible, and one thing to notice or let go of. Be personal and specific — this should feel like it was written for them, not for everyone.`,
-    month: `${style} Context: ${ctx}. Give a reading for ${monthName} ${year}. Describe the dominant energetic theme this month, what it's asking of this person given where they are in their life right now, and one way to work with it rather than against it. If their goals or current habits are visible, show how this month's energy relates to what they're building.`,
-    year: `${style} Context: ${ctx}. Give a reading for Personal Year ${personalYear ?? "(unknown)"}. What is the overarching invitation and challenge of this year? What is this year's purpose for this specific person given what you know about their goals and direction? End with one orienting question.`,
-    moon: `${style} Context: ${ctx}. Give a deep reading for the current ${moonPhase} phase and what it specifically means for this person's inner life right now. Connect the lunar energy to something specific in their current reality — a goal they're working toward, a habit they're building, or an area of their life that's in motion. Go deeper than general moon wisdom.`,
-    lifePhase: `${style} Context: ${ctx}. Speak to where this person is in their larger life journey. Consider their numerological cycles and sun sign together to describe the chapter they are in — its gifts, its tests, and its underlying invitation. If their goals or habits reveal what they're currently building or healing, name how this life phase supports or challenges that.`,
-    lifePattern: `${style} Context: ${ctx}. Describe this person's core energetic patterns — what they carry naturally, what tends to trip them up, and what their recurring life themes are trying to teach them. Ground it in their specific cosmic profile. If you can see patterns in their goals, habits, or life choices that reflect these themes, reflect that back to them.`,
+    today: `${style} Context: ${ctx}. Give a personal reading for TODAY using this flow: Check the meter -> Read the circuit -> Flip the current -> Ground the wire.`,
+    month: `${style} Context: ${ctx}. Give a reading for ${monthName} ${year}. Describe the strongest current this month and how to route it through the right zone.`,
+    year: `${style} Context: ${ctx}. Give a reading for Personal Year ${personalYear ?? "(unknown)"}. Describe the main circuit upgrade and one friction point to watch.`,
+    moon: `${style} Context: ${ctx}. Give a deep reading for the ${moonPhase} phase and how it affects current flow across decisions and communication.`,
+    lifePhase: `${style} Context: ${ctx}. Speak to where this person is in their larger life circuit. Name gifts, friction, and one grounded move.`,
+    lifePattern: `${style} Context: ${ctx}. Describe this person's core circuit patterns: reliable current, variable current, and where static repeats.`,
   };
 
   return frames[timeframe];
@@ -1664,7 +1712,7 @@ function ReadingsTab({
         sunSign && consent?.useAstrologyInGuidance ? `Sun sign: ${sunSign}` : null,
         personalDay !== null && consent?.useNumerologyInGuidance ? `Personal Day: ${personalDay}` : null,
       ].filter(Boolean).join(" | ");
-      const prompt = `You are a cosmic guide who understands the full picture of a person's life. Cosmic context today: ${cosmicCtx}. Using the person's active goals, habits, and any life situation you know about, write 2–3 short sentences showing how today's cosmic energy corresponds specifically to something happening in THEIR life right now. Name the life areas (body, work, relationships, creativity, money, spirit, mind, heart) that are most activated. Speak directly and personally — not as a generic horoscope, but as someone who sees their specific reality. Max 80 words. No bullet points.`;
+      const prompt = `You are a current reader who understands the person's full circuit panel. Cosmic context today: ${cosmicCtx}. Write 2-3 short sentences showing which currents are activated right now and which zones are most affected (body, work, relationships, creativity, money, spirit, mind, identity). Use electrical language only and avoid therapy language. Max 80 words. No bullet points.`;
       const response = await apiRequest("POST", "/api/chat/smart", {
         message: prompt,
         conversationHistory: [],
