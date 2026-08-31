@@ -1,15 +1,12 @@
 /**
  * The Current — `/feed`
  *
- * Infinite scroll stream mixing constructive (40%), recreational (40%),
- * and social/cosmic (20%) content. Each card surfaces a "Why for you"
- * context line connecting the item to the user's Zones and Currents.
+ * Feed stream for `/feed`.
  */
 
-import { useMemo, useState, useEffect, useRef, useCallback } from "react";
-import { useMutation, useQuery, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/page-header";
@@ -58,45 +55,25 @@ const MIX_LABELS: Record<string, string> = {
 };
 
 const MIX_COLORS: Record<string, string> = {
-  constructive: "bg-sky-500/10 text-sky-400 border-sky-500/20",
-  recreational: "bg-amber-500/10 text-amber-400 border-amber-500/20",
-  social: "bg-violet-500/10 text-violet-400 border-violet-500/20",
+  constructive: "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/20",
+  recreational: "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20",
+  social: "bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-500/20",
 };
 
-// ── Infinite scroll hook ──────────────────────────────────────────────────────
-
-function useFeedInfinite(filter: string) {
-  return useInfiniteQuery<{ items: FeedItem[]; nextCursor: string | null }>({
-    queryKey: ["/api/feed/infinite", filter],
-    queryFn: async ({ pageParam }) => {
-      const params = new URLSearchParams();
-      params.set("filter", filter);
-      params.set("sort", "relevant");
-      if (pageParam) params.set("cursor", String(pageParam));
-      // Prefer the new paginated endpoint; fall back gracefully to /api/feed
-      try {
-        const res = await apiRequest("GET", `/api/feed/stream?${params}`);
-        return res.json();
-      } catch {
-        const res2 = await apiRequest("GET", `/api/feed?${params}`);
-        const data = await res2.json();
-        return { items: data.items ?? [], nextCursor: null };
-      }
-    },
-    initialPageParam: null as string | null,
-    getNextPageParam: (last) => last.nextCursor ?? undefined,
-  });
+async function fetchFeed(filter: string): Promise<{ items: FeedItem[] }> {
+  const params = new URLSearchParams();
+  params.set("filter", filter);
+  params.set("sort", "relevant");
+  const res = await apiRequest("GET", `/api/feed?${params}`);
+  return res.json();
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 const FILTERS = [
   { id: "all", label: "All" },
-  { id: "constructive", label: "Zone fuel" },
-  { id: "recreational", label: "Enjoy" },
   { id: "article", label: "Articles" },
   { id: "video", label: "Videos" },
-  { id: "saved", label: "Saved" },
 ];
 
 export default function FeedPage() {
@@ -109,31 +86,16 @@ export default function FeedPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState("all");
-  const loaderRef = useRef<HTMLDivElement>(null);
+  const feedQuery = useQuery<{ items: FeedItem[] }>({
+    queryKey: ["/api/feed", filter],
+    queryFn: () => fetchFeed(filter),
+    staleTime: 60_000,
+  });
 
-  const feedQuery = useFeedInfinite(filter);
-
-  // Intersection Observer for infinite scroll
-  const handleObserver = useCallback(
-    (entries: IntersectionObserverEntry[]) => {
-      const [entry] = entries;
-      if (entry.isIntersecting && feedQuery.hasNextPage && !feedQuery.isFetchingNextPage) {
-        feedQuery.fetchNextPage();
-      }
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [feedQuery.hasNextPage, feedQuery.isFetchingNextPage, feedQuery.fetchNextPage]
-  );
-
-  useEffect(() => {
-    const el = loaderRef.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(handleObserver, { threshold: 0.1 });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [handleObserver]);
-
-  const interactionMutation = useMutation({
+  const interactionMutation = useMutation<void, Error, {
+    item: FeedItem;
+    action: "like" | "favorite" | "save" | "hide";
+  }>({
     mutationFn: async ({
       item,
       action,
@@ -190,7 +152,7 @@ export default function FeedPage() {
     if (item.route) setLocation(item.route);
   };
 
-  const allItems = feedQuery.data?.pages.flatMap((p) => p.items) ?? [];
+  const allItems = feedQuery.data?.items ?? [];
 
   return (
     <div className="min-h-screen bg-background">
@@ -206,10 +168,12 @@ export default function FeedPage() {
         <div className="flex gap-2 min-w-max">
           {FILTERS.map((chip) => (
             <button
+              type="button"
               key={chip.id}
               onClick={() => setFilter(chip.id)}
+              aria-pressed={filter === chip.id}
               className={cn(
-                "rounded-full px-4 py-1.5 text-xs font-medium border transition-all",
+                "rounded-full px-4 py-1.5 text-xs font-medium border transition-all min-h-11",
                 filter === chip.id
                   ? "bg-primary text-primary-foreground border-primary"
                   : "border-border/50 text-muted-foreground hover:text-foreground"
@@ -263,16 +227,6 @@ export default function FeedPage() {
             onInteract={(action) => interactionMutation.mutate({ item, action })}
           />
         ))}
-
-        {/* Infinite scroll trigger */}
-        <div ref={loaderRef} className="h-8 flex items-center justify-center">
-          {feedQuery.isFetchingNextPage && (
-            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-          )}
-          {!feedQuery.hasNextPage && allItems.length > 0 && (
-            <p className="text-xs text-muted-foreground">You're caught up.</p>
-          )}
-        </div>
       </div>
     </div>
   );
@@ -287,23 +241,27 @@ interface FeedCardProps {
 }
 
 function FeedCard({ item, onOpen, onInteract }: FeedCardProps) {
-  const mixKey = item.mix ?? "constructive";
-  const mixLabel = MIX_LABELS[mixKey] ?? mixKey;
-  const mixColor = MIX_COLORS[mixKey] ?? MIX_COLORS.constructive;
+  const mixKey = item.mix && MIX_LABELS[item.mix] && MIX_COLORS[item.mix] ? item.mix : null;
+  const mixLabel = mixKey ? MIX_LABELS[mixKey] : null;
+  const mixColor = mixKey ? MIX_COLORS[mixKey] : null;
 
   return (
     <Card className="border-border/50 overflow-hidden">
       <CardContent className="p-4 space-y-3">
         {/* Top row: mix badge + zone constellation */}
         <div className="flex items-center justify-between">
-          <span
-            className={cn(
-              "text-[11px] font-medium px-2 py-0.5 rounded-full border",
-              mixColor
+          <div>
+            {mixLabel && mixColor && (
+              <span
+                className={cn(
+                  "text-[11px] font-medium px-2 py-0.5 rounded-full border",
+                  mixColor
+                )}
+              >
+                {mixLabel}
+              </span>
             )}
-          >
-            {mixLabel}
-          </span>
+          </div>
           {item.zone && (
             <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
               <Constellation zone={item.zone} state="idle" size={14} />
@@ -339,10 +297,12 @@ function FeedCard({ item, onOpen, onInteract }: FeedCardProps) {
           <div className="flex items-center gap-1">
             {/* This hit my Zone */}
             <button
+              type="button"
               onClick={() => onInteract("like")}
               aria-label="This hit my Zone"
+              aria-pressed={item.liked}
               className={cn(
-                "p-1.5 rounded-lg transition-colors",
+                "inline-flex h-11 w-11 items-center justify-center rounded-lg transition-colors",
                 item.liked
                   ? "text-rose-500 bg-rose-500/10"
                   : "text-muted-foreground hover:text-foreground"
@@ -353,10 +313,12 @@ function FeedCard({ item, onOpen, onInteract }: FeedCardProps) {
 
             {/* Save */}
             <button
+              type="button"
               onClick={() => onInteract("save")}
               aria-label="Save"
+              aria-pressed={item.saved}
               className={cn(
-                "p-1.5 rounded-lg transition-colors",
+                "inline-flex h-11 w-11 items-center justify-center rounded-lg transition-colors",
                 item.saved
                   ? "text-sky-500 bg-sky-500/10"
                   : "text-muted-foreground hover:text-foreground"
@@ -367,9 +329,10 @@ function FeedCard({ item, onOpen, onInteract }: FeedCardProps) {
 
             {/* Hide */}
             <button
+              type="button"
               onClick={() => onInteract("hide")}
               aria-label="Not for me"
-              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground transition-colors"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground transition-colors"
             >
               <ShieldOff className="h-4 w-4" strokeWidth={1.8} />
             </button>
@@ -377,9 +340,10 @@ function FeedCard({ item, onOpen, onInteract }: FeedCardProps) {
             {/* Open */}
             {(item.route || item.url.startsWith("http")) && (
               <button
+                type="button"
                 onClick={() => onOpen(item)}
                 aria-label="Open"
-                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground transition-colors"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground transition-colors"
               >
                 <ExternalLink className="h-4 w-4" strokeWidth={1.8} />
               </button>

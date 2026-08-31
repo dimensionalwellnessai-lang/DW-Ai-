@@ -350,11 +350,10 @@ function Router() {
       <Route path="/life-system"><Redirect to="/life-blueprint" /></Route>
 
       {/* /life-dashboard and /life-dimensions were duplicate life-overview
-          surfaces. Their highest-value content (goals/habits/routines
-          summary) now lives on the canonical /life-blueprint page, so both
-          redirect there. */}
+          surfaces. /life-dashboard now redirects to the canonical
+          /life-blueprint page, while /life-dimensions now points at Zones. */}
       <Route path="/life-dashboard"><Redirect to="/life-blueprint" /></Route>
-      <Route path="/life-dimensions"><Redirect to="/life-blueprint" /></Route>
+      <Route path="/life-dimensions"><Redirect to="/zones" /></Route>
       {/* Sub-routes stay live: they're still linked from active surfaces and
           must keep working. Only the bare /switchboard parent redirects. */}
       <Route path="/switchboard/intake" component={SwitchboardIntakePage} />
@@ -421,8 +420,6 @@ function Router() {
       {/* The House — Zones architecture */}
       <Route path="/zones/:zoneId" component={ZoneDetailPage} />
       <Route path="/zones" component={ZonesPage} />
-      {/* Legacy redirects → Zones */}
-      <Route path="/life-dimensions"><Redirect to="/zones" /></Route>
       {isRouteEnabled("/relationships") && <Route path="/relationships" component={RelationshipsPage} />}
       
       {isRouteEnabled("/challenges") && <Route path="/challenges" component={ChallengesPage} />}

@@ -42,6 +42,7 @@ import { getUserContextSnapshot, toUserLifeContext } from "./lib/user-context";
 import { resolveAdaptiveDWMode } from "./lib/dw-role-picker";
 import { logDwRolePick } from "./lib/dw-role-pick-log";
 import { buildExploreIntelligenceFeed, type ExploreMixWeights } from "./lib/explore-intelligence";
+import { buildCompanionContext, serializeCompanionContext } from "./lib/companion-context";
 import { chatHandler, smartChatHandler } from "./routes/chat-handlers";
 import { seedMeditationLibrary } from "./seeds/meditation-library";
 import { preWarmMeditationAudio } from "./routes/spiritual";
@@ -2265,12 +2266,25 @@ export async function registerRoutes(
       const action: { type: "navigate"; path: string; tab?: string } | null = cosmicTab
         ? { type: "navigate", path: `/cosmic?tab=${cosmicTab}`, tab: cosmicTab }
         : null;
+      const userId = req.session?.userId;
+      const companionContextBlock = userId
+        ? serializeCompanionContext(
+            await buildCompanionContext(userId).catch(() => ({
+              zones: {},
+              currents: {},
+              energyType: null,
+              interests: { deepDives: [], currentObsessions: [], popCulture: [] },
+            }))
+          )
+        : undefined;
 
       // Generate a brief AI response
       const rawAI = await generateChatResponse(
         message,
         [],
-        undefined
+        undefined,
+        undefined,
+        companionContextBlock,
       );
       const response = typeof rawAI === "string" ? rawAI : rawAI.content;
 
@@ -5809,7 +5823,15 @@ Return as JSON array:
 
 Return only valid JSON, no other text.`;
 
-      const aiResponse = await generateChatResponse(prompt, []);
+      const companionContextBlock = serializeCompanionContext(
+        await buildCompanionContext(userId).catch(() => ({
+          zones: {},
+          currents: {},
+          energyType: null,
+          interests: { deepDives: [], currentObsessions: [], popCulture: [] },
+        }))
+      );
+      const aiResponse = await generateChatResponse(prompt, [], undefined, undefined, companionContextBlock);
       
       // Ensure we have a string response
       const responseText = typeof aiResponse === 'string' ? aiResponse : JSON.stringify(aiResponse);

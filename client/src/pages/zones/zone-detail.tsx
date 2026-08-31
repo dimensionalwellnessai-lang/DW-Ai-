@@ -1,16 +1,14 @@
 /**
  * Zone Interior Page — `/zones/:zoneId`
  *
- * Shows the state, wiring, and embedded tools for a single Zone.
+ * Shows the available state, wiring, and embedded tools for a single Zone.
  * All relevant tools for the Zone are surfaced here, keeping
  * the architecture's depth-based model intact.
  */
 
 import { useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { PageHeader } from "@/components/page-header";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { Constellation } from "@/components/constellation";
 import { cn } from "@/lib/utils";
@@ -20,27 +18,28 @@ import type { ZoneId } from "@/components/constellation";
 
 // ── Energy level types ────────────────────────────────────────────────────────
 
-type EnergyLevel = "dim" | "low" | "steady" | "bright";
+type EnergyLevel = "dim" | "low" | "steady" | "bright" | "unavailable";
 
 const ENERGY_DESCRIPTIONS: Record<EnergyLevel, string> = {
   dim:    "This Zone needs attention. A little intention goes a long way here.",
   low:    "Some light getting through. Worth tending without forcing.",
   steady: "Holding well. Consistent small actions keep it here.",
   bright: "Lit up. This Zone is feeding the others right now.",
+  unavailable: "Personalized Zone state isn't available yet.",
 };
 
 // ── Current descriptions ──────────────────────────────────────────────────────
 
 const CURRENT_DESCRIPTIONS: Record<string, string> = {
-  Gut:   "Gut Current (Sacral) — responds in the moment. Trust the immediate yes or no.",
-  Wave:  "Wave Current (Emotional) — needs time to settle. Sleep on big decisions.",
-  Spark: "Spark Current (Splenic) — intuitive hits in real time. Quick instincts are reliable.",
-  Will:  "Will Current (Heart/Ego) — willpower in bursts. Rest between commitments.",
-  Voice: "Voice Current (Throat) — made to express. Speaking it makes it real.",
-  Mind:  "Mind Current (Ajna) — processes conceptually. Not designed to trust itself alone.",
-  Flow:  "Flow Current (G/Identity) — oriented by direction, not destination. Let it emerge.",
-  Drive: "Drive Current (Root) — pressure and adrenaline. Works best under healthy deadlines.",
-  Light: "Light Current (Head/Crown) — inspired by ideas. Not obligated to act on every one.",
+  Gut:   "Gut Current (Sacral) — body-led response that tends to show up in the moment.",
+  Wave:  "Wave Current (Emotional) — feeling-led signal that often benefits from settling before clarity.",
+  Spark: "Spark Current (Splenic) — intuitive awareness that can arrive quickly and quietly.",
+  Will:  "Will Current (Heart/Ego) — bursts of drive around desire, commitment, and resourcing.",
+  Voice: "Voice Current (Throat) — expression, articulation, and being heard.",
+  Mind:  "Mind Current (Ajna) — conceptual processing, patterning, and perspective-making.",
+  Flow:  "Flow Current (G/Identity) — orientation through direction, belonging, and resonance.",
+  Drive: "Drive Current (Root) — pressure, momentum, and activation under load.",
+  Light: "Light Current (Head/Crown) — inspiration, ideas, and larger-pattern awareness.",
 };
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -60,12 +59,6 @@ export default function ZoneDetailPage({ params }: Props) {
     zone ? zone.tagline : "A space worth tending."
   );
 
-  const { data: zoneState } = useQuery<{ level: EnergyLevel; trend?: string }>({
-    queryKey: [`/api/zones/states/${zoneId}`],
-    staleTime: 60_000,
-    enabled: !!zoneId,
-  });
-
   if (!zone) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 p-8 text-center">
@@ -77,15 +70,16 @@ export default function ZoneDetailPage({ params }: Props) {
     );
   }
 
-  const level: EnergyLevel = zoneState?.level ?? "steady";
+  const level: EnergyLevel = "unavailable";
   const energyDesc = ENERGY_DESCRIPTIONS[level];
   const currentDesc = CURRENT_DESCRIPTIONS[zone.current] ?? zone.current;
 
   const levelColor = {
-    dim:    "text-zinc-400",
-    low:    "text-amber-400",
-    steady: "text-sky-400",
-    bright: "text-emerald-400",
+    dim:    "text-zinc-700 dark:text-zinc-400",
+    low:    "text-amber-700 dark:text-amber-400",
+    steady: "text-sky-700 dark:text-sky-400",
+    bright: "text-emerald-700 dark:text-emerald-400",
+    unavailable: "text-zinc-700 dark:text-zinc-300",
   }[level];
 
   const levelDot = {
@@ -93,6 +87,7 @@ export default function ZoneDetailPage({ params }: Props) {
     low:    "bg-amber-500",
     steady: "bg-sky-500",
     bright: "bg-emerald-500",
+    unavailable: "bg-zinc-400",
   }[level];
 
   return (
@@ -100,8 +95,9 @@ export default function ZoneDetailPage({ params }: Props) {
       {/* Back nav */}
       <div className="px-4 pt-4">
         <button
+          type="button"
           onClick={() => setLocation("/zones")}
-          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          className="flex min-h-11 items-center gap-1.5 px-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
           The House
@@ -171,7 +167,7 @@ export default function ZoneDetailPage({ params }: Props) {
               className="w-full"
               onClick={() =>
                 setLocation(
-                  `/talk?context=zone-${zone.id}&prompt=Tell+me+about+my+${encodeURIComponent(zone.name)}+Zone`
+                  `/talk?prefill=${encodeURIComponent(`Tell me about my ${zone.name} Zone`)}`
                 )
               }
             >

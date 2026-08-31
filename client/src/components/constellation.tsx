@@ -1,7 +1,7 @@
 /**
  * The Constellation — geometric SVG identity mark for DW.
  *
- * Replaces the DWOrb with a mature, sacred-geometry feel:
+ * Adds a mature, sacred-geometry style identity mark:
  * 5 points of light connected by thin lines, animated by state.
  *
  * Props:
@@ -10,7 +10,7 @@
  *   size   — Overall diameter in px (default 80)
  */
 
-import { useEffect, useRef, useId } from "react";
+import { useId } from "react";
 import { cn } from "@/lib/utils";
 
 export type ConstellationState = "idle" | "listening" | "speaking" | "alert";
@@ -63,11 +63,28 @@ const EDGES: [number, number][] = [
   [0, 2], [1, 3],
 ];
 
+const ALERT_POINT_INDEX: Record<ZoneId, number> = {
+  physical: 0,
+  mental: 1,
+  spiritual: 2,
+  financial: 3,
+  relationships: 4,
+  career: 0,
+  learning: 1,
+  environment: 2,
+  creativity: 3,
+  fun: 4,
+  community: 0,
+  rest: 1,
+  identity: 2,
+};
+
 export function Constellation({
   zone,
   state = "idle",
   size = 80,
   className,
+  alertZone,
 }: ConstellationProps) {
   // Unique ID per instance to avoid SVG def collisions when multiple
   // Constellation instances render on the same page.
@@ -77,35 +94,7 @@ export function Constellation({
   const pointGlowId = `cst-pt-${uid}`;
 
   const accent = zone ? ZONE_COLORS[zone] : DEFAULT_COLOR;
-  const svgRef = useRef<SVGSVGElement>(null);
-
-  // Continuous rotation for idle / alert states
-  useEffect(() => {
-    const svg = svgRef.current;
-    if (!svg) return;
-    const group = svg.querySelector<SVGGElement>(".cst-group");
-    if (!group) return;
-
-    let frame: number;
-    let angle = 0;
-    let start: number | null = null;
-
-    const tick = (ts: number) => {
-      if (!start) start = ts;
-      const speed = state === "alert" ? 0.6 : state === "idle" ? 0.2 : 0;
-      angle = ((ts - start) * speed) % 360;
-      group.setAttribute("transform", `rotate(${angle}, 50, 50)`);
-      frame = requestAnimationFrame(tick);
-    };
-
-    if (state === "idle" || state === "alert") {
-      frame = requestAnimationFrame(tick);
-    } else {
-      group.setAttribute("transform", `rotate(0, 50, 50)`);
-    }
-
-    return () => cancelAnimationFrame(frame);
-  }, [state]);
+  const alertPointIndex = alertZone ? (ALERT_POINT_INDEX[alertZone] ?? 0) : 0;
 
   const lineOpacity =
     state === "idle" ? 0.35 :
@@ -120,10 +109,13 @@ export function Constellation({
     "";
 
   const alertAnimClass = state === "alert" ? "cst-point--alert" : "";
+  const groupAnimClass =
+    state === "idle" ? "cst-group--idle" :
+    state === "alert" ? "cst-group--alert" :
+    "";
 
   return (
     <svg
-      ref={svgRef}
       width={size}
       height={size}
       viewBox="0 0 100 100"
@@ -164,6 +156,14 @@ export function Constellation({
           .cst-point--alert {
             animation: cst-flash 0.6s ease-in-out infinite alternate;
           }
+          .cst-group--idle {
+            animation: cst-rotate-idle 32s linear infinite;
+            transform-origin: 50px 50px;
+          }
+          .cst-group--alert {
+            animation: cst-rotate-alert 12s linear infinite;
+            transform-origin: 50px 50px;
+          }
           @keyframes cst-pulse-speaking {
             from { r: 2.5; opacity: 0.8; }
             to   { r: 4.5; opacity: 1; }
@@ -175,6 +175,23 @@ export function Constellation({
           @keyframes cst-flash {
             from { opacity: 0.3; }
             to   { opacity: 1; }
+          }
+          @keyframes cst-rotate-idle {
+            from { transform: rotate(0deg); }
+            to   { transform: rotate(360deg); }
+          }
+          @keyframes cst-rotate-alert {
+            from { transform: rotate(0deg); }
+            to   { transform: rotate(360deg); }
+          }
+          @media (prefers-reduced-motion: reduce) {
+            .cst-group--idle,
+            .cst-group--alert,
+            .cst-point--speaking,
+            .cst-point--listening,
+            .cst-point--alert {
+              animation: none !important;
+            }
           }
         `}</style>
       </defs>
@@ -192,7 +209,7 @@ export function Constellation({
       />
 
       {/* Rotating inner group */}
-      <g className="cst-group">
+      <g className={cn("cst-group", groupAnimClass)}>
         {/* Connecting lines */}
         {EDGES.map(([a, b], i) => (
           <line
@@ -220,7 +237,7 @@ export function Constellation({
             filter={`url(#${pointGlowId})`}
             className={cn(
               pointAnimClass,
-              i === 0 && alertAnimClass
+              i === alertPointIndex && alertAnimClass
             )}
           />
         ))}

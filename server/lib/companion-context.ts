@@ -1,13 +1,12 @@
 /**
  * companion-context.ts
  *
- * Builds the CompanionContext that gets injected into every DW AI prompt.
- * This gives DW awareness of the user's Zones, Currents, energy type, and
- * cosmic conditions — so responses reference specific wiring, not generic advice.
+ * Builds the CompanionContext injected into user-bound DW prompts from
+ * existing persisted profile data. It must degrade gracefully when optional
+ * profile fields are absent or malformed.
  */
 
-import { db } from "../db";
-import { sql } from "drizzle-orm";
+import { storage } from "../storage";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -46,137 +45,122 @@ export interface CompanionContext {
     currentObsessions: string[];
     popCulture: string[];
   };
-  /** Current cosmic/energetic conditions */
-  cosmicWeather: {
-    activeCurrents: string[];
-    phase: string;
-    note: string;
-  };
 }
 
-// ── Zone → Current mapping ────────────────────────────────────────────────────
-
-const ZONE_PRIMARY_CURRENT: Record<ZoneId, CurrentType> = {
-  physical:      "Drive",
-  mental:        "Mind",
-  spiritual:     "Light",
-  financial:     "Will",
-  relationships: "Wave",
-  career:        "Will",
-  learning:      "Spark",
-  environment:   "Flow",
-  creativity:    "Spark",
-  fun:           "Gut",
-  community:     "Flow",
-  rest:          "Wave",
-  identity:      "Mind",
-};
-
 // ── Builder ───────────────────────────────────────────────────────────────────
+
+const MAX_INTEREST_ITEMS = 6;
+const MAX_INTEREST_LENGTH = 120;
+
+function normalizeInterestText(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const normalized = value.replace(/\s+/g, " ").trim();
+  if (!normalized || normalized.length > MAX_INTEREST_LENGTH) return null;
+  return normalized;
+}
+
+function normalizeStringArray(value: unknown, maxItems = MAX_INTEREST_ITEMS): string[] {
+  if (!Array.isArray(value)) return [];
+
+  const seen = new Set<string>();
+  const items: string[] = [];
+
+  for (const entry of value) {
+    const normalized = normalizeInterestText(entry);
+    if (!normalized) continue;
+
+    const key = normalized.toLowerCase();
+    if (seen.has(key)) continue;
+
+    seen.add(key);
+    items.push(normalized);
+
+    if (items.length >= maxItems) break;
+  }
+
+  return items;
+}
+
+function normalizePreferenceValues(value: unknown): string[] {
+  if (Array.isArray(value)) return normalizeStringArray(value, 3);
+  const normalized = normalizeInterestText(value);
+  return normalized ? [normalized] : [];
+}
+
+function mergeUniqueLists(...lists: string[][]): string[] {
+  const seen = new Set<string>();
+  const items: string[] = [];
+
+  for (const list of lists) {
+    for (const entry of list) {
+      const key = entry.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      items.push(entry);
+      if (items.length >= MAX_INTEREST_ITEMS) return items;
+    }
+  }
+
+  return items;
+}
+
+function emptyCompanionContext(): CompanionContext {
+  const empty: CompanionContext = {
+    zones: {},
+    currents: {},
+    energyType: null,
+    interests: { deepDives: [], currentObsessions: [], popCulture: [] },
+  };
+  return empty;
+}
 
 /**
  * Builds a CompanionContext for a given userId.
  * Falls back gracefully if data is unavailable — DW degrades to generic
  * context rather than crashing.
  */
-export async function buildCompanionContext(userId: number): Promise<CompanionContext> {
-  const empty: CompanionContext = {
-    zones: {},
-    currents: {},
-    energyType: null,
-    interests: { deepDives: [], currentObsessions: [], popCulture: [] },
-    cosmicWeather: { activeCurrents: [], phase: "unknown", note: "" },
-  };
+export async function buildCompanionContext(userId: string): Promise<CompanionContext> {
+  const empty = emptyCompanionContext();
 
   if (!userId) return empty;
 
   try {
-    // ── Pull what the DB has ─────────────────────────────────────────────────
-    // Zone states (stored as user_zone_states or dimension data)
-    let zoneRows: Array<{ zone_id: string; level: number; trend: string }> = [];
-    let profileRow: {
-      energy_type?: string;
-      currents?: string;
-      interests?: string;
-    } | null = null;
+    const [userProfile, onboardingProfile] = await Promise.all([
+      storage.getUserProfile(userId).catch(() => undefined),
+      storage.getOnboardingProfile(userId).catch(() => undefined),
+    ]);
 
-    try {
-      const result = await db.execute(
-        sql`SELECT zone_id,
-               COALESCE(level, 50) AS level,
-               COALESCE(trend, 'stable') AS trend
-            FROM user_zone_states
-            WHERE user_id = ${userId}`
-      );
-      zoneRows = (result.rows ?? []) as typeof zoneRows;
-    } catch {
-      // Table may not exist yet — silently skip
-    }
+    const lifestylePreferences =
+      userProfile?.lifestylePreferences &&
+      typeof userProfile.lifestylePreferences === "object" &&
+      !Array.isArray(userProfile.lifestylePreferences)
+        ? userProfile.lifestylePreferences as Record<string, unknown>
+        : {};
 
-    try {
-      const result = await db.execute(
-        sql`SELECT energy_type,
-               currents_json AS currents,
-               interests_json AS interests
-            FROM user_wiring_profiles
-            WHERE user_id = ${userId}
-            LIMIT 1`
-      );
-      const rows = (result.rows ?? []) as Array<{
-        energy_type?: string;
-        currents?: string;
-        interests?: string;
-      }>;
-      profileRow = rows[0] ?? null;
-    } catch {
-      // Table may not exist yet — silently skip
-    }
-
-    // ── Build zones map ──────────────────────────────────────────────────────
-    const zones: Partial<Record<ZoneId, ZoneState>> = {};
-    for (const row of zoneRows) {
-      const id = row.zone_id as ZoneId;
-      if (!ZONE_PRIMARY_CURRENT[id]) continue;
-      zones[id] = {
-        level: Number(row.level),
-        trend: (row.trend as "rising" | "falling" | "stable") ?? "stable",
-        current: ZONE_PRIMARY_CURRENT[id],
-      };
-    }
-
-    // ── Build currents map ───────────────────────────────────────────────────
-    let currents: Partial<Record<CurrentType, CurrentReliability>> = {};
-    if (profileRow?.currents) {
-      try {
-        currents = JSON.parse(profileRow.currents);
-      } catch {
-        // ignore parse errors
-      }
-    }
-
-    // ── Energy type ──────────────────────────────────────────────────────────
-    const validTypes: EnergyType[] = ["Builder", "Guide", "Initiator", "Observer"];
-    const rawType = profileRow?.energy_type ?? "";
-    const energyType = validTypes.includes(rawType as EnergyType)
-      ? (rawType as EnergyType)
-      : null;
-
-    // ── Interests ────────────────────────────────────────────────────────────
-    let interests = empty.interests;
-    if (profileRow?.interests) {
-      try {
-        interests = JSON.parse(profileRow.interests);
-      } catch {
-        // ignore parse errors
-      }
-    }
+    const interests = {
+      deepDives: mergeUniqueLists(
+        normalizeStringArray(onboardingProfile?.curiosityTopics),
+        normalizeStringArray(userProfile?.goals),
+      ),
+      currentObsessions: mergeUniqueLists(
+        normalizePreferenceValues(userProfile?.fitnessGoal),
+        normalizePreferenceValues(onboardingProfile?.shortTermGoals),
+        normalizeStringArray(onboardingProfile?.wellnessFocus),
+      ),
+      popCulture: mergeUniqueLists(
+        normalizePreferenceValues(lifestylePreferences.watchLikes),
+        normalizePreferenceValues(lifestylePreferences.musicLikes),
+        normalizePreferenceValues(lifestylePreferences.readLikes),
+        normalizePreferenceValues(lifestylePreferences.doLikes),
+        normalizePreferenceValues(lifestylePreferences.goLikes),
+      ),
+    };
 
     return {
-      zones,
-      currents,
-      energyType,
+      zones: {},
+      currents: {},
+      energyType: null,
       interests,
-      cosmicWeather: { activeCurrents: [], phase: "unknown", note: "" },
     };
   } catch {
     return empty;
@@ -221,9 +205,11 @@ export function serializeCompanionContext(ctx: CompanionContext): string {
   if (brightZones.length) lines.push(`Bright Zones (thriving): ${brightZones.join(", ")}`);
 
   if (ctx.interests.deepDives.length)
-    lines.push(`Deep interests: ${ctx.interests.deepDives.join(", ")}`);
+    lines.push(`Deep interests (user-provided): ${JSON.stringify(ctx.interests.deepDives)}`);
   if (ctx.interests.currentObsessions.length)
-    lines.push(`Current obsessions: ${ctx.interests.currentObsessions.join(", ")}`);
+    lines.push(`Current obsessions (user-provided): ${JSON.stringify(ctx.interests.currentObsessions)}`);
+  if (ctx.interests.popCulture.length)
+    lines.push(`Pop culture signals (user-provided): ${JSON.stringify(ctx.interests.popCulture)}`);
 
   if (!lines.length) return "";
 

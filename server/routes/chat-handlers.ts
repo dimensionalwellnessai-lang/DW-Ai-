@@ -38,6 +38,15 @@ import { resolveAdaptiveDWMode } from "../lib/dw-role-picker";
 import { logDwRolePick } from "../lib/dw-role-pick-log";
 import { buildCompanionContext, serializeCompanionContext } from "../lib/companion-context";
 
+function emptyCompanionContext() {
+  return {
+    zones: {},
+    currents: {},
+    energyType: null,
+    interests: { deepDives: [], currentObsessions: [], popCulture: [] },
+  };
+}
+
 /**
  * Test-only escape hatch used by the e2e suite (see
  * `tests/e2e/trigger-protocol.pw.ts` "fallback path" cases) to force the
@@ -103,16 +112,16 @@ export async function chatHandler(req: Request, res: Response) {
       ...dwModeResult.logFields,
     });
 
+    const companionContextBlock = serializeCompanionContext(
+      await buildCompanionContext(userId).catch(() => emptyCompanionContext())
+    );
+
     const rawResponse = await generateChatResponse(
       message,
       conversationHistory || [],
       userContext,
       [dwModeResult.modeAddendum, DW_GUIDE_BEHAVIOR].filter(Boolean).join("\n\n"),
-      serializeCompanionContext(await buildCompanionContext(userId).catch(() => ({
-        zones: {}, currents: {}, energyType: null,
-        interests: { deepDives: [], currentObsessions: [], popCulture: [] },
-        cosmicWeather: { activeCurrents: [], phase: "unknown", note: "" },
-      }))),
+      companionContextBlock,
     );
 
     const response = typeof rawResponse === "string" ? rawResponse : rawResponse.content;
@@ -364,6 +373,9 @@ export async function smartChatHandler(req: Request, res: Response) {
       .join("\n\n");
 
     const wearablesYesterdayForChat = await safeGetWearablesYesterday(req.session.userId!);
+    const companionContextBlock = serializeCompanionContext(
+      await buildCompanionContext(userId).catch(() => emptyCompanionContext())
+    );
 
     // Test-only short-circuit: e2e suite forces the resilient AI client to
     // appear unavailable so we can prove the catch block below still
@@ -379,6 +391,7 @@ export async function smartChatHandler(req: Request, res: Response) {
       userContext,
       composedOverride || undefined,
       wearablesYesterdayForChat,
+      companionContextBlock,
     );
 
     // Execute tool calls if any

@@ -2931,7 +2931,8 @@ export async function detectIntentAndRespond(
   conversationHistory: ChatMessage[],
   userContext?: UserLifeContext,
   systemOverride?: string,
-  wearablesYesterday?: WearablesYesterday | null
+  wearablesYesterday?: WearablesYesterday | null,
+  companionContextBlock?: string,
 ): Promise<{
   response: string;
   intent: "workout" | "meditation" | "learn" | "general";
@@ -2996,7 +2997,13 @@ export async function detectIntentAndRespond(
     intent = isWorkoutIntent ? "workout" : "meditation";
   }
   
-  const rawResponse = await generateChatResponse(userMessage, conversationHistory, userContext, systemOverride);
+  const rawResponse = await generateChatResponse(
+    userMessage,
+    conversationHistory,
+    userContext,
+    systemOverride,
+    companionContextBlock,
+  );
   const response = typeof rawResponse === 'string' ? rawResponse : rawResponse.content;
   const toolCalls = typeof rawResponse === 'object' && 'toolCalls' in rawResponse ? rawResponse.toolCalls : undefined;
   

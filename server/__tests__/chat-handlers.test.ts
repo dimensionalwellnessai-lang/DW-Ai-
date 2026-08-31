@@ -106,6 +106,18 @@ vi.mock("../lib/dw-role-picker", () => ({
   resolveAdaptiveDWMode,
 }));
 
+const buildCompanionContext = vi.fn(async () => ({
+  zones: {},
+  currents: {},
+  energyType: null,
+  interests: { deepDives: [], currentObsessions: [], popCulture: [] },
+}));
+const serializeCompanionContext = vi.fn(() => "");
+vi.mock("../lib/companion-context", () => ({
+  buildCompanionContext,
+  serializeCompanionContext,
+}));
+
 const logDwRolePick = vi.fn();
 vi.mock("../lib/dw-role-pick-log", () => ({
   logDwRolePick,
@@ -215,6 +227,13 @@ beforeEach(() => {
 
   generateChatResponse.mockResolvedValue("ok response");
   detectIntentAndRespond.mockResolvedValue({ response: "smart ok response", toolCalls: [] });
+  buildCompanionContext.mockResolvedValue({
+    zones: {},
+    currents: {},
+    energyType: null,
+    interests: { deepDives: [], currentObsessions: [], popCulture: [] },
+  });
+  serializeCompanionContext.mockReturnValue("");
   getAiConfigStatus.mockReturnValue({ configured: true });
 });
 
@@ -222,6 +241,8 @@ afterEach(() => {
   generateChatResponse.mockReset();
   detectIntentAndRespond.mockReset();
   resolveAdaptiveDWMode.mockReset();
+  buildCompanionContext.mockReset();
+  serializeCompanionContext.mockReset();
   logDwRolePick.mockReset();
   getUserContextSnapshot.mockReset();
   for (const fn of Object.values(storageStub)) fn.mockClear();

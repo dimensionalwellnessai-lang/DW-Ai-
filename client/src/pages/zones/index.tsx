@@ -1,12 +1,11 @@
 /**
  * Zones — The House
  *
- * 13 life areas displayed as rooms. Each Zone shows its current energy
- * state (Dim → Bright) and surfaces the tools relevant to that area.
+ * 13 life areas displayed as rooms. Each Zone surfaces the tools relevant
+ * to that area and shows personalized state only when that data is available.
  */
 
 import { useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
 import { PageHeader } from "@/components/page-header";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { Constellation } from "@/components/constellation";
@@ -31,7 +30,7 @@ export const ZONES: ZoneMeta[] = [
     id: "physical",
     name: "Physical",
     tagline: "The foundation everything runs on",
-    color: "text-amber-400",
+    color: "text-amber-700 dark:text-amber-400",
     bg: "bg-amber-500/10",
     border: "border-amber-500/25",
     tools: [
@@ -47,7 +46,7 @@ export const ZONES: ZoneMeta[] = [
     id: "mental",
     name: "Mental",
     tagline: "Where clarity lives when it's well-fed",
-    color: "text-sky-400",
+    color: "text-sky-700 dark:text-sky-400",
     bg: "bg-sky-500/10",
     border: "border-sky-500/25",
     tools: [
@@ -62,7 +61,7 @@ export const ZONES: ZoneMeta[] = [
     id: "spiritual",
     name: "Spiritual",
     tagline: "The signal beneath the noise",
-    color: "text-violet-400",
+    color: "text-violet-700 dark:text-violet-400",
     bg: "bg-violet-500/10",
     border: "border-violet-500/25",
     tools: [
@@ -76,7 +75,7 @@ export const ZONES: ZoneMeta[] = [
     id: "financial",
     name: "Financial",
     tagline: "Resources that expand your options",
-    color: "text-emerald-400",
+    color: "text-emerald-700 dark:text-emerald-400",
     bg: "bg-emerald-500/10",
     border: "border-emerald-500/25",
     tools: [
@@ -88,7 +87,7 @@ export const ZONES: ZoneMeta[] = [
     id: "relationships",
     name: "Relationships",
     tagline: "The web you're woven into",
-    color: "text-rose-400",
+    color: "text-rose-700 dark:text-rose-400",
     bg: "bg-rose-500/10",
     border: "border-rose-500/25",
     tools: [
@@ -101,7 +100,7 @@ export const ZONES: ZoneMeta[] = [
     id: "career",
     name: "Career",
     tagline: "How your gifts meet the world",
-    color: "text-orange-400",
+    color: "text-orange-700 dark:text-orange-400",
     bg: "bg-orange-500/10",
     border: "border-orange-500/25",
     tools: [
@@ -116,7 +115,7 @@ export const ZONES: ZoneMeta[] = [
     id: "learning",
     name: "Learning",
     tagline: "Curiosity in motion",
-    color: "text-cyan-400",
+    color: "text-cyan-700 dark:text-cyan-400",
     bg: "bg-cyan-500/10",
     border: "border-cyan-500/25",
     tools: [
@@ -130,7 +129,7 @@ export const ZONES: ZoneMeta[] = [
     id: "environment",
     name: "Environment",
     tagline: "The space that shapes your state",
-    color: "text-teal-400",
+    color: "text-teal-700 dark:text-teal-400",
     bg: "bg-teal-500/10",
     border: "border-teal-500/25",
     tools: [
@@ -143,7 +142,7 @@ export const ZONES: ZoneMeta[] = [
     id: "creativity",
     name: "Creativity",
     tagline: "The part of you that needs no reason",
-    color: "text-fuchsia-400",
+    color: "text-fuchsia-700 dark:text-fuchsia-400",
     bg: "bg-fuchsia-500/10",
     border: "border-fuchsia-500/25",
     tools: [
@@ -156,7 +155,7 @@ export const ZONES: ZoneMeta[] = [
     id: "fun",
     name: "Fun",
     tagline: "The Zone that recharges all others",
-    color: "text-yellow-400",
+    color: "text-yellow-700 dark:text-yellow-400",
     bg: "bg-yellow-500/10",
     border: "border-yellow-500/25",
     tools: [
@@ -169,7 +168,7 @@ export const ZONES: ZoneMeta[] = [
     id: "community",
     name: "Community",
     tagline: "Belonging without performance",
-    color: "text-indigo-400",
+    color: "text-indigo-700 dark:text-indigo-400",
     bg: "bg-indigo-500/10",
     border: "border-indigo-500/25",
     tools: [
@@ -182,7 +181,7 @@ export const ZONES: ZoneMeta[] = [
     id: "rest",
     name: "Rest",
     tagline: "Not nothing — regeneration",
-    color: "text-blue-300",
+    color: "text-blue-700 dark:text-blue-300",
     bg: "bg-blue-500/10",
     border: "border-blue-500/25",
     tools: [
@@ -195,7 +194,7 @@ export const ZONES: ZoneMeta[] = [
     id: "identity",
     name: "Identity",
     tagline: "Who you are beneath all the roles",
-    color: "text-purple-400",
+    color: "text-purple-700 dark:text-purple-400",
     bg: "bg-purple-500/10",
     border: "border-purple-500/25",
     tools: [
@@ -209,7 +208,7 @@ export const ZONES: ZoneMeta[] = [
 
 // ── Energy level helper ───────────────────────────────────────────────────────
 
-type EnergyLevel = "dim" | "low" | "steady" | "bright";
+type EnergyLevel = "dim" | "low" | "steady" | "bright" | "unavailable";
 
 function getLevelLabel(level: EnergyLevel) {
   return {
@@ -217,6 +216,7 @@ function getLevelLabel(level: EnergyLevel) {
     low: "Low",
     steady: "Steady",
     bright: "Bright",
+    unavailable: "Unavailable",
   }[level];
 }
 
@@ -226,6 +226,7 @@ function getLevelColor(level: EnergyLevel) {
     low: "bg-amber-500",
     steady: "bg-sky-500",
     bright: "bg-emerald-500",
+    unavailable: "bg-zinc-400",
   }[level];
 }
 
@@ -235,11 +236,6 @@ export default function ZonesPage() {
   usePageMeta("Zones — The House", "Your 13 life areas, each a room in the house you're building.");
 
   const [, setLocation] = useLocation();
-
-  const { data: zoneStates } = useQuery<Record<string, { level: EnergyLevel }>>({
-    queryKey: ["/api/zones/states"],
-    staleTime: 60_000,
-  });
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -254,10 +250,11 @@ export default function ZonesPage() {
       <div className="px-4 pt-2 pb-6">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {ZONES.map((zone) => {
-            const level: EnergyLevel = zoneStates?.[zone.id]?.level ?? "steady";
+            const level: EnergyLevel = "unavailable";
 
             return (
               <button
+                type="button"
                 key={zone.id}
                 onClick={() => setLocation(`/zones/${zone.id}`)}
                 className={cn(
@@ -306,10 +303,12 @@ export default function ZonesPage() {
                   Powered by {zone.current} Current
                 </p>
 
-                {/* Tool count hint */}
-                <p className="text-[11px] text-muted-foreground/50 absolute bottom-3 right-4">
-                  {zone.tools.length} tool{zone.tools.length !== 1 ? "s" : ""}
-                </p>
+                <div className="flex items-center justify-between gap-3 text-[11px] text-muted-foreground/50">
+                  <p>Personalized state unavailable right now</p>
+                  <p>
+                    {zone.tools.length} tool{zone.tools.length !== 1 ? "s" : ""}
+                  </p>
+                </div>
               </button>
             );
           })}
