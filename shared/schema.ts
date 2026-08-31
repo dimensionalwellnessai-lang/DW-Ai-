@@ -783,6 +783,63 @@ export const feedInteractionsRelations = relations(feedInteractions, ({ one }) =
   }),
 }));
 
+export const userCurrents = pgTable("user_currents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  energyType: text("energy_type").notNull(),
+  decisionCompass: text("decision_compass").notNull(),
+  currents: jsonb("currents").notNull(),
+  source: text("source").default("energy_blueprint"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (t) => [
+  uniqueIndex("user_currents_user_idx").on(t.userId),
+]);
+
+export const zoneStates = pgTable("zone_states", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  zoneId: text("zone_id").notNull(),
+  level: integer("level").notNull().default(2),
+  trend: text("trend").notNull().default("dim"),
+  lastAction: text("last_action"),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (t) => [
+  uniqueIndex("zone_states_user_zone_idx").on(t.userId, t.zoneId),
+  index("zone_states_user_updated_idx").on(t.userId, t.updatedAt),
+]);
+
+export const feedItems = pgTable("feed_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  sourceId: text("source_id"),
+  title: text("title").notNull(),
+  description: text("description"),
+  itemType: text("item_type").notNull(), // video|article|meme|quote|audio|cosmic_update
+  streamBucket: text("stream_bucket").notNull().default("constructive"), // constructive|recreational|social
+  zoneTags: text("zone_tags").array(),
+  currentTags: text("current_tags").array(),
+  source: text("source"),
+  url: text("url"),
+  metadata: jsonb("metadata"),
+  isCurated: boolean("is_curated").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  publishedAt: timestamp("published_at"),
+});
+
+export const userInterests = pgTable("user_interests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  deepDives: text("deep_dives").array().default(sql`ARRAY[]::text[]`),
+  currentObsessions: text("current_obsessions").array().default(sql`ARRAY[]::text[]`),
+  popCulture: text("pop_culture").array().default(sql`ARRAY[]::text[]`),
+  spiritualCuriosity: text("spiritual_curiosity").array().default(sql`ARRAY[]::text[]`),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (t) => [
+  uniqueIndex("user_interests_user_idx").on(t.userId),
+]);
+
 export const challenges = pgTable("challenges", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull().references(() => users.id),
@@ -1587,6 +1644,29 @@ export const insertSavedContentSchema = createInsertSchema(savedContent).omit({
 });
 
 export const insertFeedInteractionSchema = createInsertSchema(feedInteractions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertUserCurrentsSchema = createInsertSchema(userCurrents).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertZoneStateSchema = createInsertSchema(zoneStates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertFeedItemSchema = createInsertSchema(feedItems).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertUserInterestsSchema = createInsertSchema(userInterests).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
@@ -2780,6 +2860,14 @@ export type SavedContent = typeof savedContent.$inferSelect;
 export type InsertSavedContent = z.infer<typeof insertSavedContentSchema>;
 export type FeedInteraction = typeof feedInteractions.$inferSelect;
 export type InsertFeedInteraction = z.infer<typeof insertFeedInteractionSchema>;
+export type UserCurrents = typeof userCurrents.$inferSelect;
+export type InsertUserCurrents = z.infer<typeof insertUserCurrentsSchema>;
+export type ZoneState = typeof zoneStates.$inferSelect;
+export type InsertZoneState = z.infer<typeof insertZoneStateSchema>;
+export type FeedItem = typeof feedItems.$inferSelect;
+export type InsertFeedItem = z.infer<typeof insertFeedItemSchema>;
+export type UserInterests = typeof userInterests.$inferSelect;
+export type InsertUserInterests = z.infer<typeof insertUserInterestsSchema>;
 export type Challenge = typeof challenges.$inferSelect;
 export type InsertChallenge = z.infer<typeof insertChallengeSchema>;
 export type BodyScan = typeof bodyScans.$inferSelect;

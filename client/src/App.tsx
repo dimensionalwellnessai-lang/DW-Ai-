@@ -165,6 +165,7 @@ import AdminAnalyticsPage from "@/pages/admin-analytics";
 import MoodTrackerPage from "@/pages/mood-tracker";
 import HomeCommandCenter from "@/features/home/home-command-center";
 import LifeBlueprintV2Page from "@/pages/life-blueprint-v2";
+import LifeDimensionsPage from "@/pages/life-dimensions";
 import InsightsDashboard from "@/pages/insights";
 import WellnessPreferencesPage from "@/pages/wellness-preferences";
 import ValuesRulesProfilePage from "@/pages/values-rules-profile";
@@ -352,7 +353,7 @@ function Router() {
           summary) now lives on the canonical /life-blueprint page, so both
           redirect there. */}
       <Route path="/life-dashboard"><Redirect to="/life-blueprint" /></Route>
-      <Route path="/life-dimensions"><Redirect to="/life-blueprint" /></Route>
+      <Route path="/life-dimensions" component={LifeDimensionsPage} />
       {/* Sub-routes stay live: they're still linked from active surfaces and
           must keep working. Only the bare /switchboard parent redirects. */}
       <Route path="/switchboard/intake" component={SwitchboardIntakePage} />
@@ -412,8 +413,8 @@ function Router() {
       {isRouteEnabled("/cosmic-insights") && <Route path="/cosmic-insights" component={AstrologyPage} />}
       <Route path="/astrology"><Redirect to="/cosmic-insights" /></Route>
       <Route path="/cosmic" component={CosmicHubPage} />
-      {isRouteEnabled("/feed") && <Route path="/feed" component={FeedPage} />}
-      {isRouteEnabled("/browse") && <Route path="/browse"><Redirect to="/feed" /></Route>}
+      <Route path="/feed" component={FeedPage} />
+      <Route path="/browse"><Redirect to="/feed" /></Route>
       {isRouteEnabled("/energy-transmutation") && <Route path="/energy-transmutation" component={EnergyTransmutationPage} />}
       {isRouteEnabled("/library") && <Route path="/library" component={LibraryPage} />}
       {isRouteEnabled("/relationships") && <Route path="/relationships" component={RelationshipsPage} />}
