@@ -562,6 +562,11 @@ export default function MoodTrackerPage() {
     <div className="flex flex-col h-full bg-background">
       <PageHeader title="Mood Tracker" showBack backPath="/command-center" />
 
+      {/* DW opening line */}
+      <p className="text-sm text-muted-foreground italic px-5 pt-3 pb-1" data-testid="text-dw-line-mood-tracker">
+        Your feelings are information, not instructions — notice them here.
+      </p>
+
       <div className="flex-1 overflow-auto">
         <div className="mx-auto max-w-2xl space-y-4 p-4 pb-24" data-tour="mood-tracker">
           <Tabs value={tab} onValueChange={setTab} className="w-full">

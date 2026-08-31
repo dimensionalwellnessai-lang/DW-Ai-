@@ -59,7 +59,7 @@ export function CommandCenterOrbit({ size = 280, className }: CommandCenterOrbit
             >
               <Icon className={cn("h-4 w-4", mod.color)} />
             </span>
-            <span className="absolute top-full mt-0.5 text-[10px] leading-none text-muted-foreground whitespace-nowrap">
+            <span className="absolute top-full mt-0.5 text-xs leading-none text-muted-foreground whitespace-nowrap">
               {mod.label}
             </span>
           </button>

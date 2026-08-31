@@ -316,7 +316,23 @@ export default function JournalPage() {
   return (
     <div className="flex flex-col h-full bg-background">
       <PageHeader title="Journal" />
-      
+
+      {/* DW opening line */}
+      {(() => {
+        const thisMonth = new Date().getMonth();
+        const thisYear = new Date().getFullYear();
+        const entriesThisMonth = entries.filter(e => {
+          const d = new Date(e.createdAt);
+          return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
+        }).length;
+        let line = "The page is open. Whatever you write is enough.";
+        if (entries.length > 0 && entriesThisMonth > 0) line = `${entriesThisMonth} entr${entriesThisMonth !== 1 ? "ies" : "y"} this month — each one a small act of awareness.`;
+        else if (entries.length > 0) line = "Your words are here — reflection takes courage.";
+        return (
+          <p className="text-sm text-muted-foreground italic px-5 pt-3 pb-1" data-testid="text-dw-line-journal">{line}</p>
+        );
+      })()}
+
       <ScrollArea className="flex-1 overflow-auto">
         <div className="p-4 max-w-2xl mx-auto space-y-6 pb-8 page-enter">
           <DWContextPrompt
@@ -860,7 +876,7 @@ function DwJournalSection({ entries, isLoading }: { entries: DwJournalRecord[]; 
                   <button
                     type="button"
                     onClick={() => setExpandedId(isExpanded ? null : entry.id)}
-                    className="text-[11px] text-violet-500 hover:text-violet-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 rounded"
+                    className="text-xs text-violet-500 hover:text-violet-600 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 rounded"
                     aria-expanded={isExpanded}
                   >
                     {isExpanded ? "Show less" : "Read more"}

@@ -514,7 +514,7 @@ export function EventDetailSheet({ event, onClose, onEdit }: EventDetailSheetPro
                         <Heart className="h-3.5 w-3.5 text-primary shrink-0" />
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-semibold text-primary">Make these more personal</p>
-                          <p className="text-[11px] text-muted-foreground">Tell DW what you actually like — once, and it remembers</p>
+                          <p className="text-xs text-muted-foreground">Tell DW what you actually like — once, and it remembers</p>
                         </div>
                         <Plus className="h-3.5 w-3.5 text-primary shrink-0" />
                       </button>
@@ -529,7 +529,7 @@ export function EventDetailSheet({ event, onClose, onEdit }: EventDetailSheetPro
                               <Heart className="h-3 w-3" />
                               Tell DW who you are
                             </p>
-                            <p className="text-[10px] text-muted-foreground mt-0.5">Fill in what applies — DW remembers this forever</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">Fill in what applies — DW remembers this forever</p>
                           </div>
                           <button type="button" onClick={() => setShowPrefsForm(false)} className="text-muted-foreground/40 hover:text-foreground p-1">
                             <X className="h-3.5 w-3.5" />

@@ -304,6 +304,20 @@ export default function CalendarSchedulePage() {
     <div className="flex flex-col h-full bg-background">
       <PageHeader title="Calendar" />
 
+      {/* DW opening line */}
+      {(() => {
+        const todayKey = format(startOfToday(), "yyyy-MM-dd");
+        const todayEvents = (events || []).filter(
+          (e) => format(parseISO(e.startTime), "yyyy-MM-dd") === todayKey,
+        );
+        let line = "Your schedule is a map of what you value — keep it honest.";
+        if (!isLoading && todayEvents.length > 0) line = `${todayEvents.length} thing${todayEvents.length !== 1 ? "s" : ""} on today's map — take it one at a time.`;
+        else if (!isLoading && (events || []).length > 0) line = "Nothing locked in for today — space is a resource too.";
+        return (
+          <p className="text-sm text-muted-foreground italic px-5 pt-3 pb-1" data-testid="text-dw-line-calendar">{line}</p>
+        );
+      })()}
+
       <ScrollArea className="flex-1 overflow-auto">
         <div className="p-4 max-w-lg mx-auto space-y-4 pb-8">
           {/* Search */}

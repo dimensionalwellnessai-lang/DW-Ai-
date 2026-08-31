@@ -29,7 +29,7 @@ export function FloatingAIWidget() {
         data-testid="button-floating-ask-dw"
       >
         <MessageCircle className="h-3 w-3 text-primary" />
-        <span className="text-[10px] font-medium text-foreground/80 whitespace-nowrap">Ask DW</span>
+        <span className="text-xs font-medium text-foreground/80 whitespace-nowrap">Ask DW</span>
       </button>
     </div>
   );

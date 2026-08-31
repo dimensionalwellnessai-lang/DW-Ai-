@@ -183,6 +183,21 @@ export default function GoalsPage() {
         }
       />
 
+      {/* DW opening line */}
+      {(() => {
+        const activeGoals = goals.filter(g => g.isActive !== false);
+        const avgProgress = activeGoals.length > 0
+          ? Math.round(activeGoals.reduce((s: number, g) => s + (g.progress ?? 0), 0) / activeGoals.length)
+          : 0;
+        let line = "A goal written down is already a step forward.";
+        if (!isLoading && activeGoals.length === 1) line = "One goal in motion — stay with it.";
+        else if (!isLoading && activeGoals.length > 1 && avgProgress >= 50) line = `${activeGoals.length} goals in motion, halfway there or more — keep going.`;
+        else if (!isLoading && activeGoals.length > 1) line = `${activeGoals.length} goals in progress. Each small step counts.`;
+        return (
+          <p className="text-sm text-muted-foreground italic px-5 pt-3 pb-1" data-testid="text-dw-line-goals">{line}</p>
+        );
+      })()}
+
       <div className="flex-1 overflow-auto">
         <div className="container max-w-2xl mx-auto p-4 space-y-5 pb-24">
 
@@ -557,7 +572,7 @@ function GoalCard({ goal, expanded, editing, completed, isPending, linkedHabits 
             </div>
             <Progress value={progress} className="h-2" />
             {targetDate && (
-              <p className="text-[10px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Due {targetDate}
                 {daysRemaining !== null && daysRemaining >= 0 && ` · ${daysRemaining}d remaining`}
                 {daysRemaining !== null && daysRemaining < 0 && ` · Overdue by ${Math.abs(daysRemaining)}d`}
