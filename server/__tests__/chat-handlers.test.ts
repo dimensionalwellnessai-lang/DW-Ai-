@@ -119,10 +119,12 @@ const emptyCompanionContext = vi.fn(() => ({
   interests: { deepDives: [], currentObsessions: [], popCulture: [] },
 }));
 const serializeCompanionContext = vi.fn(() => "");
+const companionContextPromptBlock = vi.fn(() => "");
 vi.mock("../lib/companion-context", () => ({
   buildCompanionContext,
   emptyCompanionContext,
   serializeCompanionContext,
+  companionContextPromptBlock,
 }));
 
 const logDwRolePick = vi.fn();

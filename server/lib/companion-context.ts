@@ -189,15 +189,27 @@ export async function buildCompanionContext(
 ): Promise<CompanionContext> {
   if (!userId) return emptyCompanionContext();
 
-  const [chart, assessments, interestsRow, wellnessPreferences, onboardingProfile, goals] =
-    await Promise.all([
-      storage.getBirthChart(userId).catch(() => null),
-      storage.getLifeDimensionAssessments(userId).catch(() => []),
-      storage.getUserInterests(userId).catch(() => null),
-      storage.getWellnessPreferences(userId).catch(() => null),
-      storage.getOnboardingProfile(userId).catch(() => null),
-      storage.getGoals(userId).catch(() => []),
-    ]);
+  const results = await Promise.allSettled([
+    storage.getBirthChart(userId),
+    storage.getLifeDimensionAssessments(userId),
+    storage.getUserInterests(userId),
+    storage.getWellnessPreferences(userId),
+    storage.getOnboardingProfile(userId),
+    storage.getGoals(userId),
+  ]);
+
+  const anySucceeded = results.some((r) => r.status === "fulfilled");
+  if (!anySucceeded) return emptyCompanionContext();
+
+  const val = <T>(r: PromiseSettledResult<T>, fallback: T): T =>
+    r.status === "fulfilled" ? r.value : fallback;
+
+  const chart = val(results[0] as PromiseSettledResult<Awaited<ReturnType<typeof storage.getBirthChart>>>, null);
+  const assessments = val(results[1] as PromiseSettledResult<Awaited<ReturnType<typeof storage.getLifeDimensionAssessments>>>, []);
+  const interestsRow = val(results[2] as PromiseSettledResult<Awaited<ReturnType<typeof storage.getUserInterests>>>, null);
+  const wellnessPreferences = val(results[3] as PromiseSettledResult<Awaited<ReturnType<typeof storage.getWellnessPreferences>>>, null);
+  const onboardingProfile = val(results[4] as PromiseSettledResult<Awaited<ReturnType<typeof storage.getOnboardingProfile>>>, null);
+  const goals = val(results[5] as PromiseSettledResult<Awaited<ReturnType<typeof storage.getGoals>>>, []);
 
   const birthPlace = [chart?.birthCity, chart?.birthState, chart?.birthCountry]
     .filter(Boolean)
