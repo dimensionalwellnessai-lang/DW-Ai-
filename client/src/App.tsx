@@ -165,7 +165,6 @@ import AdminAnalyticsPage from "@/pages/admin-analytics";
 import MoodTrackerPage from "@/pages/mood-tracker";
 import HomeCommandCenter from "@/features/home/home-command-center";
 import LifeBlueprintV2Page from "@/pages/life-blueprint-v2";
-import LifeDimensionsPage from "@/pages/life-dimensions";
 import InsightsDashboard from "@/pages/insights";
 import WellnessPreferencesPage from "@/pages/wellness-preferences";
 import ValuesRulesProfilePage from "@/pages/values-rules-profile";
@@ -184,6 +183,8 @@ import ActionCenterPage from "@/pages/action-center";
 import VoiceModePage from "@/pages/voice-mode";
 import DayStartPage from "@/pages/day-start";
 const LibraryPage = lazy(() => import("@/pages/library"));
+const ZonesPage = lazy(() => import("@/pages/zones/index"));
+const ZoneDetailPage = lazy(() => import("@/pages/zones/zone-detail"));
 const RelationshipsPage = lazy(() => import("@/pages/relationships"));
 const LifeSystemPage = lazy(() => import("@/pages/life-system"));
 const LifeSystemDocumentPage = lazy(() => import("@/pages/life-system-document"));
@@ -308,7 +309,7 @@ function HomeRedirect() {
   }
 
   const last = getLastRoute();
-  return <Redirect to={last ?? "/command-center"} />;
+  return <Redirect to={last ?? "/talk"} />;
 }
 
 function Router() {
@@ -349,11 +350,10 @@ function Router() {
       <Route path="/life-system"><Redirect to="/life-blueprint" /></Route>
 
       {/* /life-dashboard and /life-dimensions were duplicate life-overview
-          surfaces. Their highest-value content (goals/habits/routines
-          summary) now lives on the canonical /life-blueprint page, so both
-          redirect there. */}
+          surfaces. /life-dashboard now redirects to the canonical
+          /life-blueprint page, while /life-dimensions now points at Zones. */}
       <Route path="/life-dashboard"><Redirect to="/life-blueprint" /></Route>
-      <Route path="/life-dimensions" component={LifeDimensionsPage} />
+      <Route path="/life-dimensions"><Redirect to="/zones" /></Route>
       {/* Sub-routes stay live: they're still linked from active surfaces and
           must keep working. Only the bare /switchboard parent redirects. */}
       <Route path="/switchboard/intake" component={SwitchboardIntakePage} />
@@ -417,6 +417,9 @@ function Router() {
       <Route path="/browse"><Redirect to="/feed" /></Route>
       {isRouteEnabled("/energy-transmutation") && <Route path="/energy-transmutation" component={EnergyTransmutationPage} />}
       {isRouteEnabled("/library") && <Route path="/library" component={LibraryPage} />}
+      {/* The House — Zones architecture */}
+      <Route path="/zones/:zoneId" component={ZoneDetailPage} />
+      <Route path="/zones" component={ZonesPage} />
       {isRouteEnabled("/relationships") && <Route path="/relationships" component={RelationshipsPage} />}
       
       {isRouteEnabled("/challenges") && <Route path="/challenges" component={ChallengesPage} />}

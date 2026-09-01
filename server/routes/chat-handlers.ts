@@ -33,7 +33,11 @@ import {
   extractSyncableItems,
 } from "./_shared";
 import { getUserContextSnapshot, toUserLifeContext } from "../lib/user-context";
-import { buildCompanionContext, companionContextPromptBlock } from "../lib/companion-context";
+import {
+  buildCompanionContext,
+  companionContextPromptBlock,
+  serializeCompanionContext,
+} from "../lib/companion-context";
 import { DW_GUIDE_BEHAVIOR } from "@shared/dw-persona";
 import { resolveAdaptiveDWMode } from "../lib/dw-role-picker";
 import { logDwRolePick } from "../lib/dw-role-pick-log";
@@ -109,11 +113,14 @@ export async function chatHandler(req: Request, res: Response) {
       ...dwModeResult.logFields,
     });
 
+    const companionContextBlock = serializeCompanionContext(companion);
+
     const rawResponse = await generateChatResponse(
       message,
       conversationHistory || [],
       userContext,
       [dwModeResult.modeAddendum, DW_GUIDE_BEHAVIOR].filter(Boolean).join("\n\n"),
+      companionContextBlock,
     );
 
     const response = typeof rawResponse === "string" ? rawResponse : rawResponse.content;
@@ -371,6 +378,7 @@ export async function smartChatHandler(req: Request, res: Response) {
       .join("\n\n");
 
     const wearablesYesterdayForChat = await safeGetWearablesYesterday(req.session.userId!);
+    const companionContextBlock = serializeCompanionContext(companion);
 
     // Test-only short-circuit: e2e suite forces the resilient AI client to
     // appear unavailable so we can prove the catch block below still
@@ -386,6 +394,7 @@ export async function smartChatHandler(req: Request, res: Response) {
       userContext,
       composedOverride || undefined,
       wearablesYesterdayForChat,
+      companionContextBlock,
     );
 
     // Execute tool calls if any

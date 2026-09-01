@@ -1,21 +1,40 @@
+/**
+ * The Current — `/feed`
+ *
+ * Feed stream for `/feed`.
+ */
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/page-header";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, parseApiError } from "@/lib/queryClient";
-import { Bookmark, ExternalLink, Heart, Loader2, Search, ShieldOff, Star } from "lucide-react";
+import { Constellation, type ZoneId } from "@/components/constellation";
+import {
+  Bookmark,
+  ExternalLink,
+  Heart,
+  Loader2,
+  RefreshCw,
+  Search,
+  ShieldOff,
+  Sparkles,
+  Star,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface FeedItem {
   id: string;
   title: string;
   description: string;
   type: string;
+  mix?: string;
+  streamBucket?: "constructive" | "recreational" | "social";
   category: string | null;
   source: string;
   duration: string | null;
@@ -25,8 +44,9 @@ interface FeedItem {
   liked: boolean;
   favorited: boolean;
   saved: boolean;
-  streamBucket?: "constructive" | "recreational" | "social";
+  zone?: ZoneId;
   whyForYou?: string;
+  timingNote?: string;
 }
 
 interface FeedResponse {
@@ -34,6 +54,18 @@ interface FeedResponse {
   hasMore: boolean;
   nextCursor: number | null;
 }
+
+const MIX_LABELS: Record<string, string> = {
+  constructive: "Zone fuel",
+  recreational: "Enjoy",
+  social: "What's happening",
+};
+
+const MIX_COLORS: Record<string, string> = {
+  constructive: "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/20",
+  recreational: "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20",
+  social: "bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-500/20",
+};
 
 const FILTERS = [
   { id: "all", label: "All" },
@@ -47,7 +79,10 @@ const FILTERS = [
 ];
 
 export default function FeedPage() {
-  usePageMeta("The Current", "An infinite stream blending growth, fun, and community momentum.");
+  usePageMeta(
+    "The Current",
+    "A stream of things worth your attention — constructive, recreational, and in the moment.",
+  );
 
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -75,11 +110,15 @@ export default function FeedPage() {
       return response.json();
     },
     getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.nextCursor : undefined),
+    staleTime: 60_000,
   });
   const { fetchNextPage, hasNextPage, isFetchingNextPage, isRefetching, refetch } = feedQuery;
 
-  const interactionMutation = useMutation({
-    mutationFn: async ({ item, action }: { item: FeedItem; action: "like" | "favorite" | "save" | "hide" }) => {
+  const interactionMutation = useMutation<void, Error, {
+    item: FeedItem;
+    action: "like" | "favorite" | "save" | "hide";
+  }>({
+    mutationFn: async ({ item, action }) => {
       await apiRequest("POST", "/api/feed/interactions", {
         contentId: item.id,
         contentTitle: item.title,
@@ -105,15 +144,19 @@ export default function FeedPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/feed"] });
       queryClient.invalidateQueries({ queryKey: ["/api/saved-content"] });
       const messages: Record<string, string> = {
-        like: "Signal recorded.",
-        favorite: "Pinned to your current.",
-        save: "Saved for later.",
-        hide: "We'll tune this out.",
+        like: "This hit your Zone — noted.",
+        favorite: "Added to your signal.",
+        save: "Saved.",
+        hide: "Making space.",
       };
-      toast({ title: "Noted", description: messages[variables.action] });
+      toast({ title: "Got it", description: messages[variables.action] });
     },
     onError: (error) => {
-      toast({ title: "Couldn't update that yet", description: parseApiError(error), variant: "destructive" });
+      toast({
+        title: "Couldn't update that yet",
+        description: parseApiError(error),
+        variant: "destructive",
+      });
     },
   });
 
@@ -171,55 +214,91 @@ export default function FeedPage() {
       window.open(item.url, "_blank", "noopener,noreferrer");
       return;
     }
-    if (item.route) {
-      setLocation(item.route);
-    }
+    if (item.route) setLocation(item.route);
   };
 
   const items = (feedQuery.data?.pages ?? []).flatMap((page) => page.items);
 
   return (
     <div className="min-h-screen bg-background">
-      <PageHeader title="The Current" showBack={false} />
-      <div className="mx-auto max-w-4xl space-y-4 px-4 pb-24 pt-4">
-        <Card>
+      <PageHeader
+        title="The Current"
+        subtitle="Your stream — fuel and flow, not homework"
+        showBack={false}
+        icon={<Constellation state="idle" size={24} className="opacity-70" />}
+      />
+
+      <div className="mx-auto max-w-2xl space-y-3 px-4 pb-28 pt-1">
+        <Card className="border-border/50">
           <CardContent className="space-y-4 p-4">
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search currents"
+                placeholder="Search the current"
                 className="pl-9"
               />
             </div>
 
-            <div className="flex flex-wrap gap-2">
-              {FILTERS.map((chip) => (
-                <Button
-                  key={chip.id}
-                  type="button"
-                  size="sm"
-                  variant={filter === chip.id ? "default" : "outline"}
-                  onClick={() => setFilter(chip.id)}
-                >
-                  {chip.label}
-                </Button>
-              ))}
+            <div className="overflow-x-auto">
+              <div className="flex min-w-max gap-2">
+                {FILTERS.map((chip) => (
+                  <button
+                    type="button"
+                    key={chip.id}
+                    onClick={() => setFilter(chip.id)}
+                    aria-pressed={filter === chip.id}
+                    className={cn(
+                      "rounded-full border px-4 py-1.5 text-xs font-medium transition-all min-h-11",
+                      filter === chip.id
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border/50 text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {chip.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Sort</span>
-              <Button size="sm" variant={sort === "relevant" ? "default" : "ghost"} onClick={() => setSort("relevant")}>Relevant</Button>
-              <Button size="sm" variant={sort === "latest" ? "default" : "ghost"} onClick={() => setSort("latest")}>Latest</Button>
-              <Button size="sm" variant="outline" disabled={isRefetching} onClick={() => void refetch()}>
+              <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Sort
+              </span>
+              <Button
+                size="sm"
+                variant={sort === "relevant" ? "default" : "ghost"}
+                className="min-h-11"
+                onClick={() => setSort("relevant")}
+              >
+                Relevant
+              </Button>
+              <Button
+                size="sm"
+                variant={sort === "latest" ? "default" : "ghost"}
+                className="min-h-11"
+                onClick={() => setSort("latest")}
+              >
+                Latest
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="min-h-11"
+                disabled={isRefetching}
+                onClick={() => void refetch()}
+              >
                 {isRefetching ? (
                   <>
                     <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
                     Refreshing…
                   </>
                 ) : (
-                  "Refresh"
+                  <>
+                    <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+                    Refresh
+                  </>
                 )}
               </Button>
             </div>
@@ -227,95 +306,187 @@ export default function FeedPage() {
         </Card>
 
         {feedQuery.isLoading && (
-          <Card>
-            <CardContent className="flex items-center gap-3 p-6 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Tuning your current…
-            </CardContent>
-          </Card>
+          <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Pulling your stream…
+          </div>
         )}
 
         {feedQuery.isError && (
           <Card>
             <CardContent className="space-y-3 p-6">
-              <p className="font-medium text-foreground">Your current needs a second.</p>
-              <Button variant="outline" onClick={() => refetch()}>Try again</Button>
+              <p className="font-medium">The Current paused.</p>
+              <p className="text-sm text-muted-foreground">
+                Nothing wrong on your end — try refreshing.
+              </p>
+              <Button variant="outline" size="sm" onClick={() => void refetch()}>
+                <RefreshCw className="mr-2 h-3.5 w-3.5" />
+                Refresh
+              </Button>
             </CardContent>
           </Card>
         )}
 
         {!feedQuery.isLoading && !feedQuery.isError && items.length === 0 && (
-          <Card>
-            <CardContent className="space-y-2 p-6 text-center">
-              <p className="font-medium text-foreground">No matches yet.</p>
-            </CardContent>
-          </Card>
+          <div className="py-12 text-center text-sm text-muted-foreground">
+            <p>Nothing here yet.</p>
+            <p className="mt-1 text-xs">Try a different filter or pull to refresh.</p>
+          </div>
         )}
 
-        <div className="grid gap-4 md:grid-cols-2">
-          {items.map((item) => (
-            <Card key={`${item.id}-${item.url}`} className="h-full border-border/60">
-              <CardHeader className="space-y-3 pb-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant="secondary">{item.type}</Badge>
-                  {item.category && <Badge variant="outline">{item.category}</Badge>}
-                  {item.streamBucket && <Badge variant="outline">{item.streamBucket}</Badge>}
-                  {item.duration && <span className="text-xs text-muted-foreground">{item.duration}</span>}
-                </div>
-                <CardTitle className="text-lg leading-snug">{item.title}</CardTitle>
-                <p className="text-sm text-muted-foreground">{item.description}</p>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {item.whyForYou && (
-                  <div className="rounded-md border border-primary/20 bg-primary/5 p-2 text-xs text-primary">
-                    Why for you: {item.whyForYou}
-                  </div>
-                )}
+        {items.map((item) => (
+          <FeedCard
+            key={`${item.id}-${item.url}`}
+            item={item}
+            onOpen={handleOpen}
+            onInteract={(action) => interactionMutation.mutate({ item, action })}
+          />
+        ))}
 
-                <div className="grid grid-cols-3 gap-2 sm:grid-cols-3">
-                  <Button variant={item.saved ? "secondary" : "outline"} size="sm" onClick={() => interactionMutation.mutate({ item, action: "save" })}>
-                    <Bookmark className="mr-1.5 h-3.5 w-3.5" />
-                    Save
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => interactionMutation.mutate({ item, action: "hide" })}>
-                    <ShieldOff className="mr-1.5 h-3.5 w-3.5" />
-                    Hide
-                  </Button>
-                  <Button variant={item.liked ? "default" : "outline"} size="sm" onClick={() => interactionMutation.mutate({ item, action: "like" })}>
-                    <Heart className="mr-1.5 h-3.5 w-3.5" />
-                    Engage
-                  </Button>
-                </div>
-
-                <Button
-                  className="w-full"
-                  variant="ghost"
-                  onClick={() => handleOpen(item)}
-                  disabled={!item.route && !item.url.startsWith("http")}
-                >
-                  <ExternalLink className="mr-2 h-4 w-4" />
-                  Open
-                </Button>
-
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>{item.source}</span>
-                  <Button
-                    variant={item.favorited ? "default" : "ghost"}
-                    size="sm"
-                    onClick={() => interactionMutation.mutate({ item, action: "favorite" })}
-                  >
-                    <Star className="mr-1.5 h-3.5 w-3.5" />Favorite
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        <div ref={loaderRef} className="py-6 text-center text-xs text-muted-foreground">
-          {feedQuery.isFetchingNextPage ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : feedQuery.hasNextPage ? "Scroll for more" : "You're caught up"}
-        </div>
+        {!feedQuery.isLoading && !feedQuery.isError && (
+          <div ref={loaderRef} className="py-6 text-center text-xs text-muted-foreground">
+            {isFetchingNextPage ? (
+              <Loader2 className="mx-auto h-4 w-4 animate-spin" />
+            ) : hasNextPage ? (
+              "Scroll for more"
+            ) : (
+              "You're caught up"
+            )}
+          </div>
+        )}
       </div>
     </div>
+  );
+}
+
+interface FeedCardProps {
+  item: FeedItem;
+  onOpen: (item: FeedItem) => void;
+  onInteract: (action: "like" | "favorite" | "save" | "hide") => void;
+}
+
+function FeedCard({ item, onOpen, onInteract }: FeedCardProps) {
+  const mixKey =
+    (item.mix && MIX_LABELS[item.mix] && MIX_COLORS[item.mix] ? item.mix : null) ??
+    (item.streamBucket ? item.streamBucket : null);
+  const mixLabel = mixKey ? MIX_LABELS[mixKey] : null;
+  const mixColor = mixKey ? MIX_COLORS[mixKey] : null;
+
+  return (
+    <Card className="overflow-hidden border-border/50">
+      <CardContent className="space-y-3 p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            {mixLabel && mixColor && (
+              <span
+                className={cn(
+                  "rounded-full border px-2 py-0.5 text-[11px] font-medium",
+                  mixColor,
+                )}
+              >
+                {mixLabel}
+              </span>
+            )}
+          </div>
+          {item.zone && (
+            <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+              <Constellation zone={item.zone} state="idle" size={14} />
+              <span className="capitalize">{item.zone}</span>
+            </div>
+          )}
+        </div>
+
+        <div>
+          <h3 className="text-sm font-semibold leading-snug">{item.title}</h3>
+          <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+            {item.description}
+          </p>
+          {item.duration && (
+            <p className="mt-1 text-[11px] text-muted-foreground/70">{item.duration}</p>
+          )}
+        </div>
+
+        {item.whyForYou && (
+          <div className="flex items-start gap-1.5 rounded-lg bg-muted/40 px-3 py-2">
+            <Sparkles className="mt-0.5 h-3 w-3 shrink-0 text-primary" />
+            <p className="text-[11px] leading-snug text-muted-foreground">{item.whyForYou}</p>
+          </div>
+        )}
+
+        {item.timingNote && (
+          <p className="text-[11px] italic text-muted-foreground/60">{item.timingNote}</p>
+        )}
+
+        <div className="flex items-center justify-between gap-2 pt-1">
+          <span className="text-[11px] text-muted-foreground">{item.source}</span>
+          <div className="flex flex-wrap items-center justify-end gap-1">
+            <button
+              type="button"
+              onClick={() => onInteract("like")}
+              aria-label="This hit my Zone"
+              aria-pressed={item.liked}
+              className={cn(
+                "inline-flex h-11 w-11 items-center justify-center rounded-lg transition-colors",
+                item.liked
+                  ? "bg-rose-500/10 text-rose-500"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <Heart className="h-4 w-4" strokeWidth={item.liked ? 2.5 : 1.8} />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onInteract("favorite")}
+              aria-label="Favorite"
+              aria-pressed={item.favorited}
+              className={cn(
+                "inline-flex h-11 w-11 items-center justify-center rounded-lg transition-colors",
+                item.favorited
+                  ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <Star className="h-4 w-4" strokeWidth={item.favorited ? 2.4 : 1.8} />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onInteract("save")}
+              aria-label="Save"
+              aria-pressed={item.saved}
+              className={cn(
+                "inline-flex h-11 w-11 items-center justify-center rounded-lg transition-colors",
+                item.saved
+                  ? "bg-sky-500/10 text-sky-500"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <Bookmark className="h-4 w-4" strokeWidth={item.saved ? 2.5 : 1.8} />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onInteract("hide")}
+              aria-label="Not for me"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <ShieldOff className="h-4 w-4" strokeWidth={1.8} />
+            </button>
+
+            {(item.route || item.url.startsWith("http")) && (
+              <button
+                type="button"
+                onClick={() => onOpen(item)}
+                aria-label="Open"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <ExternalLink className="h-4 w-4" strokeWidth={1.8} />
+              </button>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

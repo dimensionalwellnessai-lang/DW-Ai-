@@ -5,6 +5,7 @@ import { storage } from "../storage";
 
 import { requireAuth } from "./_shared";
 import { openai, generateChatResponse } from "../openai";
+import { buildCompanionContext, emptyCompanionContext, serializeCompanionContext } from "../lib/companion-context";
 import { insertFeedInteractionSchema, insertSavedContentSchema } from "@shared/schema";
 export function registerContentFeedRoutes(app: Express): void {
   app.get("/api/my-plan", requireAuth, async (req, res) => {
@@ -500,7 +501,10 @@ Return as JSON array:
 
 Return only valid JSON, no other text.`;
 
-      const aiResponse = await generateChatResponse(prompt, []);
+      const companionContextBlock = serializeCompanionContext(
+        await buildCompanionContext(userId).catch(() => emptyCompanionContext())
+      );
+      const aiResponse = await generateChatResponse(prompt, [], undefined, undefined, companionContextBlock);
       
       // Ensure we have a string response
       const responseText = typeof aiResponse === 'string' ? aiResponse : JSON.stringify(aiResponse);

@@ -61,6 +61,7 @@ function inferZone(item: FeedEngineItem): ZoneId {
 function inferBucket(item: FeedEngineItem): FeedStreamBucket {
   const type = item.type.toLowerCase();
   const category = (item.category ?? "").toLowerCase();
+  if (type.includes("cosmic_update") || category.includes("cosmic")) return "constructive";
   if (type.includes("meme") || type.includes("quote") || category.includes("fun")) return "recreational";
   if (category.includes("community") || category.includes("social")) return "social";
   if (type.includes("audio") || type.includes("video") || type.includes("article")) return "constructive";
@@ -227,10 +228,10 @@ export function rankFeedItems(
       return b.relevance - a.relevance || a.title.localeCompare(b.title);
     });
 
-  const mixed = rebalanceMix(ranked, Math.min(ranked.length, options.offset + options.limit));
+  const mixed = rebalanceMix(ranked, ranked.length);
   const paged = mixed.slice(options.offset, options.offset + options.limit);
   const nextOffset = options.offset + options.limit;
-  const hasMore = nextOffset < ranked.length;
+  const hasMore = nextOffset < mixed.length;
 
   return {
     items: paged.map(({ textRelevance: _textRelevance, ...item }) => item),

@@ -493,7 +493,7 @@ function DimensionsSection() {
     });
     toast({ 
       title: "Zone level updated",
-      description: `${selectedDimension} zone has been updated.` 
+      description: `${selectedDimension} zone has been updated.`
     });
   };
 

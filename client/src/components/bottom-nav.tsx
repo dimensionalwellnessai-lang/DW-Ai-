@@ -51,14 +51,17 @@ export function BottomNav() {
             (p) => p && (location === p || (p !== "/" && location.startsWith(p + "/")))
           );
           const tourAttr = item.path ? tourDataMap[item.path] : undefined;
-          const showTodayDot = item.path === "/command-center" && hasUnfinishedHabits && !isActive;
-          const showMyLifeDot = item.path === "/my-life" && hasPendingSetupSuggestions && !isActive;
-          const showAttentionDot = showTodayDot || showMyLifeDot;
-          const attentionLabel = showTodayDot
-            ? "Habits need attention"
-            : showMyLifeDot
-              ? "Setup suggestions are waiting"
-              : null;
+          const showAttentionDot =
+            item.path === "/zones" &&
+            !isActive &&
+            (hasUnfinishedHabits || hasPendingSetupSuggestions);
+          const attentionLabel = !showAttentionDot
+            ? null
+            : hasUnfinishedHabits && hasPendingSetupSuggestions
+              ? "Habits and setup suggestions need attention"
+              : hasUnfinishedHabits
+                ? "Habits need attention"
+                : "Setup suggestions are waiting";
 
           return (
             <button

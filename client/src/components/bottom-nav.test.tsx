@@ -4,7 +4,7 @@ import { render, screen } from "@testing-library/react";
 
 let mockLocation = "/command-center";
 let mockHabits: any[] = [];
-let mockOnboardingProfile: { profile?: { suggestedStructure?: Array<{ status?: string }> } | null } | undefined;
+let mockOnboardingProfile: { profile?: { suggestedStructure?: Array<{ id?: string; status?: string }> } | null } | undefined;
 
 vi.mock("wouter", () => ({
   useLocation: () => [mockLocation, vi.fn()],
@@ -19,18 +19,18 @@ vi.mock("@tanstack/react-query", () => ({
 import { BottomNav } from "./bottom-nav";
 
 describe("BottomNav", () => {
-  it("shows a habits attention dot on Today only when Today is inactive", () => {
-    mockLocation = "/my-life";
+  it("shows a habits attention dot on Zones only when Zones is inactive", () => {
+    mockLocation = "/feed";
     mockHabits = [{ id: 1, isActive: true, completedToday: false }];
     mockOnboardingProfile = undefined;
 
     render(<BottomNav />);
 
-    expect(screen.getByLabelText("Today, Habits need attention")).toBeTruthy();
+    expect(screen.getByLabelText("Zones, Habits need attention")).toBeTruthy();
   });
 
-  it("shows a setup attention dot on My Life when pending suggestions exist and tab is inactive", () => {
-    mockLocation = "/command-center";
+  it("shows a setup attention dot on Zones when pending suggestions exist and tab is inactive", () => {
+    mockLocation = "/talk";
     mockHabits = [];
     mockOnboardingProfile = {
       profile: {
@@ -40,11 +40,11 @@ describe("BottomNav", () => {
 
     render(<BottomNav />);
 
-    expect(screen.getByLabelText("My Life, Setup suggestions are waiting")).toBeTruthy();
+    expect(screen.getByLabelText("Zones, Setup suggestions are waiting")).toBeTruthy();
   });
 
-  it("does not show the setup attention dot when My Life is active", () => {
-    mockLocation = "/my-life";
+  it("does not show the setup attention dot when Zones is active", () => {
+    mockLocation = "/zones";
     mockHabits = [];
     mockOnboardingProfile = {
       profile: {
@@ -54,21 +54,24 @@ describe("BottomNav", () => {
 
     render(<BottomNav />);
 
-    expect(screen.queryByLabelText("My Life, Setup suggestions are waiting")).toBeNull();
+    expect(screen.queryByLabelText("Zones, Setup suggestions are waiting")).toBeNull();
   });
 
-  it("renders the 4-tab navigation with Today and no Calendar tab", () => {
-    mockLocation = "/command-center";
+  it("renders the 4-tab navigation with DW, Current, Zones, and Cosmic", () => {
+    mockLocation = "/talk";
     mockHabits = [];
     mockOnboardingProfile = undefined;
     render(<BottomNav />);
 
     expect(screen.getByTestId("nav-bottom")).toBeTruthy();
-    expect(screen.getByTestId("nav-command-center")).toBeTruthy();
-    expect(screen.getByTestId("nav-my-life")).toBeTruthy();
     expect(screen.getByTestId("nav-talk")).toBeTruthy();
-    expect(screen.getByTestId("nav-profile")).toBeTruthy();
+    expect(screen.getByTestId("nav-feed")).toBeTruthy();
+    expect(screen.getByTestId("nav-zones")).toBeTruthy();
+    expect(screen.getByTestId("nav-cosmic")).toBeTruthy();
     expect(screen.queryByTestId("nav-calendar")).toBeNull();
-    expect(screen.getByText("Today")).toBeTruthy();
+    expect(screen.getByText("DW")).toBeTruthy();
+    expect(screen.getByText("Current")).toBeTruthy();
+    expect(screen.getByText("Zones")).toBeTruthy();
+    expect(screen.getByText("Cosmic")).toBeTruthy();
   });
 });

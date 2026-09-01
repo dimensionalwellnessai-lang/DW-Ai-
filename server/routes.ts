@@ -39,7 +39,12 @@ import { registerBillingRoutes } from "./routes/billing";
 import { requirePaidOrQuota, makeIcalToken, verifyIcalToken } from "./routes/_shared";
 import { registerPlansRoutes } from "./routes/plans";
 import { getUserContextSnapshot, toUserLifeContext } from "./lib/user-context";
-import { buildCompanionContext, companionContextPromptBlock } from "./lib/companion-context";
+import {
+  buildCompanionContext,
+  companionContextPromptBlock,
+  emptyCompanionContext,
+  serializeCompanionContext,
+} from "./lib/companion-context";
 import { resolveAdaptiveDWMode } from "./lib/dw-role-picker";
 import { logDwRolePick } from "./lib/dw-role-pick-log";
 import { buildExploreIntelligenceFeed, type ExploreMixWeights } from "./lib/explore-intelligence";
@@ -2266,12 +2271,20 @@ export async function registerRoutes(
       const action: { type: "navigate"; path: string; tab?: string } | null = cosmicTab
         ? { type: "navigate", path: `/cosmic?tab=${cosmicTab}`, tab: cosmicTab }
         : null;
+      const userId = req.session?.userId;
+      const companionContextBlock = userId
+        ? serializeCompanionContext(
+            await buildCompanionContext(userId).catch(() => emptyCompanionContext())
+          )
+        : undefined;
 
       // Generate a brief AI response
       const rawAI = await generateChatResponse(
         message,
         [],
-        undefined
+        undefined,
+        undefined,
+        companionContextBlock,
       );
       const response = typeof rawAI === "string" ? rawAI : rawAI.content;
 
@@ -5816,7 +5829,10 @@ Return as JSON array:
 
 Return only valid JSON, no other text.`;
 
-      const aiResponse = await generateChatResponse(prompt, []);
+      const companionContextBlock = serializeCompanionContext(
+        await buildCompanionContext(userId).catch(() => emptyCompanionContext())
+      );
+      const aiResponse = await generateChatResponse(prompt, [], undefined, undefined, companionContextBlock);
       
       // Ensure we have a string response
       const responseText = typeof aiResponse === 'string' ? aiResponse : JSON.stringify(aiResponse);
