@@ -6,10 +6,20 @@ import {
   createFocusWindow,
   normalizeAssignments,
   recommendPriorityAssignments,
+  type OnboardingProfileContext,
   type PrioritizationSnapshot,
 } from "@shared/onboardingPrioritization";
 
 const TEST_USER_ID = "u_prioritization_test";
+const dbState: {
+  profile?: {
+    id: string;
+    userId: string;
+    priorities?: string[];
+    profileContext?: OnboardingProfileContext;
+    prioritySnapshot?: PrioritizationSnapshot;
+  };
+} = {};
 
 vi.mock("../routes/_shared", () => ({
   requireAuth: (req: Request, _res: Response, next: NextFunction) => {
@@ -36,6 +46,59 @@ const storageStub = {
 };
 
 vi.mock("../storage", () => ({ storage: storageStub }));
+vi.mock("../db", () => ({
+  db: {
+    transaction: async (
+      callback: (tx: {
+        execute: () => Promise<unknown[]>;
+        select: () => {
+          from: () => {
+            where: () => {
+              limit: () => Promise<unknown[]>;
+            };
+          };
+        };
+        update: () => {
+          set: (data: Record<string, unknown>) => {
+            where: () => Promise<void>;
+          };
+        };
+        insert: () => {
+          values: (data: Record<string, unknown>) => Promise<void>;
+        };
+      }) => Promise<unknown>
+    ) =>
+      callback({
+        execute: async () => [],
+        select: () => ({
+          from: () => ({
+            where: () => ({
+              limit: async () => (dbState.profile ? [dbState.profile] : []),
+            }),
+          }),
+        }),
+        update: () => ({
+          set: (data) => ({
+            where: async () => {
+              dbState.profile = {
+                ...(dbState.profile ?? { id: "profile-1", userId: TEST_USER_ID }),
+                ...data,
+              };
+            },
+          }),
+        }),
+        insert: () => ({
+          values: async (data) => {
+            dbState.profile = {
+              id: "profile-1",
+              userId: TEST_USER_ID,
+              ...data,
+            } as typeof dbState.profile;
+          },
+        }),
+      }),
+  },
+}));
 
 const { registerOnboardingRoutes } = await import("../routes/onboarding");
 
@@ -66,6 +129,7 @@ afterAll(async () => {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  dbState.profile = undefined;
 });
 
 describe("recommendPriorityAssignments", () => {
@@ -75,7 +139,13 @@ describe("recommendPriorityAssignments", () => {
       { areaId: "mental", currentState: 4, importance: 9, urgency: true, energyDrain: false },
       { areaId: "spiritual", currentState: 7, importance: 5, urgency: false, energyDrain: false },
       { areaId: "financial", currentState: 2, importance: 8, urgency: true, energyDrain: true },
-      { areaId: "relationships", currentState: 6, importance: 9, urgency: false, energyDrain: true },
+      {
+        areaId: "relationships",
+        currentState: 6,
+        importance: 9,
+        urgency: false,
+        energyDrain: true,
+      },
       { areaId: "career", currentState: 5, importance: 8, urgency: false, energyDrain: false },
       { areaId: "learning", currentState: 5, importance: 6, urgency: false, energyDrain: false },
       { areaId: "environment", currentState: 8, importance: 4, urgency: false, energyDrain: false },
@@ -96,7 +166,7 @@ describe("applyFocusWindowGuardrail", () => {
     const start = new Date("2026-09-01T00:00:00.000Z");
     const baseAssignments = normalizeAssignments([]);
     const firstShift = baseAssignments.map((assignment) =>
-      assignment.areaId === "physical" ? { ...assignment, bucket: "protect" as const } : assignment,
+      assignment.areaId === "physical" ? { ...assignment, bucket: "protect" as const } : assignment
     );
 
     const first = applyFocusWindowGuardrail({
@@ -110,7 +180,7 @@ describe("applyFocusWindowGuardrail", () => {
     expect(first.status).toBe("adjusted");
 
     const secondShift = firstShift.map((assignment) =>
-      assignment.areaId === "mental" ? { ...assignment, bucket: "protect" as const } : assignment,
+      assignment.areaId === "mental" ? { ...assignment, bucket: "protect" as const } : assignment
     );
     const second = applyFocusWindowGuardrail({
       existingFocusWindow: first.focusWindow,
@@ -137,13 +207,43 @@ describe("POST /api/onboarding/prioritization", () => {
         signals: [
           { areaId: "physical", currentState: 3, importance: 10, urgency: true, energyDrain: true },
           { areaId: "mental", currentState: 4, importance: 9, urgency: true, energyDrain: false },
-          { areaId: "spiritual", currentState: 7, importance: 5, urgency: false, energyDrain: false },
+          {
+            areaId: "spiritual",
+            currentState: 7,
+            importance: 5,
+            urgency: false,
+            energyDrain: false,
+          },
           { areaId: "financial", currentState: 2, importance: 8, urgency: true, energyDrain: true },
-          { areaId: "relationships", currentState: 6, importance: 9, urgency: false, energyDrain: true },
+          {
+            areaId: "relationships",
+            currentState: 6,
+            importance: 9,
+            urgency: false,
+            energyDrain: true,
+          },
           { areaId: "career", currentState: 5, importance: 8, urgency: false, energyDrain: false },
-          { areaId: "learning", currentState: 5, importance: 6, urgency: false, energyDrain: false },
-          { areaId: "environment", currentState: 8, importance: 4, urgency: false, energyDrain: false },
-          { areaId: "creativity", currentState: 4, importance: 7, urgency: false, energyDrain: true },
+          {
+            areaId: "learning",
+            currentState: 5,
+            importance: 6,
+            urgency: false,
+            energyDrain: false,
+          },
+          {
+            areaId: "environment",
+            currentState: 8,
+            importance: 4,
+            urgency: false,
+            energyDrain: false,
+          },
+          {
+            areaId: "creativity",
+            currentState: 4,
+            importance: 7,
+            urgency: false,
+            energyDrain: true,
+          },
           { areaId: "fun", currentState: 8, importance: 3, urgency: false, energyDrain: false },
           { areaId: "rest", currentState: 3, importance: 10, urgency: true, energyDrain: true },
           { areaId: "identity", currentState: 4, importance: 8, urgency: false, energyDrain: true },
@@ -152,8 +252,7 @@ describe("POST /api/onboarding/prioritization", () => {
     });
 
     expect(res.status).toBe(200);
-    expect(storageStub.createOnboardingProfile).toHaveBeenCalledTimes(1);
-    const created = storageStub.createOnboardingProfile.mock.calls[0][0] as {
+    const created = dbState.profile as {
       profileContext: Record<string, unknown>;
       prioritySnapshot: PrioritizationSnapshot;
       priorities: string[];
@@ -164,19 +263,30 @@ describe("POST /api/onboarding/prioritization", () => {
       selectedReasons: ["overwhelmed", "clarify_focus"],
       reasonFreeText: "I'm juggling a lot and need help deciding what to protect first.",
     });
-    expect(created.prioritySnapshot.assignments.filter((item) => item.bucket === "protect")).toHaveLength(3);
-    expect(created.prioritySnapshot.assignments.filter((item) => item.bucket === "active_growth")).toHaveLength(2);
+    expect(
+      created.prioritySnapshot.assignments.filter((item) => item.bucket === "protect")
+    ).toHaveLength(3);
+    expect(
+      created.prioritySnapshot.assignments.filter((item) => item.bucket === "active_growth")
+    ).toHaveLength(2);
     expect(created.prioritySnapshot.assignments[0].why).toContain("scored");
     expect(created.priorities).toHaveLength(5);
   });
 
   it("rejects a full reshuffle during an active focus window unless override is explicit", async () => {
+    const focusWindowStart = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
     const baseRecommendations = recommendPriorityAssignments([
       { areaId: "physical", currentState: 4, importance: 10, urgency: true, energyDrain: true },
       { areaId: "mental", currentState: 4, importance: 9, urgency: true, energyDrain: false },
       { areaId: "spiritual", currentState: 6, importance: 5, urgency: false, energyDrain: false },
       { areaId: "financial", currentState: 5, importance: 8, urgency: true, energyDrain: true },
-      { areaId: "relationships", currentState: 5, importance: 9, urgency: false, energyDrain: true },
+      {
+        areaId: "relationships",
+        currentState: 5,
+        importance: 9,
+        urgency: false,
+        energyDrain: true,
+      },
       { areaId: "career", currentState: 5, importance: 8, urgency: false, energyDrain: false },
       { areaId: "learning", currentState: 5, importance: 6, urgency: false, energyDrain: false },
       { areaId: "environment", currentState: 8, importance: 4, urgency: false, energyDrain: false },
@@ -185,17 +295,18 @@ describe("POST /api/onboarding/prioritization", () => {
       { areaId: "rest", currentState: 4, importance: 10, urgency: true, energyDrain: true },
       { areaId: "identity", currentState: 5, importance: 8, urgency: false, energyDrain: true },
     ]);
-    storageStub.getOnboardingProfile.mockResolvedValue({
+    dbState.profile = {
       id: "profile-1",
+      userId: TEST_USER_ID,
       prioritySnapshot: {
         mode: "choose_for_me",
         formula: baseRecommendations.formula,
         signals: [],
         assignments: baseRecommendations.assignments,
-        focusWindow: createFocusWindow(new Date("2026-09-01T00:00:00.000Z")),
-        recommendedAt: new Date("2026-09-01T00:00:00.000Z").toISOString(),
+        focusWindow: createFocusWindow(focusWindowStart),
+        recommendedAt: focusWindowStart.toISOString(),
       },
-    });
+    };
 
     const swapped = baseRecommendations.assignments.map((assignment, index) => ({
       ...assignment,
@@ -215,6 +326,55 @@ describe("POST /api/onboarding/prioritization", () => {
     });
 
     expect(res.status).toBe(409);
-    expect(storageStub.updateOnboardingProfile).not.toHaveBeenCalled();
+    expect(dbState.profile?.prioritySnapshot?.assignments).toEqual(baseRecommendations.assignments);
+  });
+
+  it("persists the submitted choose-for-me assignments instead of recomputing them on save", async () => {
+    const displayedSignals = [
+      { areaId: "physical", currentState: 3, importance: 10, urgency: true, energyDrain: true },
+      { areaId: "mental", currentState: 4, importance: 9, urgency: true, energyDrain: false },
+      { areaId: "spiritual", currentState: 7, importance: 5, urgency: false, energyDrain: false },
+      { areaId: "financial", currentState: 2, importance: 8, urgency: true, energyDrain: true },
+      {
+        areaId: "relationships",
+        currentState: 6,
+        importance: 9,
+        urgency: false,
+        energyDrain: true,
+      },
+      { areaId: "career", currentState: 5, importance: 8, urgency: false, energyDrain: false },
+      { areaId: "learning", currentState: 5, importance: 6, urgency: false, energyDrain: false },
+      { areaId: "environment", currentState: 8, importance: 4, urgency: false, energyDrain: false },
+      { areaId: "creativity", currentState: 4, importance: 7, urgency: false, energyDrain: true },
+      { areaId: "fun", currentState: 8, importance: 3, urgency: false, energyDrain: false },
+      { areaId: "rest", currentState: 3, importance: 10, urgency: true, energyDrain: true },
+      { areaId: "identity", currentState: 4, importance: 8, urgency: false, energyDrain: true },
+    ] as const;
+    const displayedAssignments = recommendPriorityAssignments(displayedSignals).assignments;
+    const changedSignals = displayedSignals.map((signal) =>
+      signal.areaId === "physical"
+        ? { ...signal, currentState: 10, importance: 1, urgency: false, energyDrain: false }
+        : signal
+    );
+
+    const res = await fetch(`${baseUrl}/api/onboarding/prioritization`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        intents: ["assistant_support"],
+        selectedReasons: ["support_decisions"],
+        reasonFreeText: "Keep the recommendation I already reviewed.",
+        mode: "choose_for_me",
+        signals: changedSignals,
+        assignments: displayedAssignments,
+      }),
+    });
+    expect(res.status).toBe(200);
+    expect(res.status).toBe(200);
+    const created = dbState.profile as {
+      prioritySnapshot: PrioritizationSnapshot;
+    };
+
+    expect(created.prioritySnapshot.assignments).toEqual(displayedAssignments);
   });
 });
