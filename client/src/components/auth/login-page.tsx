@@ -66,6 +66,14 @@ By creating an account, you confirm that you have read, understood, and agree to
 export function LoginPage() {
   usePageMeta("Sign In", "Sign in to your DW.ai account to continue your wellness journey.");
   const [, setLocation] = useLocation();
+  const requestedReturnTo =
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("returnTo")
+      : null;
+  const safeReturnTo =
+    requestedReturnTo?.startsWith("/") && !requestedReturnTo.startsWith("//")
+      ? requestedReturnTo
+      : null;
   const { toast } = useToast();
   const [loginData, setLoginData] = useState({ email: "", password: "", rememberMe: false });
   const [registerData, setRegisterData] = useState({ email: "", password: "", confirmPassword: "" });
@@ -96,7 +104,7 @@ export function LoginPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
       setShowDemoFallback(false);
       toast({ title: "Welcome back!" });
-      setLocation("/");
+      setLocation(safeReturnTo || "/");
     },
     onError: (error: Error) => {
       if (import.meta.env.DEV) {
