@@ -47,7 +47,6 @@ interface ChatMessage {
   suggestion?: ChatSuggestion;
   personSuggestion?: PersonSuggestion | null;
   triggeredByUserMessage?: string;
-  requiresAuth?: boolean;
 }
 
 type ChatSuggestion =
@@ -745,19 +744,18 @@ export function TalkItOutPage() {
     onError: (error: any, variables) => {
       setLastFailedMessage(variables as string);
       const errDetail = parseApiError(error);
-      const isAuthErr = errDetail.includes("401") || errDetail.toLowerCase().includes("unauthorized") || errDetail.toLowerCase().includes("no body");
       const isServerErr = errDetail.includes("500") || errDetail.includes("503") || errDetail.toLowerCase().includes("unavailable");
+      const isGuestLimit = errDetail.toLowerCase().includes("guest chat limit");
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          content: isAuthErr
-            ? "You're signed out. Sign in to continue talking with DW."
+          content: isGuestLimit
+            ? errDetail
             : isServerErr
             ? "I'm here — just had a brief moment of interrupted thinking. Send that again and I'll pick right up."
             : "I had a small hiccup on my end. Give it another try — I'm not going anywhere.",
           isError: true,
-          requiresAuth: isAuthErr,
         },
       ]);
       setIsTyping(false);
@@ -788,22 +786,6 @@ export function TalkItOutPage() {
       return;
     }
 
-    if (!isLoggedIn) {
-      setMessages((prev) => [
-        ...prev,
-        { role: "user", content: userMessage },
-        {
-          role: "assistant",
-          content: "You're signed out. Sign in to continue talking with DW.",
-          isError: true,
-          requiresAuth: true,
-        },
-      ]);
-      setInput("");
-      setLastFailedMessage(null);
-      return;
-    }
-    
     setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
     setInput("");
     setLastFailedMessage(null);
@@ -819,25 +801,11 @@ export function TalkItOutPage() {
       setCrisisDialogOpen(true);
       return;
     }
-    if (!isLoggedIn) {
-      setMessages((prev) => [
-        ...prev,
-        { role: "user", content: text },
-        {
-          role: "assistant",
-          content: "You're signed out. Sign in to continue talking with DW.",
-          isError: true,
-          requiresAuth: true,
-        },
-      ]);
-      setLastFailedMessage(null);
-      return;
-    }
     setMessages((prev) => [...prev, { role: "user", content: text }]);
     setLastFailedMessage(null);
     setIsTyping(true);
     chatMutation.mutate(text);
-  }, [isTyping, isLoggedIn, chatMutation]);
+  }, [isTyping, chatMutation]);
 
   const handleCrisisResume = (responseMessage?: string, sendToAI?: boolean) => {
     const messageToSend = pendingCrisisMessage;
@@ -1298,19 +1266,7 @@ export function TalkItOutPage() {
                         </Button>
                       </div>
                     )}
-                    {message.requiresAuth ? (
-                      <div className="pt-1">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-8 text-xs gap-1.5 border-primary/30 text-primary hover:bg-primary/5"
-                          onClick={() => navigate("/login?returnTo=%2Ftalk")}
-                          data-testid="button-sign-in-for-chat"
-                        >
-                          Sign in to continue
-                        </Button>
-                      </div>
-                    ) : message.isError && lastFailedMessage ? (
+                    {message.isError && lastFailedMessage ? (
                       <div className="pt-1">
                         <Button
                           variant="ghost"

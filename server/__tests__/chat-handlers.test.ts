@@ -18,8 +18,8 @@ import type { AdaptiveDWModeResult } from "../lib/dw-role-picker";
  * handlers only ever read `req.session.userId`, so the test middleware
  * coerces the request through this helper instead of `as any`.
  */
-function attachStubSession(req: Request, userId: string): void {
-  (req as Request & { session: { userId: string } }).session = { userId };
+function attachStubSession(req: Request, userId?: string): void {
+  (req as Request & { session: { userId?: string } }).session = { userId };
 }
 
 /**
@@ -189,7 +189,8 @@ const { chatHandler, smartChatHandler } = await import("../routes/chat-handlers"
 let app: Express;
 let server: Server;
 let baseUrl: string;
-let mockUserId = "u_chat_test";
+const TEST_USER_ID = "u_chat_test";
+let mockUserId: string | undefined = TEST_USER_ID;
 
 beforeAll(async () => {
   app = express();
@@ -224,6 +225,7 @@ afterAll(async () => {
 });
 
 beforeEach(() => {
+  mockUserId = TEST_USER_ID;
   // Default snapshot — real shape doesn't matter, the picker / AI both
   // see it through mocks.
   getUserContextSnapshot.mockResolvedValue({
@@ -398,6 +400,22 @@ describe("POST /api/chat/smart — request validation", () => {
 });
 
 describe("POST /api/chat/smart — adaptive DW mode integration", () => {
+  it("returns a real DW response for a signed-out guest without loading account data", async () => {
+    mockUserId = undefined;
+    const r = await fetch(`${baseUrl}/api/chat/smart`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ message: "I need a calm moment" }),
+    });
+
+    expect(r.status).toBe(200);
+    const body = await r.json();
+    expect(body.response).toBe("smart ok response");
+    expect(getUserContextSnapshot).not.toHaveBeenCalled();
+    expect(buildCompanionContext).not.toHaveBeenCalled();
+    expect(logDwRolePick).not.toHaveBeenCalled();
+  });
+
   it("returns the picker's dwMode payload to the client", async () => {
     const r = await fetch(`${baseUrl}/api/chat/smart`, {
       method: "POST",

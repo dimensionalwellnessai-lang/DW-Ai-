@@ -309,10 +309,10 @@ export async function smartChatHandler(req: Request, res: Response) {
       });
     }
 
-    const userId = req.session.userId!;
+    const userId = req.session.userId;
 
     let documentContext = "";
-    if (documentIds && Array.isArray(documentIds) && documentIds.length > 0) {
+    if (userId && documentIds && Array.isArray(documentIds) && documentIds.length > 0) {
       const docs = await Promise.all(
         documentIds.map((id: string) => storage.getImportedDocument(id))
       );
@@ -328,27 +328,42 @@ export async function smartChatHandler(req: Request, res: Response) {
       ? `${message}\n${documentContext}`
       : message;
 
-    const snapshot = await getUserContextSnapshot(userId);
-    const companion = await buildCompanionContext(userId, {
-      useAstrologyInGuidance: cosmicConsent && typeof cosmicConsent === "object"
-        ? Boolean(cosmicConsent.useAstrologyInGuidance)
-        : snapshot.spirit.cosmicConsent.useAstrologyInGuidance,
-    });
-    const userContext = {
-      ...toUserLifeContext(snapshot, {
-        category: context,
-        energyContext: energyContext || undefined,
-        lifeSystem: lifeSystemContext || undefined,
-      }),
-      companionContextPrompt: companionContextPromptBlock(companion),
-      profile: clientProfile || null,
-      cosmicConsent: cosmicConsent && typeof cosmicConsent === "object"
+    const snapshot = userId ? await getUserContextSnapshot(userId) : null;
+    const companion = userId
+      ? await buildCompanionContext(userId, {
+          useAstrologyInGuidance: cosmicConsent && typeof cosmicConsent === "object"
+            ? Boolean(cosmicConsent.useAstrologyInGuidance)
+            : snapshot!.spirit.cosmicConsent.useAstrologyInGuidance,
+        })
+      : null;
+    const requestedCosmicConsent =
+      cosmicConsent && typeof cosmicConsent === "object"
         ? {
             useAstrologyInGuidance: Boolean(cosmicConsent.useAstrologyInGuidance),
             useNumerologyInGuidance: Boolean(cosmicConsent.useNumerologyInGuidance),
           }
-        : snapshot.spirit.cosmicConsent,
-    };
+        : undefined;
+    const userContext = snapshot
+      ? {
+          ...toUserLifeContext(snapshot, {
+            category: context,
+            energyContext: energyContext || undefined,
+            lifeSystem: lifeSystemContext || undefined,
+          }),
+          companionContextPrompt: companionContextPromptBlock(companion!),
+          profile: clientProfile || null,
+          cosmicConsent: requestedCosmicConsent ?? snapshot.spirit.cosmicConsent,
+        }
+      : {
+          category: typeof context === "string" ? context : undefined,
+          energyContext: energyContext || undefined,
+          lifeSystem: lifeSystemContext || undefined,
+          profile: clientProfile || null,
+          cosmicConsent: requestedCosmicConsent ?? {
+            useAstrologyInGuidance: false,
+            useNumerologyInGuidance: false,
+          },
+        };
 
     // Strip any non-standard roles (e.g. 'insight') that OpenAI rejects
     const safeHistory = (conversationHistory || []).filter(
@@ -363,12 +378,14 @@ export async function smartChatHandler(req: Request, res: Response) {
       previousMode,
     });
 
-    logDwRolePick({
-      userId,
-      surface: "smart",
-      message,
-      ...dwModeResult.logFields,
-    });
+    if (userId) {
+      logDwRolePick({
+        userId,
+        surface: "smart",
+        message,
+        ...dwModeResult.logFields,
+      });
+    }
     const ctxOverride =
       typeof context === "string" && Object.prototype.hasOwnProperty.call(CONTEXT_SYSTEM_OVERRIDES, context)
         ? CONTEXT_SYSTEM_OVERRIDES[context]
@@ -377,8 +394,12 @@ export async function smartChatHandler(req: Request, res: Response) {
       .filter(Boolean)
       .join("\n\n");
 
-    const wearablesYesterdayForChat = await safeGetWearablesYesterday(req.session.userId!);
-    const companionContextBlock = serializeCompanionContext(companion);
+    const wearablesYesterdayForChat = userId
+      ? await safeGetWearablesYesterday(userId)
+      : null;
+    const companionContextBlock = companion
+      ? serializeCompanionContext(companion)
+      : undefined;
 
     // Test-only short-circuit: e2e suite forces the resilient AI client to
     // appear unavailable so we can prove the catch block below still
@@ -410,6 +431,18 @@ export async function smartChatHandler(req: Request, res: Response) {
 
           if (!args || typeof args !== "object") {
             console.error(`Invalid tool arguments for ${toolCall.name}:`, toolCall.arguments);
+            continue;
+          }
+
+          // Guests can converse and navigate, but account-backed write tools
+          // require a real user id so no personal data is stored anonymously.
+          if (!userId) {
+            if (toolCall.name === "navigate_to" && args.path) {
+              navigationAction = { path: args.path, reason: args.reason || "" };
+              actionsTaken.push(`Opening ${args.path}${args.reason ? ": " + args.reason : ""}`);
+            } else if (toolCall.name === "create_workout_plan") {
+              actionsTaken.push("Generated workout plan based on your preferences");
+            }
             continue;
           }
 
@@ -491,7 +524,6 @@ export async function smartChatHandler(req: Request, res: Response) {
                 if (!existingLog) {
                   await storage.createHabitLog({
                     habitId: args.habitId,
-                    userId,
                     notes: args.notes,
                   });
                 }
@@ -540,7 +572,7 @@ export async function smartChatHandler(req: Request, res: Response) {
     const syncableItems = extractSyncableItems(message, result.response || "");
     let syncSessionId: string | undefined;
 
-    if (syncableItems.length > 0) {
+    if (userId && syncableItems.length > 0) {
       try {
         let session = await storage.getActiveSyncSession(userId);
 

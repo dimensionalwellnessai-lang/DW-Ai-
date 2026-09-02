@@ -58,10 +58,17 @@ function todayKeyUtc(): string {
  * way past the cap by hammering a slow endpoint). On Plus we skip the meter
  * write entirely.
  */
-export function requirePaidOrQuota(kind: UsageMeterKind, freeQuota?: number) {
+export function requirePaidOrQuota(
+  kind: UsageMeterKind,
+  freeQuota?: number,
+  options?: { allowAnonymous?: boolean },
+) {
   const limit = freeQuota ?? FREE_DAILY_QUOTAS[kind] ?? 5;
   return async (req: Request, res: Response, next: NextFunction) => {
     if (!req.session.userId) {
+      if (options?.allowAnonymous) {
+        return next();
+      }
       return res.status(401).json({ error: "Unauthorized" });
     }
     try {

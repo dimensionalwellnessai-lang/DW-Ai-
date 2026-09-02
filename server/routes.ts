@@ -760,6 +760,21 @@ export async function registerRoutes(
     message: { error: "Too many chat requests. Please slow down and try again shortly." },
   });
 
+  // Signed-out visitors can try DW without creating an account. Keep a
+  // separate daily IP limit so public AI access cannot become an unbounded
+  // cost or bypass the authenticated free-tier meter.
+  const anonymousChatLimiter = rateLimit({
+    windowMs: 24 * 60 * 60 * 1000,
+    max: 10,
+    skip: (req) => Boolean(req.session.userId),
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: {
+      error: "You've reached today's guest chat limit. Sign in for more conversations with DW.",
+      code: "anonymous_quota_exceeded",
+    },
+  });
+
   // Throttle for unauthenticated auth endpoints (register / login). Tight
   // enough to make credential-stuffing painful without blocking real users
   // who mistype their password a couple of times.
@@ -2242,7 +2257,13 @@ export async function registerRoutes(
   // app for integration tests without dragging in this file's startup
   // side-effects (passport, OAuth, seeders, schedulers).
   app.post("/api/chat", chatLimiter, requirePaidOrQuota("chat"), chatHandler);
-  app.post("/api/chat/smart", chatLimiter, requirePaidOrQuota("chat"), smartChatHandler);
+  app.post(
+    "/api/chat/smart",
+    chatLimiter,
+    anonymousChatLimiter,
+    requirePaidOrQuota("chat", undefined, { allowAnonymous: true }),
+    smartChatHandler,
+  );
 
 
   // ── DW Command endpoint ──────────────────────────────────────────────────────
