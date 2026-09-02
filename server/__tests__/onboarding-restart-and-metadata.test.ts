@@ -96,7 +96,7 @@ describe("onboarding completion metadata", () => {
     const res = await fetch(`${baseUrl}/api/onboarding/voice-complete`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messages: [] }),
+      body: JSON.stringify({ messages: [], onboardingVersion: "v2" }),
     });
 
     expect(res.status).toBe(200);
@@ -123,6 +123,7 @@ describe("onboarding completion metadata", () => {
       TEST_USER_ID,
       expect.objectContaining({
         onboardingSource: "manual_restart",
+        onboardingVersion: "v1",
       }),
     );
   });

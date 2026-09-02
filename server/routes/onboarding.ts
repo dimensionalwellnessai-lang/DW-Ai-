@@ -324,12 +324,17 @@ export function registerOnboardingRoutes(app: Express): void {
       const userId = req.session.userId!;
       const user = await storage.getUser(userId);
       const onboardingSource = user?.onboardingSource === "manual_restart" ? "manual_restart" : "new_user";
-      const { messages } = req.body as { messages?: Array<{ role: string; content: string }>; mode?: string };
+      const { messages, onboardingVersion } = req.body as {
+        messages?: Array<{ role: string; content: string }>;
+        mode?: string;
+        onboardingVersion?: string;
+      };
+      const selectedOnboardingVersion = onboardingVersion === "v2" ? "v2" : "v1";
 
       if (!messages || !Array.isArray(messages) || messages.length === 0) {
         await storage.updateUser(userId, {
           onboardingCompleted: true,
-          onboardingVersion: "v2",
+          onboardingVersion: selectedOnboardingVersion,
           onboardingCompletedAt: new Date(),
           onboardingSource,
         });
@@ -400,7 +405,7 @@ Return only valid JSON. Do not guess at things not mentioned. Keep suggestions r
 
       await storage.updateUser(userId, {
         onboardingCompleted: true,
-        onboardingVersion: "v2",
+        onboardingVersion: selectedOnboardingVersion,
         onboardingCompletedAt: new Date(),
         onboardingSource,
         ...(extracted.firstName && typeof extracted.firstName === "string"
@@ -428,7 +433,7 @@ Return only valid JSON. Do not guess at things not mentioned. Keep suggestions r
           tonePreference: extracted.tonePreference ?? null,
           uncertaintyFlags: extracted.uncertaintyFlags ?? null,
           suggestedStructure: (extracted.suggestions ?? []) as unknown as OnboardingProfile["suggestedStructure"],
-          onboardingVersion: "v2",
+          onboardingVersion: selectedOnboardingVersion,
           completedAt: new Date(),
         };
 

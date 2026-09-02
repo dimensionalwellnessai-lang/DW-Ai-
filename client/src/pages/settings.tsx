@@ -163,8 +163,8 @@ export function SettingsPage() {
   const [restartStarted, setRestartStarted] = useState(false);
   const restartMutation = useMutation({
     mutationFn: (mode: "preserve" | "reset") => apiRequest("POST", "/api/onboarding/restart", { mode }),
-    onSuccess: () => {
-      trackEvent(EVENTS.ONBOARDING_RESTART_COMPLETED, { mode: redoOnboardingMode });
+    onSuccess: (_data, mode) => {
+      trackEvent(EVENTS.ONBOARDING_RESTART_COMPLETED, { mode });
       setRestartStarted(false);
       setShowRedoOnboardingDialog(false);
       // Clear local onboarding flags so the onboarding flow runs again.
@@ -960,6 +960,7 @@ export function SettingsPage() {
                   <div className="space-y-2 rounded-md border p-3">
                     <button
                       type="button"
+                      aria-pressed={redoOnboardingMode === "preserve"}
                       className={cn(
                         "w-full rounded-md border px-3 py-2 text-left transition-colors",
                         redoOnboardingMode === "preserve" ? "border-primary bg-primary/5" : "border-border",
@@ -975,6 +976,7 @@ export function SettingsPage() {
                     </button>
                     <button
                       type="button"
+                      aria-pressed={redoOnboardingMode === "reset"}
                       className={cn(
                         "w-full rounded-md border px-3 py-2 text-left transition-colors",
                         redoOnboardingMode === "reset" ? "border-destructive bg-destructive/5" : "border-border",
@@ -1000,9 +1002,6 @@ export function SettingsPage() {
                       </span>
                     </label>
                   )}
-                  <p className="text-xs">
-                    You can always fall back to the current onboarding path by disabling the <code>onboarding_v2_enabled</code> feature flag.
-                  </p>
                 </div>
               </AlertDialogDescription>
             </AlertDialogHeader>

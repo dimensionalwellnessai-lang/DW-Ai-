@@ -904,8 +904,11 @@ export default function VoiceOnboardingPage() {
   const handleDone = useCallback(async () => {
     setIsReplying(true);
     try {
+      const params = new URLSearchParams(window.location.search);
+      const onboardingVersion = params.get("v") === "2" ? "v2" : "v1";
       const response = await apiRequest("POST", "/api/onboarding/voice-complete", {
         messages: thread.map((m) => ({ role: m.role, content: m.content })),
+        onboardingVersion,
         // "refresh" tells the server to merge-preserve the existing profile
         // instead of overwriting it with a short conversation's extraction.
         ...(entryMode === "refresh" ? { mode: "refresh" } : {}),
