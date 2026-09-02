@@ -3,6 +3,7 @@ import { pgTable, text, varchar, integer, boolean, timestamp, jsonb, real, numer
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
+import type { OnboardingProfileContext, PrioritizationSnapshot } from "./onboardingPrioritization";
 
 export const userRoleEnum = ["user", "admin"] as const;
 export type UserRole = typeof userRoleEnum[number];
@@ -142,6 +143,10 @@ export const onboardingProfiles = pgTable("onboarding_profiles", {
   completedAt: timestamp("completed_at"),
   /** Progressive follow-up prompt IDs already dismissed by the user. */
   dismissedProgressivePrompts: text("dismissed_progressive_prompts").array(),
+  /** Reusable language and intent context captured during onboarding. */
+  profileContext: jsonb("profile_context").$type<OnboardingProfileContext>(),
+  /** Prioritization buckets, signals, and 14-day focus-window metadata. */
+  prioritySnapshot: jsonb("priority_snapshot").$type<PrioritizationSnapshot>(),
 });
 
 export const onboardingProfilesRelations = relations(onboardingProfiles, ({ one }) => ({

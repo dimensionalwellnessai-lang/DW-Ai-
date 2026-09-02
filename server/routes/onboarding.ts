@@ -7,6 +7,23 @@ import { requireAuth } from "./_shared";
 import { generateLifeSystemRecommendations, openai } from "../openai";
 
 import { type OnboardingProfile } from "@shared/schema";
+import {
+  ONBOARDING_INTENTS,
+  ONBOARDING_LIFE_AREAS,
+  ONBOARDING_REASON_OPTIONS,
+  PRIORITY_BUCKETS,
+  PRIORITIZATION_FORMULA,
+  applyFocusWindowGuardrail,
+  normalizeAssignments,
+  normalizeIntents,
+  normalizeReasonIds,
+  normalizeSignals,
+  recommendPriorityAssignments,
+  sanitizeReasonText,
+  type OnboardingProfileContext,
+  type PrioritizationSnapshot,
+} from "@shared/onboardingPrioritization";
+import { z } from "zod";
 
 // ─── Onboarding suggestion types ─────────────────────────────────────────────
 
@@ -211,6 +228,37 @@ function normalizeIanaTimezone(timezone: unknown): string | null {
     return null;
   }
 }
+
+const prioritizationAreaEnum = z.enum(
+  ONBOARDING_LIFE_AREAS.map((area) => area.id) as [string, ...string[]],
+);
+const prioritizationBucketEnum = z.enum(PRIORITY_BUCKETS);
+const prioritizationIntentEnum = z.enum(ONBOARDING_INTENTS);
+const prioritizationReasonEnum = z.enum(
+  ONBOARDING_REASON_OPTIONS.map((reason) => reason.id) as [string, ...string[]],
+);
+
+const prioritizationRequestSchema = z.object({
+  intents: z.array(prioritizationIntentEnum).default([]),
+  selectedReasons: z.array(prioritizationReasonEnum).default([]),
+  reasonFreeText: z.string().max(280).nullish(),
+  mode: z.enum(["manual", "choose_for_me"]).default("manual"),
+  assignments: z.array(z.object({
+    areaId: prioritizationAreaEnum,
+    bucket: prioritizationBucketEnum,
+    score: z.number().optional(),
+    why: z.string().max(280).optional(),
+    recommended: z.boolean().optional(),
+  })).optional(),
+  signals: z.array(z.object({
+    areaId: prioritizationAreaEnum,
+    currentState: z.number().int().min(1).max(10),
+    importance: z.number().int().min(1).max(10),
+    urgency: z.boolean(),
+    energyDrain: z.boolean(),
+  })).optional(),
+  override: z.boolean().optional(),
+});
 
 export function registerOnboardingRoutes(app: Express): void {
   app.post("/api/onboarding/restart", requireAuth, async (req, res) => {
@@ -481,7 +529,7 @@ Return only valid JSON. Do not guess at things not mentioned. Keep suggestions r
             priorities: [],
             longTermGoals: "",
             relationshipGoals: "",
-            lifeAreaDetails: {},
+            lifeAreaDetails: {} as OnboardingProfile["lifeAreaDetails"],
             ...profileData,
           });
         }
@@ -520,6 +568,98 @@ Return only valid JSON. Do not guess at things not mentioned. Keep suggestions r
     } catch (error) {
       console.error("Get onboarding profile error:", error);
       res.status(500).json({ error: "Failed to get onboarding profile" });
+    }
+  });
+
+  app.post("/api/onboarding/prioritization", requireAuth, async (req, res) => {
+    try {
+      const parsed = prioritizationRequestSchema.safeParse(req.body ?? {});
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid prioritization payload" });
+      }
+
+      const userId = req.session.userId!;
+      const now = new Date();
+      const existingProfile = await storage.getOnboardingProfile(userId);
+      const signals = normalizeSignals(parsed.data.signals);
+      const recommended = recommendPriorityAssignments(signals);
+      const assignments =
+        parsed.data.mode === "choose_for_me"
+          ? normalizeAssignments(recommended.assignments, signals)
+          : normalizeAssignments(parsed.data.assignments, signals);
+
+      const guardrail = applyFocusWindowGuardrail({
+        existingFocusWindow: existingProfile?.prioritySnapshot?.focusWindow ?? null,
+        previousAssignments: existingProfile?.prioritySnapshot?.assignments ?? [],
+        nextAssignments: assignments,
+        now,
+        override: parsed.data.override,
+      });
+
+      if (!guardrail.allowed) {
+        return res.status(409).json({
+          success: false,
+          requiresOverride: guardrail.requiresOverride,
+          focusWindow: guardrail.focusWindow,
+          message: guardrail.message,
+        });
+      }
+
+      const profileContext: OnboardingProfileContext = {
+        intents: normalizeIntents(parsed.data.intents),
+        selectedReasons: normalizeReasonIds(parsed.data.selectedReasons),
+        reasonFreeText: sanitizeReasonText(parsed.data.reasonFreeText),
+        userLanguageInputs: {
+          reasonNarrative: sanitizeReasonText(parsed.data.reasonFreeText),
+          lastUpdatedAt: now.toISOString(),
+        },
+      };
+
+      const prioritySnapshot: PrioritizationSnapshot = {
+        mode: parsed.data.mode,
+        formula: PRIORITIZATION_FORMULA,
+        signals,
+        assignments,
+        focusWindow: guardrail.focusWindow,
+        recommendedAt: now.toISOString(),
+      };
+
+      const prioritizedAreas = assignments
+        .filter((assignment) => assignment.bucket !== "background")
+        .map((assignment) => assignment.areaId);
+
+      if (existingProfile) {
+        await storage.updateOnboardingProfile(existingProfile.id, {
+          priorities: prioritizedAreas,
+          profileContext,
+          prioritySnapshot,
+        });
+      } else {
+        await storage.createOnboardingProfile({
+          userId,
+          responsibilities: [],
+          priorities: prioritizedAreas,
+          wellnessFocus: [],
+          lifeAreaDetails: {},
+          shortTermGoals: "",
+          longTermGoals: "",
+          relationshipGoals: "",
+          profileContext,
+          prioritySnapshot,
+          completedAt: now,
+        });
+      }
+
+      return res.json({
+        success: true,
+        profileContext,
+        prioritySnapshot,
+        focusWindowStatus: guardrail.status,
+        message: guardrail.message,
+      });
+    } catch (error) {
+      console.error("Onboarding prioritization error:", error);
+      return res.status(500).json({ error: "Failed to save prioritization" });
     }
   });
 

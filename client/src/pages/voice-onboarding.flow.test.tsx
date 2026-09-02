@@ -7,6 +7,7 @@ const hoisted = vi.hoisted(() => ({
   apiRequest: vi.fn(),
   setLocation: vi.fn(),
   markOnboardingComplete: vi.fn(),
+  enabledFlags: new Set<string>(),
 }));
 
 vi.mock("@/lib/queryClient", () => ({
@@ -21,6 +22,10 @@ vi.mock("wouter", () => ({
 
 vi.mock("@/lib/onboarding", () => ({
   markOnboardingComplete: hoisted.markOnboardingComplete,
+}));
+
+vi.mock("@/config/featureFlags", () => ({
+  isFeatureEnabled: (flag: string) => hoisted.enabledFlags.has(flag),
 }));
 
 vi.mock("@/hooks/use-toast", () => ({
@@ -80,6 +85,7 @@ function renderPage(queryFn: (queryKey: readonly unknown[]) => Promise<unknown>)
 beforeEach(() => {
   localStorage.clear();
   vi.clearAllMocks();
+  hoisted.enabledFlags.clear();
   Element.prototype.scrollIntoView = vi.fn();
   window.history.replaceState({}, "", "/voice-onboarding");
 });
@@ -190,5 +196,98 @@ describe("voice onboarding flow updates", () => {
 
     await waitFor(() => expect(hoisted.setLocation).toHaveBeenCalledWith("/command-center"));
     expect(hoisted.markOnboardingComplete).toHaveBeenCalled();
+  });
+
+  it("renders recommendation explanations in the v2 prioritization summary", async () => {
+    hoisted.enabledFlags.add("onboarding_prioritization_v2");
+    window.history.replaceState({}, "", "/voice-onboarding?v=2");
+
+    renderPage(async (queryKey) => {
+      if (queryKey[0] === "/api/onboarding/profile") {
+        return {
+          profile: {
+            generatedSummary: "You need steadier energy and clearer focus.",
+            generatedDirection: "Toward a calmer, more protected week.",
+            suggestedStructure: [
+              {
+                id: "sys-1",
+                type: "system",
+                title: "Morning reset",
+                description: "A short routine to settle into the day.",
+                sourceReason: "Suggested because mornings feel scattered.",
+                status: "pending",
+              },
+            ],
+            profileContext: {
+              intents: ["reset"],
+              selectedReasons: ["clarify_focus"],
+              reasonFreeText: "I need help deciding what to protect.",
+              userLanguageInputs: {
+                reasonNarrative: "I need help deciding what to protect.",
+                lastUpdatedAt: new Date().toISOString(),
+              },
+            },
+            prioritySnapshot: {
+              mode: "choose_for_me",
+              formula: "score = ...",
+              signals: [],
+              assignments: [
+                {
+                  areaId: "physical",
+                  bucket: "protect",
+                  score: 8.9,
+                  why: "Physical health scored 8.90 from importance 10/10 and current state 3/10.",
+                  recommended: true,
+                },
+                {
+                  areaId: "mental",
+                  bucket: "protect",
+                  score: 8.4,
+                  why: "Mental & emotional scored 8.40 from importance 9/10 and current state 4/10.",
+                  recommended: true,
+                },
+                {
+                  areaId: "rest",
+                  bucket: "protect",
+                  score: 8.2,
+                  why: "Rest & recovery scored 8.20 from importance 9/10 and current state 4/10.",
+                  recommended: true,
+                },
+                {
+                  areaId: "financial",
+                  bucket: "active_growth",
+                  score: 7.6,
+                  why: "Money scored 7.60 from importance 8/10 and current state 4/10.",
+                  recommended: true,
+                },
+                {
+                  areaId: "relationships",
+                  bucket: "active_growth",
+                  score: 7.1,
+                  why: "Relationships scored 7.10 from importance 8/10 and current state 5/10.",
+                  recommended: true,
+                },
+              ],
+              focusWindow: {
+                startAt: "2026-09-01T00:00:00.000Z",
+                endAt: "2026-09-15T00:00:00.000Z",
+                adjustments: [],
+                overrideCount: 0,
+                lastAdjustedAt: null,
+              },
+              recommendedAt: "2026-09-01T00:00:00.000Z",
+            },
+          },
+        };
+      }
+      if (queryKey[0] === "/api/profile/lifestyle-preferences") {
+        return {};
+      }
+      return null;
+    });
+
+    await waitFor(() => expect(screen.getByTestId("voice-onboarding-summary")).toBeTruthy());
+    expect(screen.getByTestId("recommendation-why-physical").textContent).toContain("scored 8.90");
+    expect(screen.getByTestId("focus-window-banner").textContent).toContain("Focus window active until");
   });
 });

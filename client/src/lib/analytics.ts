@@ -30,6 +30,12 @@ export const EVENTS = {
   ONBOARDING_RESTART_STARTED: "onboarding_restart_started",
   ONBOARDING_RESTART_CANCELED: "onboarding_restart_canceled",
   ONBOARDING_RESTART_COMPLETED: "onboarding_restart_completed",
+  ONBOARDING_MULTI_REASON_SELECTED: "onboarding_multi_reason_selected",
+  ONBOARDING_FREE_TEXT_REASON_SUBMITTED: "onboarding_free_text_reason_submitted",
+  ONBOARDING_CHOOSE_FOR_ME_CLICKED: "onboarding_choose_for_me_clicked",
+  ONBOARDING_RECOMMENDATIONS_SAVED: "onboarding_recommendations_saved",
+  ONBOARDING_FOCUS_WINDOW_CREATED: "onboarding_focus_window_created",
+  ONBOARDING_FOCUS_WINDOW_ADJUSTED: "onboarding_focus_window_adjusted",
 } as const;
 
 export type AnalyticsEventName = (typeof EVENTS)[keyof typeof EVENTS];
@@ -142,6 +148,31 @@ type OnboardingRestartPayload = {
   mode: "preserve" | "reset";
 };
 
+type OnboardingMultiReasonPayload = {
+  selectedReasons: string[];
+  selectedReasonCount: number;
+};
+
+type OnboardingFreeTextReasonPayload = {
+  textLength: number;
+};
+
+type OnboardingChooseForMePayload = {
+  areaCount: number;
+};
+
+type OnboardingRecommendationsSavedPayload = {
+  mode: "manual" | "choose_for_me";
+  protectCount: number;
+  activeGrowthCount: number;
+  editedCount: number;
+};
+
+type OnboardingFocusWindowPayload = {
+  mode: "manual" | "choose_for_me";
+  changedAreaCount: number;
+};
+
 // Map event names to their payload types
 type EventPayloadMap = {
   [EVENTS.QUICK_SETUP_STARTED]: undefined;
@@ -171,6 +202,12 @@ type EventPayloadMap = {
   [EVENTS.ONBOARDING_RESTART_STARTED]: OnboardingRestartPayload;
   [EVENTS.ONBOARDING_RESTART_CANCELED]: undefined;
   [EVENTS.ONBOARDING_RESTART_COMPLETED]: OnboardingRestartPayload;
+  [EVENTS.ONBOARDING_MULTI_REASON_SELECTED]: OnboardingMultiReasonPayload;
+  [EVENTS.ONBOARDING_FREE_TEXT_REASON_SUBMITTED]: OnboardingFreeTextReasonPayload;
+  [EVENTS.ONBOARDING_CHOOSE_FOR_ME_CLICKED]: OnboardingChooseForMePayload;
+  [EVENTS.ONBOARDING_RECOMMENDATIONS_SAVED]: OnboardingRecommendationsSavedPayload;
+  [EVENTS.ONBOARDING_FOCUS_WINDOW_CREATED]: OnboardingFocusWindowPayload;
+  [EVENTS.ONBOARDING_FOCUS_WINDOW_ADJUSTED]: OnboardingFocusWindowPayload;
 };
 
 // Session metadata (in-memory only)

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useLocation } from "wouter";
@@ -13,6 +13,24 @@ import { OnboardingValuePreview } from "@/components/onboarding-value-preview";
 import { isFeatureEnabled } from "@/config/featureFlags";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { markOnboardingComplete } from "@/lib/onboarding";
+import { EVENTS, trackEvent } from "@/lib/analytics";
+import {
+  ONBOARDING_INTENTS,
+  ONBOARDING_LIFE_AREAS,
+  ONBOARDING_REASON_OPTIONS,
+  PRIORITIZATION_FORMULA,
+  buildDefaultSignals,
+  createFocusWindow,
+  normalizeAssignments,
+  normalizeSignals,
+  recommendPriorityAssignments,
+  type LifeAreaSignal,
+  type OnboardingIntent,
+  type OnboardingProfileContext,
+  type OnboardingReasonId,
+  type PrioritizationSnapshot,
+  type PriorityAssignment,
+} from "@shared/onboardingPrioritization";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -510,6 +528,409 @@ function SuggestionCard({ suggestion: s, index, onUpdate, disabled }: Suggestion
   );
 }
 
+type PrioritizationMode = "manual" | "choose_for_me";
+
+interface PrioritizationDraft {
+  intents: OnboardingIntent[];
+  selectedReasons: OnboardingReasonId[];
+  reasonFreeText: string;
+  mode: PrioritizationMode;
+  signals: LifeAreaSignal[];
+  assignments: PriorityAssignment[];
+  focusWindow: PrioritizationSnapshot["focusWindow"] | null;
+}
+
+function bucketTitle(bucket: PriorityAssignment["bucket"]): string {
+  if (bucket === "protect") return "Protect";
+  if (bucket === "active_growth") return "Active Growth";
+  return "Background / Maintain";
+}
+
+function formatFocusWindowDate(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(date);
+}
+
+function createDefaultAssignments(signals: LifeAreaSignal[]): PriorityAssignment[] {
+  return normalizeAssignments([], signals);
+}
+
+function orderAssignments(assignments: PriorityAssignment[]): PriorityAssignment[] {
+  const bucketOrder: Record<PriorityAssignment["bucket"], number> = {
+    protect: 0,
+    active_growth: 1,
+    background: 2,
+  };
+  return [...assignments].sort(
+    (a, b) => bucketOrder[a.bucket] - bucketOrder[b.bucket] || b.score - a.score || a.areaId.localeCompare(b.areaId),
+  );
+}
+
+function createDraftFromProfile(
+  profileContext?: OnboardingProfileContext | null,
+  prioritySnapshot?: PrioritizationSnapshot | null,
+): PrioritizationDraft {
+  const signals = normalizeSignals(prioritySnapshot?.signals);
+  const assignments = prioritySnapshot?.assignments?.length
+    ? normalizeAssignments(prioritySnapshot.assignments, signals)
+    : createDefaultAssignments(signals);
+
+  return {
+    intents: profileContext?.intents ?? [],
+    selectedReasons: profileContext?.selectedReasons ?? [],
+    reasonFreeText: profileContext?.reasonFreeText ?? "",
+    mode: prioritySnapshot?.mode ?? "manual",
+    signals,
+    assignments: orderAssignments(assignments),
+    focusWindow: prioritySnapshot?.focusWindow ?? null,
+  };
+}
+
+interface PrioritizationPanelProps {
+  draft: PrioritizationDraft;
+  onChange: (next: PrioritizationDraft) => void;
+  disabled?: boolean;
+}
+
+function PrioritizationPanel({ draft, onChange, disabled }: PrioritizationPanelProps) {
+  const groupedAssignments = useMemo(() => ({
+    protect: draft.assignments.filter((assignment) => assignment.bucket === "protect"),
+    active_growth: draft.assignments.filter((assignment) => assignment.bucket === "active_growth"),
+    background: draft.assignments.filter((assignment) => assignment.bucket === "background"),
+  }), [draft.assignments]);
+
+  const updateDraft = useCallback((patch: Partial<PrioritizationDraft>) => {
+    onChange({ ...draft, ...patch });
+  }, [draft, onChange]);
+
+  const toggleIntent = useCallback((intent: OnboardingIntent) => {
+    const nextIntents = draft.intents.includes(intent)
+      ? draft.intents.filter((value) => value !== intent)
+      : [...draft.intents, intent];
+    updateDraft({ intents: nextIntents });
+  }, [draft.intents, updateDraft]);
+
+  const toggleReason = useCallback((reasonId: OnboardingReasonId) => {
+    const nextReasons = draft.selectedReasons.includes(reasonId)
+      ? draft.selectedReasons.filter((value) => value !== reasonId)
+      : [...draft.selectedReasons, reasonId];
+    updateDraft({ selectedReasons: nextReasons });
+    trackEvent(EVENTS.ONBOARDING_MULTI_REASON_SELECTED, {
+      selectedReasons: nextReasons,
+      selectedReasonCount: nextReasons.length,
+    });
+  }, [draft.selectedReasons, updateDraft]);
+
+  const setBucket = useCallback((areaId: PriorityAssignment["areaId"], bucket: PriorityAssignment["bucket"]) => {
+    const nextAssignments = orderAssignments(
+      draft.assignments.map((assignment) =>
+        assignment.areaId === areaId
+          ? { ...assignment, bucket, recommended: false }
+          : assignment
+      ),
+    );
+    updateDraft({ assignments: nextAssignments, mode: "manual" });
+  }, [draft.assignments, updateDraft]);
+
+  const updateSignal = useCallback((
+    areaId: LifeAreaSignal["areaId"],
+    field: keyof LifeAreaSignal,
+    value: number | boolean,
+  ) => {
+    const nextSignals = draft.signals.map((signal) =>
+      signal.areaId === areaId ? { ...signal, [field]: value } : signal,
+    );
+    updateDraft({ signals: nextSignals });
+  }, [draft.signals, updateDraft]);
+
+  const applyRecommendations = useCallback(() => {
+    const result = recommendPriorityAssignments(draft.signals);
+    updateDraft({
+      mode: "choose_for_me",
+      assignments: orderAssignments(result.assignments),
+    });
+  }, [draft.signals, updateDraft]);
+
+  const focusWindowEnd = formatFocusWindowDate(draft.focusWindow?.endAt);
+  const thisWeekAdjustments = draft.focusWindow?.adjustments?.length ?? 0;
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-2xl border bg-card p-4 space-y-4">
+        <div className="space-y-1">
+          <h2 className="text-sm font-semibold text-foreground">Why you're here right now</h2>
+          <p className="text-xs text-muted-foreground">Pick more than one if you need to. This helps DW support resets, maintenance, and assistant-style help at the same time.</p>
+        </div>
+
+        <div className="space-y-2">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Intent</p>
+          <div className="flex flex-wrap gap-2">
+            {ONBOARDING_INTENTS.map((intent) => {
+              const active = draft.intents.includes(intent);
+              const label =
+                intent === "assistant_support"
+                  ? "Assistant support"
+                  : intent === "maintain"
+                    ? "Maintain"
+                    : "Reset";
+              return (
+                <button
+                  key={intent}
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => toggleIntent(intent)}
+                  className={cn(
+                    "rounded-full border px-3 py-1.5 text-xs transition-colors",
+                    active ? "border-primary bg-primary/10 text-foreground" : "border-border text-muted-foreground",
+                  )}
+                  data-testid={`intent-${intent}`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Reasons</p>
+          <div className="grid gap-2 md:grid-cols-2">
+            {ONBOARDING_REASON_OPTIONS.map((reason) => {
+              const active = draft.selectedReasons.includes(reason.id);
+              return (
+                <button
+                  key={reason.id}
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => toggleReason(reason.id)}
+                  className={cn(
+                    "rounded-2xl border p-3 text-left text-sm transition-colors",
+                    active ? "border-primary bg-primary/10 text-foreground" : "border-border text-muted-foreground",
+                  )}
+                  data-testid={`reason-${reason.id}`}
+                >
+                  {reason.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">In your own words</p>
+          <Textarea
+            value={draft.reasonFreeText}
+            onChange={(event) => updateDraft({ reasonFreeText: event.target.value.slice(0, 280) })}
+            onBlur={() => {
+              if (draft.reasonFreeText.trim()) {
+                trackEvent(EVENTS.ONBOARDING_FREE_TEXT_REASON_SUBMITTED, {
+                  textLength: draft.reasonFreeText.trim().length,
+                });
+              }
+            }}
+            disabled={disabled}
+            placeholder="Tell DW what matters, what you're carrying, or what kind of help you want."
+            rows={3}
+            data-testid="textarea-reason-free-text"
+          />
+        </div>
+      </div>
+
+      <div className="rounded-2xl border bg-card p-4 space-y-4">
+        <div className="space-y-1">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-sm font-semibold text-foreground">Life Areas Map</h2>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant={draft.mode === "manual" ? "default" : "outline"}
+                disabled={disabled}
+                onClick={() => updateDraft({ mode: "manual" })}
+                data-testid="button-manual-prioritization"
+              >
+                Assign myself
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={draft.mode === "choose_for_me" ? "default" : "outline"}
+                disabled={disabled}
+                onClick={() => {
+                  updateDraft({ mode: "choose_for_me" });
+                  trackEvent(EVENTS.ONBOARDING_CHOOSE_FOR_ME_CLICKED, {
+                    areaCount: ONBOARDING_LIFE_AREAS.length,
+                  });
+                }}
+                data-testid="button-choose-for-me"
+              >
+                Choose for me
+              </Button>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">Protect = keep stable. Active Growth = improve now. Background / Maintain = not the main focus this cycle.</p>
+          {focusWindowEnd && (
+            <p className="text-xs text-primary" data-testid="focus-window-banner">
+              Focus window active until {focusWindowEnd}. Weekly micro-adjustments used: {thisWeekAdjustments}.
+            </p>
+          )}
+        </div>
+
+        {draft.mode === "choose_for_me" && (
+          <div className="space-y-3 rounded-2xl border border-primary/15 bg-primary/5 p-4">
+            <p className="text-xs text-muted-foreground">{PRIORITIZATION_FORMULA}</p>
+            {draft.signals.map((signal) => {
+              const area = ONBOARDING_LIFE_AREAS.find((entry) => entry.id === signal.areaId)!;
+              return (
+                <div key={signal.areaId} className="rounded-xl border bg-background/80 p-3 space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-medium text-foreground">{area.label}</span>
+                    <span className="text-[11px] text-muted-foreground">
+                      state {signal.currentState}/10 · importance {signal.importance}/10
+                    </span>
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <label className="space-y-1 text-xs text-muted-foreground">
+                      <span>Current state</span>
+                      <input
+                        type="range"
+                        min={1}
+                        max={10}
+                        value={signal.currentState}
+                        disabled={disabled}
+                        onChange={(event) => updateSignal(signal.areaId, "currentState", Number(event.target.value))}
+                        className="w-full"
+                      />
+                    </label>
+                    <label className="space-y-1 text-xs text-muted-foreground">
+                      <span>Importance</span>
+                      <input
+                        type="range"
+                        min={1}
+                        max={10}
+                        value={signal.importance}
+                        disabled={disabled}
+                        onChange={(event) => updateSignal(signal.areaId, "importance", Number(event.target.value))}
+                        className="w-full"
+                      />
+                    </label>
+                  </div>
+                  <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
+                    <label className="inline-flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={signal.urgency}
+                        disabled={disabled}
+                        onChange={(event) => updateSignal(signal.areaId, "urgency", event.target.checked)}
+                      />
+                      Urgent right now
+                    </label>
+                    <label className="inline-flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={signal.energyDrain}
+                        disabled={disabled}
+                        onChange={(event) => updateSignal(signal.areaId, "energyDrain", event.target.checked)}
+                      />
+                      Drains energy
+                    </label>
+                  </div>
+                </div>
+              );
+            })}
+            <Button type="button" onClick={applyRecommendations} disabled={disabled} data-testid="button-generate-priorities">
+              Generate recommendations
+            </Button>
+          </div>
+        )}
+
+        {draft.mode === "manual" && (
+          <div className="space-y-3">
+            {draft.assignments.map((assignment) => {
+              const area = ONBOARDING_LIFE_AREAS.find((entry) => entry.id === assignment.areaId)!;
+              return (
+                <div key={assignment.areaId} className="rounded-xl border bg-background/80 p-3 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-medium text-foreground">{area.label}</span>
+                    <span className="text-[11px] text-muted-foreground">{bucketTitle(assignment.bucket)}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {(["protect", "active_growth", "background"] as const).map((bucket) => (
+                      <Button
+                        key={bucket}
+                        type="button"
+                        size="sm"
+                        variant={assignment.bucket === bucket ? "default" : "outline"}
+                        disabled={disabled}
+                        onClick={() => setBucket(assignment.areaId, bucket)}
+                        data-testid={`bucket-${assignment.areaId}-${bucket}`}
+                      >
+                        {bucketTitle(bucket)}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="grid gap-3 md:grid-cols-3">
+          {([
+            ["protect", groupedAssignments.protect],
+            ["active_growth", groupedAssignments.active_growth],
+            ["background", groupedAssignments.background],
+          ] as const).map(([bucket, assignments]) => (
+            <div key={bucket} className="rounded-2xl border bg-muted/20 p-3 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  {bucketTitle(bucket)}
+                </h3>
+                <span className="text-[11px] text-muted-foreground">{assignments.length}</span>
+              </div>
+              <div className="space-y-2">
+                {assignments.map((assignment) => {
+                  const area = ONBOARDING_LIFE_AREAS.find((entry) => entry.id === assignment.areaId)!;
+                  return (
+                    <div key={assignment.areaId} className="rounded-xl border bg-background p-3 space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-medium text-foreground">{area.label}</p>
+                        <span className="text-[11px] text-muted-foreground">{assignment.score.toFixed(2)}</span>
+                      </div>
+                      {assignment.why ? (
+                        <p className="text-xs text-muted-foreground" data-testid={`recommendation-why-${assignment.areaId}`}>
+                          {assignment.why}
+                        </p>
+                      ) : null}
+                      <div className="flex flex-wrap gap-1.5">
+                        {(["protect", "active_growth", "background"] as const).map((nextBucket) => (
+                          <Button
+                            key={nextBucket}
+                            type="button"
+                            size="sm"
+                            variant={assignment.bucket === nextBucket ? "default" : "outline"}
+                            disabled={disabled}
+                            onClick={() => setBucket(assignment.areaId, nextBucket)}
+                            className="h-7 px-2.5 text-[11px]"
+                          >
+                            {assignment.bucket === nextBucket ? "Keep" : bucketTitle(nextBucket)}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function VoiceOnboardingPage() {
@@ -558,6 +979,19 @@ export default function VoiceOnboardingPage() {
   const [standardsText, setStandardsText] = useState("");
   const [anchorsText, setAnchorsText] = useState("");
   const [minimumDayText, setMinimumDayText] = useState("");
+  const [prioritizationDraft, setPrioritizationDraft] = useState<PrioritizationDraft>(() =>
+    createDraftFromProfile(null, null),
+  );
+  const [guardrailMessage, setGuardrailMessage] = useState<string | null>(null);
+  const [guardrailNeedsOverride, setGuardrailNeedsOverride] = useState(false);
+
+  const currentOnboardingVersion = useMemo(() => {
+    if (typeof window === "undefined") return "v1";
+    return new URLSearchParams(window.location.search).get("v") === "2" ? "v2" : "v1";
+  }, []);
+  const prioritizationEnabled =
+    currentOnboardingVersion === "v2" &&
+    isFeatureEnabled("onboarding_prioritization_v2");
 
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -583,7 +1017,13 @@ export default function VoiceOnboardingPage() {
 
   // ── Hydrate summary phase from persisted profile ──
   // Allows returning to /voice-onboarding after closing and seeing pending suggestions.
-  const { data: profileData } = useQuery<{ profile: { suggestedStructure?: OnboardingSuggestion[]; generatedSummary?: string | null; generatedDirection?: string | null } | null }>({
+  const { data: profileData } = useQuery<{ profile: {
+    suggestedStructure?: OnboardingSuggestion[];
+    generatedSummary?: string | null;
+    generatedDirection?: string | null;
+    profileContext?: OnboardingProfileContext | null;
+    prioritySnapshot?: PrioritizationSnapshot | null;
+  } | null }>({
     queryKey: ["/api/onboarding/profile"],
     retry: false,
   });
@@ -614,6 +1054,13 @@ export default function VoiceOnboardingPage() {
       setPhase("summary");
     }
   }, [profileData, phase, suggestions.length, entryMode]);
+
+  useEffect(() => {
+    if (!prioritizationEnabled) return;
+    const profile = profileData?.profile;
+    if (!profile) return;
+    setPrioritizationDraft(createDraftFromProfile(profile.profileContext ?? null, profile.prioritySnapshot ?? null));
+  }, [profileData, prioritizationEnabled]);
 
   useEffect(() => {
     if (!lifestylePreferences) return;
@@ -904,11 +1351,9 @@ export default function VoiceOnboardingPage() {
   const handleDone = useCallback(async () => {
     setIsReplying(true);
     try {
-      const params = new URLSearchParams(window.location.search);
-      const onboardingVersion = params.get("v") === "2" ? "v2" : "v1";
       const response = await apiRequest("POST", "/api/onboarding/voice-complete", {
         messages: thread.map((m) => ({ role: m.role, content: m.content })),
-        onboardingVersion,
+        onboardingVersion: currentOnboardingVersion,
         // "refresh" tells the server to merge-preserve the existing profile
         // instead of overwriting it with a short conversation's extraction.
         ...(entryMode === "refresh" ? { mode: "refresh" } : {}),
@@ -917,10 +1362,10 @@ export default function VoiceOnboardingPage() {
       markConversationalComplete();
       // Keep Command Center's cached profile (staleness card) in sync.
       queryClient.invalidateQueries({ queryKey: ["/api/onboarding/profile"] });
-      if (data.suggestions && data.suggestions.length > 0) {
+      if ((data.suggestions && data.suggestions.length > 0) || prioritizationEnabled) {
         setSummaryText(data.summary ?? null);
         setDirectionText(data.direction ?? null);
-        setSuggestions(data.suggestions);
+        setSuggestions(data.suggestions ?? []);
         setIsReplying(false);
         setPhase("summary");
       } else {
@@ -934,7 +1379,7 @@ export default function VoiceOnboardingPage() {
       setIsReplying(false);
       setLocation("/");
     }
-  }, [thread, setLocation, markConversationalComplete]);
+  }, [thread, setLocation, markConversationalComplete, currentOnboardingVersion, entryMode, prioritizationEnabled]);
 
   const persistFoundationSnapshot = useCallback(async () => {
     const payload = {
@@ -952,6 +1397,56 @@ export default function VoiceOnboardingPage() {
     await apiRequest("POST", "/api/profile/lifestyle-preferences", payload);
   }, [anchorsText, identityDirection, lifestylePreferences, minimumDayText, standardsText]);
 
+  const persistPrioritization = useCallback(async (override = false) => {
+    if (!prioritizationEnabled) return true;
+
+    const response = await fetch("/api/onboarding/prioritization", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        intents: prioritizationDraft.intents,
+        selectedReasons: prioritizationDraft.selectedReasons,
+        reasonFreeText: prioritizationDraft.reasonFreeText,
+        mode: prioritizationDraft.mode,
+        signals: prioritizationDraft.signals,
+        assignments: prioritizationDraft.assignments,
+        override,
+      }),
+    });
+
+    const payload = await response.json();
+    if (!response.ok) {
+      setGuardrailMessage(payload.message ?? "Couldn't save your priority map yet.");
+      setGuardrailNeedsOverride(Boolean(payload.requiresOverride));
+      return false;
+    }
+
+    setGuardrailMessage(payload.message ?? null);
+    setGuardrailNeedsOverride(false);
+    if (payload.prioritySnapshot) {
+      setPrioritizationDraft(createDraftFromProfile(payload.profileContext ?? null, payload.prioritySnapshot));
+    }
+    trackEvent(EVENTS.ONBOARDING_RECOMMENDATIONS_SAVED, {
+      mode: prioritizationDraft.mode,
+      protectCount: prioritizationDraft.assignments.filter((assignment) => assignment.bucket === "protect").length,
+      activeGrowthCount: prioritizationDraft.assignments.filter((assignment) => assignment.bucket === "active_growth").length,
+      editedCount: prioritizationDraft.assignments.filter((assignment) => !assignment.recommended).length,
+    });
+    trackEvent(
+      payload.focusWindowStatus === "created"
+        ? EVENTS.ONBOARDING_FOCUS_WINDOW_CREATED
+        : EVENTS.ONBOARDING_FOCUS_WINDOW_ADJUSTED,
+      {
+        mode: prioritizationDraft.mode,
+        changedAreaCount: Array.isArray(payload.prioritySnapshot?.focusWindow?.adjustments)
+          ? payload.prioritySnapshot.focusWindow.adjustments.length
+          : 0,
+      },
+    );
+    return true;
+  }, [prioritizationDraft, prioritizationEnabled]);
+
   // ── Accept/defer suggestions and populate My Life ──
   const handleAcceptSuggestions = useCallback(async () => {
     setIsSubmittingSuggestions(true);
@@ -959,6 +1454,16 @@ export default function VoiceOnboardingPage() {
       await persistFoundationSnapshot();
     } catch {
       // Non-fatal
+    }
+    try {
+      const saved = await persistPrioritization(false);
+      if (!saved) {
+        setIsSubmittingSuggestions(false);
+        return;
+      }
+    } catch {
+      setIsSubmittingSuggestions(false);
+      return;
     }
     try {
       await apiRequest("POST", "/api/onboarding/accept-suggestions", {
@@ -976,7 +1481,7 @@ export default function VoiceOnboardingPage() {
     setIsSubmittingSuggestions(false);
     markOnboardingComplete();
     setLocation("/command-center");
-  }, [persistFoundationSnapshot, suggestions, setLocation]);
+  }, [persistFoundationSnapshot, persistPrioritization, suggestions, setLocation]);
 
   // ── Update a single suggestion status ──
   const updateSuggestion = useCallback((id: string, patch: Partial<OnboardingSuggestion>) => {
@@ -994,6 +1499,18 @@ export default function VoiceOnboardingPage() {
       // Non-fatal
     }
     try {
+      const saved = await persistPrioritization(false);
+      if (!saved) {
+        setSuggestions(suggestions);
+        setIsSubmittingSuggestions(false);
+        return;
+      }
+    } catch {
+      setSuggestions(suggestions);
+      setIsSubmittingSuggestions(false);
+      return;
+    }
+    try {
       await apiRequest("POST", "/api/onboarding/accept-suggestions", {
         suggestions: deferred,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -1009,7 +1526,7 @@ export default function VoiceOnboardingPage() {
     setIsSubmittingSuggestions(false);
     markOnboardingComplete();
     setLocation("/command-center");
-  }, [persistFoundationSnapshot, suggestions, setLocation]);
+  }, [persistFoundationSnapshot, persistPrioritization, suggestions, setLocation]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // Render: Summary phase — "What I'm hearing" + editable AI suggestions
@@ -1028,10 +1545,13 @@ export default function VoiceOnboardingPage() {
             variant="ghost"
             size="sm"
             onClick={() => {
-              void persistFoundationSnapshot().finally(() => {
-                markOnboardingComplete();
-                setLocation("/command-center");
-              });
+              void persistFoundationSnapshot()
+                .then(() => persistPrioritization(false))
+                .then((saved) => {
+                  if (saved === false) return;
+                  markOnboardingComplete();
+                  setLocation("/command-center");
+                });
             }}
             className="text-muted-foreground text-xs"
             data-testid="button-skip-summary"
@@ -1057,16 +1577,17 @@ export default function VoiceOnboardingPage() {
               </motion.div>
             )}
 
-            {/* Suggestions header */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.15 }}
-              className="space-y-1"
-            >
-              <h2 className="text-sm font-semibold text-foreground">Based on our conversation, I'd like to suggest a starting structure for your life.</h2>
-              <p className="text-xs text-muted-foreground">Accept, rename, or set aside anything that doesn't feel right. This is yours to shape.</p>
-            </motion.div>
+            {suggestions.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.15 }}
+                className="space-y-1"
+              >
+                <h2 className="text-sm font-semibold text-foreground">Based on our conversation, I'd like to suggest a starting structure for your life.</h2>
+                <p className="text-xs text-muted-foreground">Accept, rename, or set aside anything that doesn't feel right. This is yours to shape.</p>
+              </motion.div>
+            )}
 
             <motion.div
               initial={{ opacity: 0 }}
@@ -1122,18 +1643,55 @@ export default function VoiceOnboardingPage() {
               </div>
             </motion.div>
 
-            {/* Suggestion cards */}
-            <div className="space-y-3">
-              {suggestions.map((s, i) => (
-                <SuggestionCard
-                  key={s.id}
-                  suggestion={s}
-                  index={i}
-                  onUpdate={updateSuggestion}
+            {prioritizationEnabled && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.24 }}
+                className="space-y-3"
+              >
+                <PrioritizationPanel
+                  draft={prioritizationDraft}
+                  onChange={setPrioritizationDraft}
                   disabled={isSubmittingSuggestions}
                 />
-              ))}
-            </div>
+                {guardrailMessage ? (
+                  <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 space-y-3">
+                    <p className="text-sm text-foreground">{guardrailMessage}</p>
+                    {guardrailNeedsOverride ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={async () => {
+                          setIsSubmittingSuggestions(true);
+                          const saved = await persistPrioritization(true);
+                          setIsSubmittingSuggestions(false);
+                          if (!saved) return;
+                        }}
+                        data-testid="button-priority-override"
+                      >
+                        Override focus window
+                      </Button>
+                    ) : null}
+                  </div>
+                ) : null}
+              </motion.div>
+            )}
+
+            {/* Suggestion cards */}
+            {suggestions.length > 0 && (
+              <div className="space-y-3">
+                {suggestions.map((s, i) => (
+                  <SuggestionCard
+                    key={s.id}
+                    suggestion={s}
+                    index={i}
+                    onUpdate={updateSuggestion}
+                    disabled={isSubmittingSuggestions}
+                  />
+                ))}
+              </div>
+            )}
 
             {/* Actions */}
             <motion.div

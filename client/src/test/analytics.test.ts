@@ -110,6 +110,32 @@ describe("trackEvent", () => {
     expect(() =>
       trackEvent(EVENTS.ONBOARDING_RESTART_COMPLETED, { mode: "reset" })
     ).not.toThrow();
+    expect(() =>
+      trackEvent(EVENTS.ONBOARDING_MULTI_REASON_SELECTED, {
+        selectedReasons: ["overwhelmed", "clarify_focus"],
+        selectedReasonCount: 2,
+      })
+    ).not.toThrow();
+    expect(() =>
+      trackEvent(EVENTS.ONBOARDING_FREE_TEXT_REASON_SUBMITTED, { textLength: 42 })
+    ).not.toThrow();
+    expect(() =>
+      trackEvent(EVENTS.ONBOARDING_CHOOSE_FOR_ME_CLICKED, { areaCount: 12 })
+    ).not.toThrow();
+    expect(() =>
+      trackEvent(EVENTS.ONBOARDING_RECOMMENDATIONS_SAVED, {
+        mode: "choose_for_me",
+        protectCount: 3,
+        activeGrowthCount: 2,
+        editedCount: 1,
+      })
+    ).not.toThrow();
+    expect(() =>
+      trackEvent(EVENTS.ONBOARDING_FOCUS_WINDOW_CREATED, {
+        mode: "manual",
+        changedAreaCount: 5,
+      })
+    ).not.toThrow();
   });
 });
 

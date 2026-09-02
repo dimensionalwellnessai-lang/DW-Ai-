@@ -38,6 +38,7 @@ vi.mock("../openai", () => ({
 }));
 
 const storageStub = {
+  getUser: vi.fn(async () => ({ id: TEST_USER_ID, onboardingSource: null })),
   updateUser: vi.fn(async () => undefined),
   getOnboardingProfile: vi.fn(async () => null as unknown),
   updateOnboardingProfile: vi.fn(async () => undefined),
