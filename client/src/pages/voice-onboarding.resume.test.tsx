@@ -151,6 +151,7 @@ describe("voice-onboarding resume=1 completion", () => {
     );
     expect(completeCall).toBeTruthy();
     expect((completeCall![2] as Record<string, unknown>).mode).toBeUndefined();
+    expect((completeCall![2] as Record<string, unknown>).onboardingVersion).toBe("v1");
   });
 
   it("refresh=1 sends mode:'refresh' and also clears the skip flag on completion", async () => {
@@ -182,5 +183,6 @@ describe("voice-onboarding resume=1 completion", () => {
       (c) => c[1] === "/api/onboarding/voice-complete",
     );
     expect((completeCall![2] as Record<string, unknown>).mode).toBe("refresh");
+    expect((completeCall![2] as Record<string, unknown>).onboardingVersion).toBe("v1");
   });
 });

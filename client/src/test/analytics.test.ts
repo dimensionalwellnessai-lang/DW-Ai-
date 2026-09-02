@@ -96,6 +96,21 @@ describe("trackEvent", () => {
       trackEvent(EVENTS.REMINDER_SET, { reminderType: "habit", hasTime: true })
     ).not.toThrow();
   });
+
+  it("tracks onboarding routing and restart events", () => {
+    expect(() =>
+      trackEvent(EVENTS.ONBOARDING_ROUTE_SELECTED, { selectedVersion: "v2" })
+    ).not.toThrow();
+    expect(() =>
+      trackEvent(EVENTS.ONBOARDING_RESTART_CLICKED)
+    ).not.toThrow();
+    expect(() =>
+      trackEvent(EVENTS.ONBOARDING_RESTART_STARTED, { mode: "preserve" })
+    ).not.toThrow();
+    expect(() =>
+      trackEvent(EVENTS.ONBOARDING_RESTART_COMPLETED, { mode: "reset" })
+    ).not.toThrow();
+  });
 });
 
 // ─── Opt-out toggle ───────────────────────────────────────────────────────────

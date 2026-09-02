@@ -14,17 +14,23 @@ import { BottomNav } from "@/components/bottom-nav";
 import { FloatingAIWidget } from "@/components/floating-ai-widget";
 
 import { FirstTimeAgreement, hasAcceptedTerms } from "@/components/first-time-agreement";
-import { trackNewDayOpen } from "@/lib/analytics";
+import { EVENTS, trackEvent, trackNewDayOpen } from "@/lib/analytics";
 import { apiRequest } from "@/lib/queryClient";
 import { isDemoMode, exitDemoMode } from "@/lib/demo-mode";
 import { deepLinkService } from "@/lib/deep-link-service";
-import { isOnboardingComplete, AUTH_ONBOARDING_PAGES } from "@/lib/onboarding";
+import {
+  isOnboardingComplete,
+  AUTH_ONBOARDING_PAGES,
+  getOnboardingRoute,
+  getOnboardingRouteVersion,
+} from "@/lib/onboarding";
 import { computeLifecycleState } from "@/lib/lifecycle";
 import { InteractiveTourProvider, useInteractiveTour } from "@/components/interactive-tour-context";
 import { InteractiveTour } from "@/components/interactive-tour";
 import { ReminderBanner } from "@/components/reminder-banner";
 import { UsernameSetupModal } from "@/components/username-setup-modal";
 import { useAuth } from "@/hooks/use-auth";
+import { isFeatureEnabled } from "@/config/featureFlags";
 import { hydrateLanguageFromServer } from "@/lib/i18n";
 import { AccountabilityCheckIn } from "@/components/accountability-check-in";
 import { WhatsNewModal } from "@/components/whats-new-modal";
@@ -237,6 +243,7 @@ function wasSetupSkipped(): boolean {
 
 function FirstRunGuard({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
+  const { user } = useAuth();
   const setupComplete = isOnboardingComplete();
   
   // /paywall is accessible after onboarding redirect — don't gate it (allow query params too)
@@ -250,7 +257,20 @@ function FirstRunGuard({ children }: { children: React.ReactNode }) {
   const isOnOnboardingRoute = onboardingRoutes.includes(location);
 
   if (!setupComplete && !isOnOnboardingRoute) {
-    return <Redirect to="/voice-onboarding" />;
+    const selectedVersion = getOnboardingRouteVersion(
+      user?.onboardingVersion ?? null,
+      isFeatureEnabled("onboarding_v2_enabled"),
+    );
+    try {
+      const key = `dw:onboarding-route-selected:${selectedVersion}`;
+      if (sessionStorage.getItem(key) !== "1") {
+        sessionStorage.setItem(key, "1");
+        trackEvent(EVENTS.ONBOARDING_ROUTE_SELECTED, { selectedVersion });
+      }
+    } catch {
+      // Ignore session storage errors.
+    }
+    return <Redirect to={getOnboardingRoute(selectedVersion)} />;
   }
 
   // Setup complete, on any onboarding page -> go to /command-center.
@@ -295,7 +315,22 @@ function getLastRoute(): string | null {
 function HomeRedirect() {
   const { user } = useAuth();
 
-  if (!isOnboardingComplete()) return <Redirect to="/voice-onboarding" />;
+  if (!isOnboardingComplete()) {
+    const selectedVersion = getOnboardingRouteVersion(
+      user?.onboardingVersion ?? null,
+      isFeatureEnabled("onboarding_v2_enabled"),
+    );
+    try {
+      const key = `dw:onboarding-route-selected:${selectedVersion}`;
+      if (sessionStorage.getItem(key) !== "1") {
+        sessionStorage.setItem(key, "1");
+        trackEvent(EVENTS.ONBOARDING_ROUTE_SELECTED, { selectedVersion });
+      }
+    } catch {
+      // Ignore session storage errors.
+    }
+    return <Redirect to={getOnboardingRoute(selectedVersion)} />;
+  }
 
   // Lifecycle routing: long-away users go to welcome-back screen
   if (user) {

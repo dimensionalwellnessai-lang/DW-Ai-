@@ -233,6 +233,15 @@ This adds `oauth_provider` and `oauth_id` columns and makes `password` nullable 
 
 On Replit, these are automatically configured via the Secrets tab and Replit AI Integrations.
 
+### Onboarding v2 rollout flag
+
+- Feature flag: `onboarding_v2_enabled`
+- Default: `false` (keeps current onboarding entry behavior)
+- Enable locally for testing:
+  - `localStorage.setItem("onboarding_v2_enabled", "true")`
+  - or `?onboarding_v2_enabled=1` in the URL
+- Rollback: set the flag back to `false` (or remove the localStorage key) to route users through the existing onboarding entry.
+
 ### Running Locally
 
 1. Install dependencies:

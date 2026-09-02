@@ -9,6 +9,9 @@ export interface AuthUser {
   systemName?: string;
   role?: "user" | "admin";
   onboardingCompleted?: boolean;
+  onboardingVersion?: "v1" | "v2" | null;
+  onboardingCompletedAt?: string | null;
+  onboardingSource?: "new_user" | "manual_restart" | null;
   /**
    * Persisted language preference (BCP-47, e.g. "en", "pt-br"). When set,
    * the client hydrates `useLanguage()` from this value on first paint so

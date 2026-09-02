@@ -1128,7 +1128,10 @@ export async function registerRoutes(
         user: { 
           id: user.id, 
           email: user.email, 
-          onboardingCompleted: user.onboardingCompleted || false
+          onboardingCompleted: user.onboardingCompleted || false,
+          onboardingVersion: user.onboardingVersion ?? null,
+          onboardingCompletedAt: user.onboardingCompletedAt ?? null,
+          onboardingSource: user.onboardingSource ?? null,
         }
       });
     } catch (error) {
@@ -1192,7 +1195,16 @@ export async function registerRoutes(
           console.error("Session save error:", err);
           return res.status(500).json({ error: "Session error" });
         }
-        res.json({ user: { id: user.id, email: user.email, onboardingCompleted: user.onboardingCompleted } });
+        res.json({
+          user: {
+            id: user.id,
+            email: user.email,
+            onboardingCompleted: user.onboardingCompleted,
+            onboardingVersion: user.onboardingVersion ?? null,
+            onboardingCompletedAt: user.onboardingCompletedAt ?? null,
+            onboardingSource: user.onboardingSource ?? null,
+          },
+        });
       });
     } catch (error) {
       res.status(500).json({ error: "Login failed" });
@@ -1268,7 +1280,12 @@ export async function registerRoutes(
       await db.delete(shoppingListsTable).where(eq(shoppingListsTable.userId, userId));
 
       // 4. Mark onboarding as not completed so user goes through it again
-      await storage.updateUser(userId, { onboardingCompleted: false });
+      await storage.updateUser(userId, {
+        onboardingCompleted: false,
+        onboardingVersion: null,
+        onboardingCompletedAt: null,
+        onboardingSource: "manual_restart",
+      });
 
       res.json({ success: true });
     } catch (error) {
@@ -1284,7 +1301,21 @@ export async function registerRoutes(
     }
     // Update last_active_at on every authenticated session ping (best-effort)
     storage.updateUser(user.id, { lastActiveAt: new Date() }).catch(() => {});
-    res.json({ user: { id: user.id, email: user.email, username: user.username, firstName: user.firstName, systemName: user.systemName, onboardingCompleted: user.onboardingCompleted, language: user.language ?? null, lastActiveAt: user.lastActiveAt ?? null } });
+    res.json({
+      user: {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        firstName: user.firstName,
+        systemName: user.systemName,
+        onboardingCompleted: user.onboardingCompleted,
+        onboardingVersion: user.onboardingVersion ?? null,
+        onboardingCompletedAt: user.onboardingCompletedAt ?? null,
+        onboardingSource: user.onboardingSource ?? null,
+        language: user.language ?? null,
+        lastActiveAt: user.lastActiveAt ?? null,
+      },
+    });
   });
 
   /**
@@ -1325,7 +1356,20 @@ export async function registerRoutes(
     if (!updated) {
       return res.status(404).json({ error: "User not found" });
     }
-    res.json({ user: { id: updated.id, email: updated.email, username: updated.username, firstName: updated.firstName, systemName: updated.systemName, onboardingCompleted: updated.onboardingCompleted, language: updated.language ?? null } });
+    res.json({
+      user: {
+        id: updated.id,
+        email: updated.email,
+        username: updated.username,
+        firstName: updated.firstName,
+        systemName: updated.systemName,
+        onboardingCompleted: updated.onboardingCompleted,
+        onboardingVersion: updated.onboardingVersion ?? null,
+        onboardingCompletedAt: updated.onboardingCompletedAt ?? null,
+        onboardingSource: updated.onboardingSource ?? null,
+        language: updated.language ?? null,
+      },
+    });
   });
 
   // Billing endpoints (status, checkout, portal, restore, webhook) live in
@@ -11151,6 +11195,9 @@ const ANALYTICS_KNOWN_EVENT_NAMES = new Set([
   "plan_visited", "plan_activated", "plan_completed",
   "checkin_completed", "checkin_submitted",
   "reminder_set", "reminder_interacted",
+  "proactive_notice_shown", "proactive_notice_accepted", "proactive_notice_dismissed",
+  "onboarding_route_selected",
+  "onboarding_restart_clicked", "onboarding_restart_started", "onboarding_restart_canceled", "onboarding_restart_completed",
 ]);
 
   // ===== ANALYTICS EVENTS ENDPOINT =====

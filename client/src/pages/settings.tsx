@@ -47,6 +47,8 @@ import { useCosmicConsent } from "@/hooks/use-cosmic-consent";
 import { RemindersPanel } from "@/components/reminders-panel";
 import { CHECKIN_REMINDER_TIME_KEY } from "@/hooks/use-reminder-integrations";
 import { isAnalyticsOptedOut, setAnalyticsOptOut } from "@/lib/analytics";
+import { EVENTS, trackEvent } from "@/lib/analytics";
+import { getOnboardingRoute, getOnboardingRouteVersion } from "@/lib/onboarding";
 import {
   User,
   Bell,
@@ -154,15 +156,22 @@ export function SettingsPage() {
     );
   };
 
-  // ── Full account reset ───────────────────────────────────────────────────
-  const [showResetDialog, setShowResetDialog] = useState(false);
-  const resetMutation = useMutation({
-    mutationFn: () => apiRequest("DELETE", "/api/user/life-system/reset"),
-    onSuccess: () => {
-      setShowResetDialog(false);
-      // Clear onboarding flags so the welcome/onboarding flow runs again
+  // ── Onboarding restart ───────────────────────────────────────────────────
+  const [showRedoOnboardingDialog, setShowRedoOnboardingDialog] = useState(false);
+  const [redoOnboardingMode, setRedoOnboardingMode] = useState<"preserve" | "reset">("preserve");
+  const [confirmGoalReset, setConfirmGoalReset] = useState(false);
+  const [restartStarted, setRestartStarted] = useState(false);
+  const restartMutation = useMutation({
+    mutationFn: (mode: "preserve" | "reset") => apiRequest("POST", "/api/onboarding/restart", { mode }),
+    onSuccess: (_data, mode) => {
+      trackEvent(EVENTS.ONBOARDING_RESTART_COMPLETED, { mode });
+      setRestartStarted(false);
+      setShowRedoOnboardingDialog(false);
+      // Clear local onboarding flags so the onboarding flow runs again.
       try {
         localStorage.removeItem("dw_onboarding_completed");
+        localStorage.removeItem("dw_voice_onboarding_completed");
+        localStorage.removeItem("dw_voice_onboarding_skipped");
         const guestData = localStorage.getItem("dw_guest_data");
         if (guestData) {
           const parsed = JSON.parse(guestData);
@@ -172,11 +181,15 @@ export function SettingsPage() {
           }
         }
       } catch { /* ignore */ }
-      // Navigate to welcome to restart onboarding
-      window.location.href = "/welcome";
+      const selectedVersion = getOnboardingRouteVersion(
+        null,
+        isFeatureEnabled("onboarding_v2_enabled"),
+      );
+      setLocation(getOnboardingRoute(selectedVersion));
     },
     onError: () => {
-      toast({ title: "Reset failed", description: "Something went wrong. Please try again.", variant: "destructive" });
+      setRestartStarted(false);
+      toast({ title: "Restart failed", description: "Something went wrong. Please try again.", variant: "destructive" });
     },
   });
   const [checkinReminderTime, setCheckinReminderTime] = useState<string>(() => {
@@ -257,6 +270,28 @@ export function SettingsPage() {
       title: "Tour completed",
       description: "You can replay it anytime from Settings",
     });
+  };
+
+  const handleOpenRedoOnboarding = () => {
+    trackEvent(EVENTS.ONBOARDING_RESTART_CLICKED);
+    setRedoOnboardingMode("preserve");
+    setConfirmGoalReset(false);
+    setRestartStarted(false);
+    setShowRedoOnboardingDialog(true);
+  };
+
+  const handleRedoDialogOpenChange = (open: boolean) => {
+    if (!open && showRedoOnboardingDialog && !restartStarted && !restartMutation.isPending) {
+      trackEvent(EVENTS.ONBOARDING_RESTART_CANCELED);
+    }
+    setShowRedoOnboardingDialog(open);
+  };
+
+  const handleStartRedoOnboarding = () => {
+    if (redoOnboardingMode === "reset" && !confirmGoalReset) return;
+    setRestartStarted(true);
+    trackEvent(EVENTS.ONBOARDING_RESTART_STARTED, { mode: redoOnboardingMode });
+    restartMutation.mutate(redoOnboardingMode);
   };
 
   const handleTourSkip = () => {
@@ -898,11 +933,11 @@ export function SettingsPage() {
                 variant="outline"
                 size="sm"
                 className="border-orange-500/50 text-orange-600 dark:text-orange-400 hover:bg-orange-500/10 w-full sm:w-auto"
-                onClick={() => setShowResetDialog(true)}
-                data-testid="button-reset-life-system"
+                onClick={handleOpenRedoOnboarding}
+                data-testid="button-redo-onboarding"
               >
                 <RefreshCw className="h-4 w-4 mr-2" />
-                Start over
+                Redo onboarding
               </Button>
               <Link href="/account/delete">
                 <Button variant="destructive" size="sm" data-testid="button-delete-account" className="w-full sm:w-auto">
@@ -914,60 +949,80 @@ export function SettingsPage() {
           </CardContent>
         </Card>
 
-        {/* ── Reset Life System confirmation dialog ─────────────────────── */}
-        <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
+        {/* ── Redo onboarding confirmation dialog ───────────────────────── */}
+        <AlertDialog open={showRedoOnboardingDialog} onOpenChange={handleRedoDialogOpenChange}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Start completely over?</AlertDialogTitle>
+              <AlertDialogTitle>Redo onboarding</AlertDialogTitle>
               <AlertDialogDescription asChild>
                 <div className="space-y-3 text-sm text-muted-foreground">
-                  <p>DW will wipe your life system data and relearn you from scratch through onboarding.</p>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-3 space-y-1.5">
-                      <p className="font-medium text-destructive text-xs uppercase tracking-wide">Gets cleared</p>
-                      {[
-                        "Goals & targets",
-                        "Habits & core rules",
-                        "Schedule & events",
-                        "Routines",
-                        "Grocery list",
-                        "DW's memory of you",
-                        "Onboarding answers",
-                      ].map(item => (
-                        <p key={item} className="text-xs flex items-center gap-1.5">
-                          <span className="w-1 h-1 rounded-full bg-destructive shrink-0" />{item}
-                        </p>
-                      ))}
-                    </div>
-                    <div className="rounded-lg bg-green-500/10 border border-green-500/20 p-3 space-y-1.5">
-                      <p className="font-medium text-green-600 dark:text-green-400 text-xs uppercase tracking-wide">Always kept</p>
-                      {[
-                        "Your email & password",
-                        "Login credentials",
-                        "Chat history",
-                        "Account & profile",
-                      ].map(item => (
-                        <p key={item} className="text-xs flex items-center gap-1.5">
-                          <span className="w-1 h-1 rounded-full bg-green-500 shrink-0" />{item}
-                        </p>
-                      ))}
-                    </div>
+                  <p>Choose how you'd like to restart onboarding.</p>
+                  <div className="space-y-2 rounded-md border p-3">
+                    <button
+                      type="button"
+                      aria-pressed={redoOnboardingMode === "preserve"}
+                      className={cn(
+                        "w-full rounded-md border px-3 py-2 text-left transition-colors",
+                        redoOnboardingMode === "preserve" ? "border-primary bg-primary/5" : "border-border",
+                      )}
+                      onClick={() => {
+                        setRedoOnboardingMode("preserve");
+                        setConfirmGoalReset(false);
+                      }}
+                      data-testid="option-onboarding-preserve"
+                    >
+                      <p className="font-medium text-foreground">Preserve my data (recommended)</p>
+                      <p className="text-xs text-muted-foreground">Keep your goals and progress. Redo onboarding prompts only.</p>
+                    </button>
+                    <button
+                      type="button"
+                      aria-pressed={redoOnboardingMode === "reset"}
+                      className={cn(
+                        "w-full rounded-md border px-3 py-2 text-left transition-colors",
+                        redoOnboardingMode === "reset" ? "border-destructive bg-destructive/5" : "border-border",
+                      )}
+                      onClick={() => setRedoOnboardingMode("reset")}
+                      data-testid="option-onboarding-reset"
+                    >
+                      <p className="font-medium text-foreground">Reset goals and redo</p>
+                      <p className="text-xs text-muted-foreground">Delete goal records and onboarding answers before restarting.</p>
+                    </button>
                   </div>
-
-                  <p className="text-xs">After confirming you'll go through onboarding again. This cannot be undone.</p>
+                  {redoOnboardingMode === "reset" && (
+                    <label className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-3">
+                      <input
+                        type="checkbox"
+                        className="mt-0.5"
+                        checked={confirmGoalReset}
+                        onChange={(e) => setConfirmGoalReset(e.target.checked)}
+                        data-testid="checkbox-confirm-goal-reset"
+                      />
+                      <span className="text-xs">
+                        I understand this will remove my goals and onboarding answers before restarting.
+                      </span>
+                    </label>
+                  )}
                 </div>
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel data-testid="btn-reset-cancel">Cancel</AlertDialogCancel>
+              <AlertDialogCancel data-testid="btn-redo-onboarding-cancel">Cancel</AlertDialogCancel>
               <AlertDialogAction
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                onClick={() => resetMutation.mutate()}
-                disabled={resetMutation.isPending}
-                data-testid="btn-reset-confirm"
+                className={cn(
+                  redoOnboardingMode === "reset" && "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+                )}
+                onClick={(event) => {
+                  event.preventDefault();
+                  handleStartRedoOnboarding();
+                }}
+                disabled={restartMutation.isPending || (redoOnboardingMode === "reset" && !confirmGoalReset)}
+                data-testid="btn-redo-onboarding-confirm"
               >
-                {resetMutation.isPending ? "Clearing everything…" : "Yes, start over"}
+                {restartMutation.isPending
+                  ? "Starting…"
+                  : redoOnboardingMode === "reset"
+                    ? "Reset goals and redo"
+                    : "Redo onboarding"}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

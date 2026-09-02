@@ -372,6 +372,7 @@ export interface IStorage {
   getOnboardingProfile(userId: string): Promise<OnboardingProfile | undefined>;
   createOnboardingProfile(profile: InsertOnboardingProfile): Promise<OnboardingProfile>;
   updateOnboardingProfile(id: string, data: Partial<OnboardingProfile>): Promise<OnboardingProfile | undefined>;
+  restartOnboarding(userId: string, options?: { resetGoals?: boolean }): Promise<void>;
 
   getLifeSystem(userId: string): Promise<LifeSystem | undefined>;
   createLifeSystem(system: InsertLifeSystem): Promise<LifeSystem>;
@@ -1203,6 +1204,25 @@ export class DatabaseStorage implements IStorage {
   async updateOnboardingProfile(id: string, data: Partial<OnboardingProfile>): Promise<OnboardingProfile | undefined> {
     const [profile] = await db.update(onboardingProfiles).set(data).where(eq(onboardingProfiles.id, id)).returning();
     return profile || undefined;
+  }
+
+  async restartOnboarding(userId: string, options?: { resetGoals?: boolean }): Promise<void> {
+    const shouldResetGoals = options?.resetGoals === true;
+    await db.transaction(async (tx) => {
+      await tx.delete(onboardingProfiles).where(eq(onboardingProfiles.userId, userId));
+      if (shouldResetGoals) {
+        await tx.delete(goals).where(eq(goals.userId, userId));
+      }
+      await tx
+        .update(users)
+        .set({
+          onboardingCompleted: false,
+          onboardingVersion: null,
+          onboardingCompletedAt: null,
+          onboardingSource: "manual_restart",
+        })
+        .where(eq(users.id, userId));
+    });
   }
 
   async getLifeSystem(userId: string): Promise<LifeSystem | undefined> {
