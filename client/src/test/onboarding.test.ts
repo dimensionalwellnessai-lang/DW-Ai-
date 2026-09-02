@@ -1,5 +1,10 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { isOnboardingComplete, markOnboardingComplete } from "../lib/onboarding";
+import {
+  getOnboardingRoute,
+  getOnboardingRouteVersion,
+  isOnboardingComplete,
+  markOnboardingComplete,
+} from "../lib/onboarding";
 
 describe("onboarding completion helpers", () => {
   beforeEach(() => {
@@ -26,5 +31,17 @@ describe("onboarding completion helpers", () => {
       JSON.stringify({ profileSetup: { completedAt: Date.now() } }),
     );
     expect(isOnboardingComplete()).toBe(true);
+  });
+
+  it("routes new users to onboarding v2 entry when flag is enabled", () => {
+    const version = getOnboardingRouteVersion(null, true);
+    expect(version).toBe("v2");
+    expect(getOnboardingRoute(version)).toBe("/voice-onboarding?v=2");
+  });
+
+  it("preserves existing onboarding route when v2 flag is disabled", () => {
+    const version = getOnboardingRouteVersion(null, false);
+    expect(version).toBe("v1");
+    expect(getOnboardingRoute(version)).toBe("/voice-onboarding");
   });
 });

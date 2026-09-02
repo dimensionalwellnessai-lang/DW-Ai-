@@ -12,6 +12,10 @@ export type CoachingMode = typeof coachingModeEnum[number];
 
 export const subscriptionTierEnum = ["free", "plus"] as const;
 export type SubscriptionTier = typeof subscriptionTierEnum[number];
+export const onboardingVersionEnum = ["v1", "v2"] as const;
+export type OnboardingVersion = typeof onboardingVersionEnum[number];
+export const onboardingSourceEnum = ["new_user", "manual_restart"] as const;
+export type OnboardingSource = typeof onboardingSourceEnum[number];
 
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -22,6 +26,9 @@ export const users = pgTable("users", {
   systemName: text("system_name"),
   role: text("role").default("user").$type<UserRole>(),
   onboardingCompleted: boolean("onboarding_completed").default(false),
+  onboardingVersion: varchar("onboarding_version").$type<OnboardingVersion>(),
+  onboardingCompletedAt: timestamp("onboarding_completed_at"),
+  onboardingSource: varchar("onboarding_source").$type<OnboardingSource>(),
   trialStartAt: timestamp("trial_start_at"),
   createdAt: timestamp("created_at").defaultNow(),
   /** Last time the user was seen active in the app. Used for lifecycle routing. */

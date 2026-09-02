@@ -31,6 +31,7 @@ describe("FEATURE_FLAGS shape", () => {
   it("contains all expected flag keys", async () => {
     const { FEATURE_FLAGS } = await loadFeatureFlagsModule();
     const expectedKeys: (keyof FeatureFlags)[] = [
+      "onboarding_v2_enabled",
       "NEW_NAVIGATION",
       "NEW_ONBOARDING",
       "AI_PERSONALIZATION",
@@ -72,6 +73,11 @@ describe("isFeatureEnabled", () => {
   it("returns false for LIFE_BLUEPRINT which is off by default", async () => {
     const { isFeatureEnabled } = await loadFeatureFlagsModule();
     expect(isFeatureEnabled("LIFE_BLUEPRINT")).toBe(false);
+  });
+
+  it("keeps onboarding_v2_enabled off by default", async () => {
+    const { isFeatureEnabled } = await loadFeatureFlagsModule();
+    expect(isFeatureEnabled("onboarding_v2_enabled")).toBe(false);
   });
 
   it("agentic companion flags are off by default when no localStorage keys are set", async () => {

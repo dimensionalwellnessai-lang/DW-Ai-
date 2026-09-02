@@ -44,6 +44,22 @@ export function markOnboardingComplete(): void {
   }
 }
 
+export type OnboardingRouteVersion = "v1" | "v2";
+
+export function getOnboardingRouteVersion(
+  onboardingVersion: string | null | undefined,
+  onboardingV2Enabled: boolean,
+): OnboardingRouteVersion {
+  if (!onboardingVersion && onboardingV2Enabled) return "v2";
+  return "v1";
+}
+
+export function getOnboardingRoute(version: OnboardingRouteVersion): string {
+  // Keep the canonical onboarding surface unchanged for back-compat.
+  // v2 entry is represented via query param until content diverges.
+  return version === "v2" ? "/voice-onboarding?v=2" : "/voice-onboarding";
+}
+
 // ---------------------------------------------------------------------------
 // Auth / onboarding route prefixes
 // ---------------------------------------------------------------------------

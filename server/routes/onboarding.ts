@@ -213,9 +213,23 @@ function normalizeIanaTimezone(timezone: unknown): string | null {
 }
 
 export function registerOnboardingRoutes(app: Express): void {
+  app.post("/api/onboarding/restart", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId!;
+      const resetGoals = req.body?.mode === "reset";
+      await storage.restartOnboarding(userId, { resetGoals });
+      res.json({ success: true, mode: resetGoals ? "reset" : "preserve" });
+    } catch (error) {
+      console.error("Onboarding restart error:", error);
+      res.status(500).json({ error: "Failed to restart onboarding" });
+    }
+  });
+
   app.post("/api/onboarding/complete", requireAuth, async (req, res) => {
     try {
       const userId = req.session.userId!;
+      const user = await storage.getUser(userId);
+      const onboardingSource = user?.onboardingSource === "manual_restart" ? "manual_restart" : "new_user";
       const { 
         responsibilities, 
         priorities, 
@@ -243,6 +257,8 @@ export function registerOnboardingRoutes(app: Express): void {
         longTermGoals: longTermGoals || "",
         relationshipGoals: relationshipGoals || "",
         conversationData: conversationData || null,
+        onboardingVersion: "v1",
+        completedAt: new Date(),
       });
 
       const recommendations = await generateLifeSystemRecommendations({
@@ -287,7 +303,13 @@ export function registerOnboardingRoutes(app: Express): void {
         }))
       );
 
-      await storage.updateUser(userId, { onboardingCompleted: true, systemName: systemName || "My Life System" });
+      await storage.updateUser(userId, {
+        onboardingCompleted: true,
+        systemName: systemName || "My Life System",
+        onboardingVersion: "v1",
+        onboardingCompletedAt: new Date(),
+        onboardingSource,
+      });
 
       res.json({ success: true });
     } catch (error) {
@@ -300,10 +322,17 @@ export function registerOnboardingRoutes(app: Express): void {
   app.post("/api/onboarding/voice-complete", requireAuth, async (req, res) => {
     try {
       const userId = req.session.userId!;
+      const user = await storage.getUser(userId);
+      const onboardingSource = user?.onboardingSource === "manual_restart" ? "manual_restart" : "new_user";
       const { messages } = req.body as { messages?: Array<{ role: string; content: string }>; mode?: string };
 
       if (!messages || !Array.isArray(messages) || messages.length === 0) {
-        await storage.updateUser(userId, { onboardingCompleted: true });
+        await storage.updateUser(userId, {
+          onboardingCompleted: true,
+          onboardingVersion: "v2",
+          onboardingCompletedAt: new Date(),
+          onboardingSource,
+        });
         return res.json({ success: true, suggestions: [] });
       }
 
@@ -369,7 +398,15 @@ Return only valid JSON. Do not guess at things not mentioned. Keep suggestions r
         console.error("Voice onboarding AI extraction error (non-fatal):", aiErr);
       }
 
-      await storage.updateUser(userId, { onboardingCompleted: true, ...(extracted.firstName && typeof extracted.firstName === "string" ? { firstName: extracted.firstName.trim().slice(0, 50) } : {}) });
+      await storage.updateUser(userId, {
+        onboardingCompleted: true,
+        onboardingVersion: "v2",
+        onboardingCompletedAt: new Date(),
+        onboardingSource,
+        ...(extracted.firstName && typeof extracted.firstName === "string"
+          ? { firstName: extracted.firstName.trim().slice(0, 50) }
+          : {}),
+      });
 
       // Persist the full structured profile
       try {

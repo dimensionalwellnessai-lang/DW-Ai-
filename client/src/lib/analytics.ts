@@ -25,6 +25,11 @@ export const EVENTS = {
   PROACTIVE_NOTICE_SHOWN: "proactive_notice_shown",
   PROACTIVE_NOTICE_ACCEPTED: "proactive_notice_accepted",
   PROACTIVE_NOTICE_DISMISSED: "proactive_notice_dismissed",
+  ONBOARDING_ROUTE_SELECTED: "onboarding_route_selected",
+  ONBOARDING_RESTART_CLICKED: "onboarding_restart_clicked",
+  ONBOARDING_RESTART_STARTED: "onboarding_restart_started",
+  ONBOARDING_RESTART_CANCELED: "onboarding_restart_canceled",
+  ONBOARDING_RESTART_COMPLETED: "onboarding_restart_completed",
 } as const;
 
 export type AnalyticsEventName = (typeof EVENTS)[keyof typeof EVENTS];
@@ -129,6 +134,14 @@ type ProactiveNoticePayload = {
   suggestionKey: string;
 };
 
+type OnboardingRouteSelectedPayload = {
+  selectedVersion: "v1" | "v2";
+};
+
+type OnboardingRestartPayload = {
+  mode: "preserve" | "reset";
+};
+
 // Map event names to their payload types
 type EventPayloadMap = {
   [EVENTS.QUICK_SETUP_STARTED]: undefined;
@@ -153,6 +166,11 @@ type EventPayloadMap = {
   [EVENTS.PROACTIVE_NOTICE_SHOWN]: ProactiveNoticePayload;
   [EVENTS.PROACTIVE_NOTICE_ACCEPTED]: ProactiveNoticePayload;
   [EVENTS.PROACTIVE_NOTICE_DISMISSED]: ProactiveNoticePayload;
+  [EVENTS.ONBOARDING_ROUTE_SELECTED]: OnboardingRouteSelectedPayload;
+  [EVENTS.ONBOARDING_RESTART_CLICKED]: undefined;
+  [EVENTS.ONBOARDING_RESTART_STARTED]: OnboardingRestartPayload;
+  [EVENTS.ONBOARDING_RESTART_CANCELED]: undefined;
+  [EVENTS.ONBOARDING_RESTART_COMPLETED]: OnboardingRestartPayload;
 };
 
 // Session metadata (in-memory only)

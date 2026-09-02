@@ -6,6 +6,7 @@
  */
 
 export interface FeatureFlags {
+  onboarding_v2_enabled: boolean;     // ⏸️ Routes eligible users to onboarding v2 entry
   NEW_NAVIGATION: boolean;          // ✅ Context-aware hamburger menu
   NEW_ONBOARDING: boolean;          // ✅ Conversational onboarding flow
   AI_PERSONALIZATION: boolean;      // ✅ "Most Used" learning
@@ -55,6 +56,26 @@ function resolveInteractionEngineFlag(): boolean {
   if (typeof location !== "undefined") {
     return new URLSearchParams(location.search).get("ie") === "1";
   }
+  return false;
+}
+
+function resolveOnboardingV2EnabledFlag(): boolean {
+  try {
+    if (typeof localStorage !== "undefined" && localStorage.getItem("onboarding_v2_enabled") === "true") {
+      return true;
+    }
+  } catch {
+    // Ignore storage failures and fall back to query param.
+  }
+
+  try {
+    if (typeof location !== "undefined") {
+      return new URLSearchParams(location.search).get("onboarding_v2_enabled") === "1";
+    }
+  } catch {
+    // URL parsing failed – fail safely.
+  }
+
   return false;
 }
 
@@ -528,6 +549,7 @@ function resolveSharedAttentionFlag(): boolean {
 }
 
 export const FEATURE_FLAGS: FeatureFlags = {
+  onboarding_v2_enabled: resolveOnboardingV2EnabledFlag(),
   NEW_NAVIGATION: true,
   NEW_ONBOARDING: true,
   AI_PERSONALIZATION: true,
