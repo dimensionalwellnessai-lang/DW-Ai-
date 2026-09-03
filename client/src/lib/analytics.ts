@@ -36,6 +36,10 @@ export const EVENTS = {
   ONBOARDING_RECOMMENDATIONS_SAVED: "onboarding_recommendations_saved",
   ONBOARDING_FOCUS_WINDOW_CREATED: "onboarding_focus_window_created",
   ONBOARDING_FOCUS_WINDOW_ADJUSTED: "onboarding_focus_window_adjusted",
+  DASHBOARD_BLOCK_INTERACTED: "dashboard_block_interacted",
+  DASHBOARD_REALIGN_USED: "dashboard_realign_used",
+  DASHBOARD_ADAPTIVE_RANKING_DECIDED: "dashboard_adaptive_ranking_decided",
+  DASHBOARD_CALENDAR_SUGGESTION_CLICKED: "dashboard_calendar_suggestion_clicked",
 } as const;
 
 export type AnalyticsEventName = (typeof EVENTS)[keyof typeof EVENTS];
@@ -173,6 +177,28 @@ type OnboardingFocusWindowPayload = {
   changedAreaCount: number;
 };
 
+type DashboardBlockInteractedPayload = {
+  block: "where_i_stand" | "what_to_do_now" | "calendar" | "lane_card";
+  action: "open";
+  adaptationMode: "reset" | "maintain" | "assistant";
+};
+
+type DashboardRealignUsedPayload = {
+  mode: "quick_update" | "full_refresh";
+  adaptationMode: "reset" | "maintain" | "assistant";
+};
+
+type DashboardAdaptiveRankingPayload = {
+  adaptationMode: "reset" | "maintain" | "assistant";
+  lane: "stabilize" | "understand" | "plan" | "expand" | "execute";
+  cardCount: number;
+  calendarState: "connected" | "none" | "overloaded";
+};
+
+type DashboardCalendarSuggestionPayload = {
+  suggestionType: "upcoming_prep" | "focus_window" | "overload_recovery" | "no_calendar";
+};
+
 // Map event names to their payload types
 type EventPayloadMap = {
   [EVENTS.QUICK_SETUP_STARTED]: undefined;
@@ -208,6 +234,10 @@ type EventPayloadMap = {
   [EVENTS.ONBOARDING_RECOMMENDATIONS_SAVED]: OnboardingRecommendationsSavedPayload;
   [EVENTS.ONBOARDING_FOCUS_WINDOW_CREATED]: OnboardingFocusWindowPayload;
   [EVENTS.ONBOARDING_FOCUS_WINDOW_ADJUSTED]: OnboardingFocusWindowPayload;
+  [EVENTS.DASHBOARD_BLOCK_INTERACTED]: DashboardBlockInteractedPayload;
+  [EVENTS.DASHBOARD_REALIGN_USED]: DashboardRealignUsedPayload;
+  [EVENTS.DASHBOARD_ADAPTIVE_RANKING_DECIDED]: DashboardAdaptiveRankingPayload;
+  [EVENTS.DASHBOARD_CALENDAR_SUGGESTION_CLICKED]: DashboardCalendarSuggestionPayload;
 };
 
 // Session metadata (in-memory only)
