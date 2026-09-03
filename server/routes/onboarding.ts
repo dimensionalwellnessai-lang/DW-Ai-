@@ -1,12 +1,30 @@
 import type { Express } from "express";
 
+import { db } from "../db";
 import { storage } from "../storage";
 
 import { requireAuth } from "./_shared";
 
 import { generateLifeSystemRecommendations, openai } from "../openai";
-
-import { type OnboardingProfile } from "@shared/schema";
+import { onboardingProfiles, type OnboardingProfile } from "@shared/schema";
+import {
+  ONBOARDING_INTENTS,
+  ONBOARDING_LIFE_AREAS,
+  ONBOARDING_REASON_OPTIONS,
+  PRIORITY_BUCKETS,
+  PRIORITIZATION_FORMULA,
+  applyFocusWindowGuardrail,
+  normalizeAssignments,
+  normalizeIntents,
+  normalizeReasonIds,
+  normalizeSignals,
+  recommendPriorityAssignments,
+  sanitizeReasonText,
+  type OnboardingProfileContext,
+  type PrioritizationSnapshot,
+} from "@shared/onboardingPrioritization";
+import { eq, sql } from "drizzle-orm";
+import { z } from "zod";
 
 // ─── Onboarding suggestion types ─────────────────────────────────────────────
 
@@ -64,7 +82,10 @@ function inferRoutineTiming(text: string): {
   const explicitDay = WEEKDAY_NAMES.findIndex((day) => normalized.includes(day));
   const dayOfWeek = explicitDay >= 0 ? explicitDay : undefined;
 
-  const withCadence = (startTime: string, cadence: "daily" | "weekly" = dayOfWeek !== undefined ? "weekly" : "daily") => ({
+  const withCadence = (
+    startTime: string,
+    cadence: "daily" | "weekly" = dayOfWeek !== undefined ? "weekly" : "daily"
+  ) => ({
     cadence,
     ...(dayOfWeek !== undefined ? { dayOfWeek } : {}),
     startTime,
@@ -74,7 +95,11 @@ function inferRoutineTiming(text: string): {
   if (normalized.includes("morning")) {
     return withCadence("07:00");
   }
-  if (normalized.includes("afternoon") || normalized.includes("lunch") || normalized.includes("midday")) {
+  if (
+    normalized.includes("afternoon") ||
+    normalized.includes("lunch") ||
+    normalized.includes("midday")
+  ) {
     return withCadence("12:00");
   }
   if (
@@ -86,17 +111,25 @@ function inferRoutineTiming(text: string): {
     return withCadence("20:00");
   }
   if (normalized.includes("weekly") || dayOfWeek !== undefined) {
-    return { cadence: "weekly", dayOfWeek: dayOfWeek ?? 1, startTime: "09:00", durationMinutes: 30 };
+    return {
+      cadence: "weekly",
+      dayOfWeek: dayOfWeek ?? 1,
+      startTime: "09:00",
+      durationMinutes: 30,
+    };
   }
   return null;
 }
 
-function buildNextOccurrence(timing: {
-  cadence: "daily" | "weekly";
-  dayOfWeek?: number;
-  startTime: string;
-  durationMinutes: number;
-}, timeZone: string) {
+function buildNextOccurrence(
+  timing: {
+    cadence: "daily" | "weekly";
+    dayOfWeek?: number;
+    startTime: string;
+    durationMinutes: number;
+  },
+  timeZone: string
+) {
   const getDateParts = (date: Date) => {
     const parts = new Intl.DateTimeFormat("en-US", {
       timeZone,
@@ -140,7 +173,7 @@ function buildNextOccurrence(timing: {
       Number(get("day")),
       Number(get("hour")),
       Number(get("minute")),
-      Number(get("second")),
+      Number(get("second"))
     );
     return localAsUtc - date.getTime();
   };
@@ -149,7 +182,7 @@ function buildNextOccurrence(timing: {
     month: number,
     day: number,
     hour: number,
-    minute: number,
+    minute: number
   ) => {
     const utcGuess = Date.UTC(year, month - 1, day, hour, minute, 0, 0);
     const guessDate = new Date(utcGuess);
@@ -167,13 +200,25 @@ function buildNextOccurrence(timing: {
   let recurrenceWeekday = timing.dayOfWeek ?? localNow.weekday;
 
   if (timing.cadence === "daily") {
-    const todayStart = zonedDateTimeToUtc(localNow.year, localNow.month, localNow.day, hour, minute);
+    const todayStart = zonedDateTimeToUtc(
+      localNow.year,
+      localNow.month,
+      localNow.day,
+      hour,
+      minute
+    );
     if (todayStart.getTime() <= now.getTime()) daysUntil = 1;
   } else {
     const targetDay = timing.dayOfWeek ?? localNow.weekday;
     recurrenceWeekday = targetDay;
     daysUntil = targetDay - localNow.weekday;
-    const thisWeekStart = zonedDateTimeToUtc(localNow.year, localNow.month, localNow.day, hour, minute);
+    const thisWeekStart = zonedDateTimeToUtc(
+      localNow.year,
+      localNow.month,
+      localNow.day,
+      hour,
+      minute
+    );
     if (daysUntil < 0 || (daysUntil === 0 && thisWeekStart.getTime() <= now.getTime())) {
       daysUntil += 7;
     }
@@ -212,6 +257,45 @@ function normalizeIanaTimezone(timezone: unknown): string | null {
   }
 }
 
+const prioritizationAreaEnum = z.enum(
+  ONBOARDING_LIFE_AREAS.map((area) => area.id) as [string, ...string[]]
+);
+const prioritizationBucketEnum = z.enum(PRIORITY_BUCKETS);
+const prioritizationIntentEnum = z.enum(ONBOARDING_INTENTS);
+const prioritizationReasonEnum = z.enum(
+  ONBOARDING_REASON_OPTIONS.map((reason) => reason.id) as [string, ...string[]]
+);
+
+const prioritizationRequestSchema = z.object({
+  intents: z.array(prioritizationIntentEnum).default([]),
+  selectedReasons: z.array(prioritizationReasonEnum).default([]),
+  reasonFreeText: z.string().max(280).nullish(),
+  mode: z.enum(["manual", "choose_for_me"]).default("manual"),
+  assignments: z
+    .array(
+      z.object({
+        areaId: prioritizationAreaEnum,
+        bucket: prioritizationBucketEnum,
+        score: z.number().optional(),
+        why: z.string().max(280).optional(),
+        recommended: z.boolean().optional(),
+      })
+    )
+    .optional(),
+  signals: z
+    .array(
+      z.object({
+        areaId: prioritizationAreaEnum,
+        currentState: z.number().int().min(1).max(10),
+        importance: z.number().int().min(1).max(10),
+        urgency: z.boolean(),
+        energyDrain: z.boolean(),
+      })
+    )
+    .optional(),
+  override: z.boolean().optional(),
+});
+
 export function registerOnboardingRoutes(app: Express): void {
   app.post("/api/onboarding/restart", requireAuth, async (req, res) => {
     try {
@@ -229,22 +313,23 @@ export function registerOnboardingRoutes(app: Express): void {
     try {
       const userId = req.session.userId!;
       const user = await storage.getUser(userId);
-      const onboardingSource = user?.onboardingSource === "manual_restart" ? "manual_restart" : "new_user";
-      const { 
-        responsibilities, 
-        priorities, 
-        freeTimeHours, 
-        peakMotivationTime, 
-        wellnessFocus, 
+      const onboardingSource =
+        user?.onboardingSource === "manual_restart" ? "manual_restart" : "new_user";
+      const {
+        responsibilities,
+        priorities,
+        freeTimeHours,
+        peakMotivationTime,
+        wellnessFocus,
         systemName,
         lifeAreaDetails,
         shortTermGoals,
         longTermGoals,
-        relationshipGoals 
+        relationshipGoals,
       } = req.body;
 
       const { conversationData } = req.body;
-      
+
       await storage.createOnboardingProfile({
         userId,
         responsibilities: responsibilities || [],
@@ -323,7 +408,8 @@ export function registerOnboardingRoutes(app: Express): void {
     try {
       const userId = req.session.userId!;
       const user = await storage.getUser(userId);
-      const onboardingSource = user?.onboardingSource === "manual_restart" ? "manual_restart" : "new_user";
+      const onboardingSource =
+        user?.onboardingSource === "manual_restart" ? "manual_restart" : "new_user";
       const { messages, onboardingVersion } = req.body as {
         messages?: Array<{ role: string; content: string }>;
         mode?: string;
@@ -432,7 +518,8 @@ Return only valid JSON. Do not guess at things not mentioned. Keep suggestions r
           currentCapacity: extracted.currentCapacity ?? null,
           tonePreference: extracted.tonePreference ?? null,
           uncertaintyFlags: extracted.uncertaintyFlags ?? null,
-          suggestedStructure: (extracted.suggestions ?? []) as unknown as OnboardingProfile["suggestedStructure"],
+          suggestedStructure: (extracted.suggestions ??
+            []) as unknown as OnboardingProfile["suggestedStructure"],
           onboardingVersion: selectedOnboardingVersion,
           completedAt: new Date(),
         };
@@ -449,24 +536,57 @@ Return only valid JSON. Do not guess at things not mentioned. Keep suggestions r
             const n = Array.isArray(next) ? (next as string[]) : [];
             return Array.from(new Set([...p, ...n]));
           };
-          const preferNew = <T,>(next: T | null | undefined, prev: T | null | undefined): T | null =>
-            next !== null && next !== undefined && next !== ("" as unknown as T) ? next : (prev ?? null);
+          const preferNew = <T>(
+            next: T | null | undefined,
+            prev: T | null | undefined
+          ): T | null =>
+            next !== null && next !== undefined && next !== ("" as unknown as T)
+              ? next
+              : (prev ?? null);
 
           const merged: Partial<OnboardingProfile> = {
-            wellnessFocus: (profileData.wellnessFocus as string[])?.length ? profileData.wellnessFocus : existingOnboarding.wellnessFocus,
-            shortTermGoals: preferNew(profileData.shortTermGoals, existingOnboarding.shortTermGoals) ?? "",
+            wellnessFocus: (profileData.wellnessFocus as string[])?.length
+              ? profileData.wellnessFocus
+              : existingOnboarding.wellnessFocus,
+            shortTermGoals:
+              preferNew(profileData.shortTermGoals, existingOnboarding.shortTermGoals) ?? "",
             conversationData: profileData.conversationData,
-            desiredFeelings: unionArr(existingOnboarding.desiredFeelings, profileData.desiredFeelings),
-            currentStateTags: unionArr(existingOnboarding.currentStateTags, profileData.currentStateTags),
-            activeLifeAreas: unionArr(existingOnboarding.activeLifeAreas, profileData.activeLifeAreas),
+            desiredFeelings: unionArr(
+              existingOnboarding.desiredFeelings,
+              profileData.desiredFeelings
+            ),
+            currentStateTags: unionArr(
+              existingOnboarding.currentStateTags,
+              profileData.currentStateTags
+            ),
+            activeLifeAreas: unionArr(
+              existingOnboarding.activeLifeAreas,
+              profileData.activeLifeAreas
+            ),
             barrierTags: unionArr(existingOnboarding.barrierTags, profileData.barrierTags),
             supportNeeds: unionArr(existingOnboarding.supportNeeds, profileData.supportNeeds),
-            curiosityTopics: unionArr(existingOnboarding.curiosityTopics, profileData.curiosityTopics),
-            generatedSummary: preferNew(profileData.generatedSummary, existingOnboarding.generatedSummary),
-            generatedDirection: preferNew(profileData.generatedDirection, existingOnboarding.generatedDirection),
-            currentCapacity: preferNew(profileData.currentCapacity, existingOnboarding.currentCapacity),
-            tonePreference: preferNew(profileData.tonePreference, existingOnboarding.tonePreference),
-            uncertaintyFlags: (profileData.uncertaintyFlags ?? existingOnboarding.uncertaintyFlags) as OnboardingProfile["uncertaintyFlags"],
+            curiosityTopics: unionArr(
+              existingOnboarding.curiosityTopics,
+              profileData.curiosityTopics
+            ),
+            generatedSummary: preferNew(
+              profileData.generatedSummary,
+              existingOnboarding.generatedSummary
+            ),
+            generatedDirection: preferNew(
+              profileData.generatedDirection,
+              existingOnboarding.generatedDirection
+            ),
+            currentCapacity: preferNew(
+              profileData.currentCapacity,
+              existingOnboarding.currentCapacity
+            ),
+            tonePreference: preferNew(
+              profileData.tonePreference,
+              existingOnboarding.tonePreference
+            ),
+            uncertaintyFlags: (profileData.uncertaintyFlags ??
+              existingOnboarding.uncertaintyFlags) as OnboardingProfile["uncertaintyFlags"],
             suggestedStructure: (profileData.suggestedStructure as unknown[])?.length
               ? profileData.suggestedStructure
               : existingOnboarding.suggestedStructure,
@@ -481,7 +601,7 @@ Return only valid JSON. Do not guess at things not mentioned. Keep suggestions r
             priorities: [],
             longTermGoals: "",
             relationshipGoals: "",
-            lifeAreaDetails: {},
+            lifeAreaDetails: {} as OnboardingProfile["lifeAreaDetails"],
             ...profileData,
           });
         }
@@ -523,6 +643,139 @@ Return only valid JSON. Do not guess at things not mentioned. Keep suggestions r
     }
   });
 
+  app.post("/api/onboarding/prioritization", requireAuth, async (req, res) => {
+    try {
+      const parsed = prioritizationRequestSchema.safeParse(req.body ?? {});
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid prioritization payload" });
+      }
+
+      const userId = req.session.userId!;
+      const now = new Date();
+      const signals = normalizeSignals(parsed.data.signals);
+      const assignmentSource =
+        parsed.data.mode === "choose_for_me" && !parsed.data.assignments?.length
+          ? recommendPriorityAssignments(signals).assignments
+          : parsed.data.assignments;
+      const submittedOrder = new Map(
+        (assignmentSource ?? []).map((assignment, index) => [assignment.areaId, index])
+      );
+      const assignments = normalizeAssignments(assignmentSource, signals).sort((left, right) => {
+        const leftIndex = submittedOrder.get(left.areaId);
+        const rightIndex = submittedOrder.get(right.areaId);
+        if (leftIndex !== undefined && rightIndex !== undefined) return leftIndex - rightIndex;
+        if (leftIndex !== undefined) return -1;
+        if (rightIndex !== undefined) return 1;
+        return left.areaId.localeCompare(right.areaId);
+      });
+
+      const profileContext: OnboardingProfileContext = {
+        intents: normalizeIntents(parsed.data.intents),
+        selectedReasons: normalizeReasonIds(parsed.data.selectedReasons),
+        reasonFreeText: sanitizeReasonText(parsed.data.reasonFreeText),
+        userLanguageInputs: {
+          reasonNarrative: sanitizeReasonText(parsed.data.reasonFreeText),
+          lastUpdatedAt: now.toISOString(),
+        },
+      };
+
+      const prioritySnapshotBase = {
+        mode: parsed.data.mode,
+        formula: PRIORITIZATION_FORMULA,
+        signals,
+        assignments,
+        recommendedAt: now.toISOString(),
+      };
+
+      const prioritizedAreas = assignments
+        .filter((assignment) => assignment.bucket !== "background")
+        .map((assignment) => assignment.areaId);
+
+      const { guardrail } = await db.transaction(async (tx) => {
+        await tx.execute(
+          sql`SELECT pg_advisory_xact_lock(hashtext(${`onboarding-prioritization:${userId}`}))`
+        );
+
+        const [existingProfile] = await tx
+          .select()
+          .from(onboardingProfiles)
+          .where(eq(onboardingProfiles.userId, userId))
+          .limit(1);
+
+        const guardrail = applyFocusWindowGuardrail({
+          existingFocusWindow: existingProfile?.prioritySnapshot?.focusWindow ?? null,
+          previousAssignments: existingProfile?.prioritySnapshot?.assignments ?? [],
+          nextAssignments: assignments,
+          now,
+          override: parsed.data.override,
+        });
+
+        if (!guardrail.allowed) {
+          return { guardrail };
+        }
+
+        const nextPrioritySnapshot: PrioritizationSnapshot = {
+          ...prioritySnapshotBase,
+          focusWindow: guardrail.focusWindow,
+        };
+
+        if (existingProfile) {
+          await tx
+            .update(onboardingProfiles)
+            .set({
+              priorities: prioritizedAreas,
+              profileContext,
+              prioritySnapshot: nextPrioritySnapshot,
+            })
+            .where(eq(onboardingProfiles.id, existingProfile.id));
+        } else {
+          await tx.insert(onboardingProfiles).values({
+            userId,
+            responsibilities: [],
+            priorities: prioritizedAreas,
+            wellnessFocus: [],
+            lifeAreaDetails: {},
+            shortTermGoals: "",
+            longTermGoals: "",
+            relationshipGoals: "",
+            profileContext,
+            prioritySnapshot: nextPrioritySnapshot,
+            completedAt: now,
+          });
+        }
+
+        return {
+          guardrail,
+          prioritySnapshot: nextPrioritySnapshot,
+        };
+      });
+
+      if (!guardrail.allowed) {
+        return res.status(409).json({
+          success: false,
+          requiresOverride: guardrail.requiresOverride,
+          focusWindow: guardrail.focusWindow,
+          message: guardrail.message,
+        });
+      }
+
+      return res.json({
+        success: true,
+        profileContext,
+        prioritySnapshot: {
+          ...prioritySnapshotBase,
+          focusWindow: guardrail.focusWindow,
+        },
+        focusWindowStatus: guardrail.status,
+        changedAreaIds: guardrail.changedAreaIds,
+        message: guardrail.message,
+      });
+    } catch (error) {
+      console.error("Onboarding prioritization error:", error);
+      return res.status(500).json({ error: "Failed to save prioritization" });
+    }
+  });
+
   // Accept suggestions from onboarding and populate My Life
   app.post("/api/onboarding/accept-suggestions", requireAuth, async (req, res) => {
     try {
@@ -546,8 +799,10 @@ Return only valid JSON. Do not guess at things not mentioned. Keep suggestions r
 
       const accepted = suggestions.filter((s) => s.status === "accepted" || s.status === "edited");
       const requestTimezone = normalizeIanaTimezone(timezone) ?? "UTC";
-      const finalTitle = (s: typeof accepted[0]) => {
-        return (s.status === "edited" && s.editedTitle?.trim()) ? s.editedTitle.trim() : s.title.trim();
+      const finalTitle = (s: (typeof accepted)[0]) => {
+        return s.status === "edited" && s.editedTitle?.trim()
+          ? s.editedTitle.trim()
+          : s.title.trim();
       };
       const validAccepted = accepted.filter((s) => finalTitle(s).length > 0);
 
@@ -593,16 +848,16 @@ Return only valid JSON. Do not guess at things not mentioned. Keep suggestions r
           const routine = await storage.createRoutine({
             userId,
             name: finalTitle(s),
-            dimensionTags: timing?.cadence === "daily" && routineText.toLowerCase().includes("morning")
-              ? ["morning"]
-              : timing?.cadence === "daily" && (
-                  routineText.toLowerCase().includes("evening") ||
-                  routineText.toLowerCase().includes("night") ||
-                  routineText.toLowerCase().includes("wind down") ||
-                  routineText.toLowerCase().includes("wind-down")
-                )
-                ? ["evening"]
-                : [],
+            dimensionTags:
+              timing?.cadence === "daily" && routineText.toLowerCase().includes("morning")
+                ? ["morning"]
+                : timing?.cadence === "daily" &&
+                    (routineText.toLowerCase().includes("evening") ||
+                      routineText.toLowerCase().includes("night") ||
+                      routineText.toLowerCase().includes("wind down") ||
+                      routineText.toLowerCase().includes("wind-down"))
+                  ? ["evening"]
+                  : [],
             steps: [],
             totalDurationMinutes: timing?.durationMinutes ?? 30,
             scheduleOptions: timing
@@ -640,7 +895,9 @@ Return only valid JSON. Do not guess at things not mentioned. Keep suggestions r
       }
 
       // Projects/Plans -> Projects
-      const projectSuggestions = validAccepted.filter((s) => s.type === "project" || s.type === "plan");
+      const projectSuggestions = validAccepted.filter(
+        (s) => s.type === "project" || s.type === "plan"
+      );
       for (const s of projectSuggestions) {
         try {
           await storage.createProject({
@@ -660,7 +917,10 @@ Return only valid JSON. Do not guess at things not mentioned. Keep suggestions r
       const profile = await storage.getOnboardingProfile(userId);
       if (profile) {
         const stored = (profile.suggestedStructure as OnboardingSuggestion[] | null) ?? [];
-        const incomingMap: Record<string, { status: OnboardingSuggestion["status"]; editedTitle?: string }> = {};
+        const incomingMap: Record<
+          string,
+          { status: OnboardingSuggestion["status"]; editedTitle?: string }
+        > = {};
         for (const s of suggestions) {
           incomingMap[s.id] = { status: s.status, editedTitle: s.editedTitle };
         }
@@ -700,15 +960,17 @@ Return only valid JSON. Do not guess at things not mentioned. Keep suggestions r
     {
       id: "schedule",
       shouldShow: (p) => !p.currentCapacity || p.uncertaintyFlags?.capacityUnclear === true,
-      prompt: "Tell me a bit more about your schedule — what does a typical week look like for you?",
-      context: "We want to understand your available bandwidth so suggestions actually fit your life.",
+      prompt:
+        "Tell me a bit more about your schedule — what does a typical week look like for you?",
+      context:
+        "We want to understand your available bandwidth so suggestions actually fit your life.",
     },
     {
       id: "barriers",
-      shouldShow: (p) =>
-        !p.barrierTags?.length || p.uncertaintyFlags?.barriersUnknown === true,
+      shouldShow: (p) => !p.barrierTags?.length || p.uncertaintyFlags?.barriersUnknown === true,
       prompt: "What usually throws your day off? Even small things count.",
-      context: "Knowing your friction points helps DW build systems around them instead of ignoring them.",
+      context:
+        "Knowing your friction points helps DW build systems around them instead of ignoring them.",
     },
     {
       id: "hold_together",
@@ -721,21 +983,29 @@ Return only valid JSON. Do not guess at things not mentioned. Keep suggestions r
       id: "first_system",
       shouldShow: (p) => {
         const suggestions = (p.suggestedStructure as OnboardingSuggestion[] | null) ?? [];
-        return suggestions.filter((s) => s.type === "system" && (s.status === "accepted" || s.status === "edited")).length === 0;
+        return (
+          suggestions.filter(
+            (s) => s.type === "system" && (s.status === "accepted" || s.status === "edited")
+          ).length === 0
+        );
       },
-      prompt: "Want help creating your first system — something repeatable that makes a real area of your life easier?",
-      context: "Systems are the backbone of a sustainable life setup. One good one changes everything.",
+      prompt:
+        "Want help creating your first system — something repeatable that makes a real area of your life easier?",
+      context:
+        "Systems are the backbone of a sustainable life setup. One good one changes everything.",
     },
     {
       id: "curiosity",
       shouldShow: (p) => !p.curiosityTopics?.length,
-      prompt: "Is there something you've been wanting to learn more about lately — even if it feels unrelated to your goals?",
+      prompt:
+        "Is there something you've been wanting to learn more about lately — even if it feels unrelated to your goals?",
       context: "Curiosity is data. DW can weave your interests into the learning layer.",
     },
     {
       id: "direction",
       shouldShow: (p) => !p.generatedDirection && p.uncertaintyFlags?.goalsUnclear === true,
-      prompt: "If things could be different in six months, what's the first thing you'd want to see change?",
+      prompt:
+        "If things could be different in six months, what's the first thing you'd want to see change?",
       context: "You don't need a plan — just a direction. We'll build from there.",
     },
   ];
@@ -757,9 +1027,7 @@ Return only valid JSON. Do not guess at things not mentioned. Keep suggestions r
 
       const dismissed = new Set<string>(profile.dismissedProgressivePrompts ?? []);
 
-      const next = PROGRESSIVE_PROMPTS.find(
-        (p) => !dismissed.has(p.id) && p.shouldShow(profile),
-      );
+      const next = PROGRESSIVE_PROMPTS.find((p) => !dismissed.has(p.id) && p.shouldShow(profile));
 
       if (!next) {
         return res.json({ prompt: null });

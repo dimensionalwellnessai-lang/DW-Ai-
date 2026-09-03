@@ -7,6 +7,7 @@
 
 export interface FeatureFlags {
   onboarding_v2_enabled: boolean;     // ⏸️ Routes eligible users to onboarding v2 entry
+  onboarding_prioritization_v2: boolean; // ⏸️ V2 onboarding priority-map + choose-for-me flow
   NEW_NAVIGATION: boolean;          // ✅ Context-aware hamburger menu
   NEW_ONBOARDING: boolean;          // ✅ Conversational onboarding flow
   AI_PERSONALIZATION: boolean;      // ✅ "Most Used" learning
@@ -71,6 +72,29 @@ function resolveOnboardingV2EnabledFlag(): boolean {
   try {
     if (typeof location !== "undefined") {
       return new URLSearchParams(location.search).get("onboarding_v2_enabled") === "1";
+    }
+  } catch {
+    // URL parsing failed – fail safely.
+  }
+
+  return false;
+}
+
+function resolveOnboardingPrioritizationV2Flag(): boolean {
+  try {
+    if (
+      typeof localStorage !== "undefined" &&
+      localStorage.getItem("onboarding_prioritization_v2") === "true"
+    ) {
+      return true;
+    }
+  } catch {
+    // Ignore storage failures and fall back to query param.
+  }
+
+  try {
+    if (typeof location !== "undefined") {
+      return new URLSearchParams(location.search).get("onboarding_prioritization_v2") === "1";
     }
   } catch {
     // URL parsing failed – fail safely.
@@ -550,6 +574,7 @@ function resolveSharedAttentionFlag(): boolean {
 
 export const FEATURE_FLAGS: FeatureFlags = {
   onboarding_v2_enabled: resolveOnboardingV2EnabledFlag(),
+  onboarding_prioritization_v2: resolveOnboardingPrioritizationV2Flag(),
   NEW_NAVIGATION: true,
   NEW_ONBOARDING: true,
   AI_PERSONALIZATION: true,

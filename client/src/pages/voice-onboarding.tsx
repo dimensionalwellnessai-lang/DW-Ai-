@@ -1,9 +1,22 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mic, MicOff, Send, Keyboard, Loader2, ArrowRight, Pencil, Check, X, Sparkles, ChevronDown, Info } from "lucide-react";
+import {
+  Mic,
+  MicOff,
+  Send,
+  Keyboard,
+  Loader2,
+  ArrowRight,
+  Pencil,
+  Check,
+  X,
+  Sparkles,
+  ChevronDown,
+  Info,
+} from "lucide-react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -13,6 +26,24 @@ import { OnboardingValuePreview } from "@/components/onboarding-value-preview";
 import { isFeatureEnabled } from "@/config/featureFlags";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { markOnboardingComplete } from "@/lib/onboarding";
+import { EVENTS, trackEvent } from "@/lib/analytics";
+import {
+  ONBOARDING_INTENTS,
+  ONBOARDING_LIFE_AREAS,
+  ONBOARDING_REASON_OPTIONS,
+  PRIORITIZATION_FORMULA,
+  buildDefaultSignals,
+  createFocusWindow,
+  normalizeAssignments,
+  normalizeSignals,
+  recommendPriorityAssignments,
+  type LifeAreaSignal,
+  type OnboardingIntent,
+  type OnboardingProfileContext,
+  type OnboardingReasonId,
+  type PrioritizationSnapshot,
+  type PriorityAssignment,
+} from "@shared/onboardingPrioritization";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -95,13 +126,13 @@ const VOICE_AUTO_RESTART_DELAY_MS = 600;
 // Opening line DW shows when a returning user starts a "Full life refresh"
 // (/voice-onboarding?refresh=1). It reframes the conversation as a re-sync
 // rather than a first-time setup.
-const REFRESH_OPENING_LINE =
-  "Let's take stock — what's changed in your life lately?";
+const REFRESH_OPENING_LINE = "Let's take stock — what's changed in your life lately?";
 
 // localStorage keys for tracking onboarding completion state
 const LS_VOICE_ONBOARDING_SKIPPED = "dw_voice_onboarding_skipped";
 const LS_VOICE_ONBOARDING_COMPLETED = "dw_voice_onboarding_completed";
 const LS_INPUT_MODE = "dw_voice_onboarding_input_mode";
+const FOCUS_WINDOW_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 // Spec 13 — the 10 conversational onboarding stages surfaced to the user
 // as a minimal progress strip at the top of the thread.
@@ -154,7 +185,7 @@ function AvatarOrb({ voiceState, phase }: { voiceState: VoiceState; phase: Onboa
         transition={{ repeat: isListening ? Infinity : 0, duration: 1.4, ease: "easeInOut" }}
         className={cn(
           "w-20 h-20 rounded-full flex items-center justify-center transition-colors duration-300",
-          isListening ? "bg-primary shadow-lg shadow-primary/30" : "bg-primary/10",
+          isListening ? "bg-primary shadow-lg shadow-primary/30" : "bg-primary/10"
         )}
       >
         {isProcessing ? (
@@ -174,9 +205,9 @@ function AvatarOrb({ voiceState, phase }: { voiceState: VoiceState; phase: Onboa
 function StepProgressBar({ currentStep }: { currentStep: number }) {
   const total = ONBOARDING_STEPS.length;
   const stepLabel = ONBOARDING_STEPS[Math.min(currentStep, total - 1)];
-  const currentPhase = DISPLAY_PHASES.find(
-    (phase) => currentStep >= phase.start && currentStep <= phase.end,
-  ) ?? DISPLAY_PHASES[DISPLAY_PHASES.length - 1];
+  const currentPhase =
+    DISPLAY_PHASES.find((phase) => currentStep >= phase.start && currentStep <= phase.end) ??
+    DISPLAY_PHASES[DISPLAY_PHASES.length - 1];
   const currentPhaseNumber = DISPLAY_PHASES.indexOf(currentPhase) + 1;
   const pct = Math.round(((currentStep + 1) / total) * 100);
 
@@ -194,7 +225,14 @@ function StepProgressBar({ currentStep }: { currentStep: number }) {
           {currentPhaseNumber} of {DISPLAY_PHASES.length}
         </span>
       </div>
-      <div className="h-1 rounded-full bg-muted overflow-hidden" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={`Phase ${currentPhaseNumber} of ${DISPLAY_PHASES.length}: ${currentPhase.label}. Step ${currentStep + 1} of ${total}: ${stepLabel}`}>
+      <div
+        className="h-1 rounded-full bg-muted overflow-hidden"
+        role="progressbar"
+        aria-valuenow={pct}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={`Phase ${currentPhaseNumber} of ${DISPLAY_PHASES.length}: ${currentPhase.label}. Step ${currentStep + 1} of ${total}: ${stepLabel}`}
+      >
         <motion.div
           className="h-full bg-primary rounded-full"
           initial={{ width: 0 }}
@@ -268,7 +306,12 @@ function EditableUserMessage({ message, onRegenerate, disabled }: EditableUserMe
               <Send className="w-3 h-3 mr-1" />
               Send
             </Button>
-            <Button size="sm" variant="ghost" onClick={handleCancel} data-testid="button-cancel-edit">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={handleCancel}
+              data-testid="button-cancel-edit"
+            >
               <X className="w-3 h-3 mr-1" />
               Cancel
             </Button>
@@ -276,7 +319,9 @@ function EditableUserMessage({ message, onRegenerate, disabled }: EditableUserMe
         </div>
       ) : (
         <div className="flex items-start justify-between gap-2">
-          <p className="text-base leading-relaxed whitespace-pre-line break-words flex-1">{message.content}</p>
+          <p className="text-base leading-relaxed whitespace-pre-line break-words flex-1">
+            {message.content}
+          </p>
           {!disabled && (
             <button
               onClick={() => setEditing(true)}
@@ -343,7 +388,11 @@ function SuggestionCard({ suggestion: s, index, onUpdate, disabled }: Suggestion
         data-testid={`suggestion-card-${s.id}`}
       >
         <span className="line-through">{displayTitle}</span>
-        <button onClick={handleRestore} className="text-xs text-primary underline ml-2" disabled={disabled}>
+        <button
+          onClick={handleRestore}
+          className="text-xs text-primary underline ml-2"
+          disabled={disabled}
+        >
           restore
         </button>
       </motion.div>
@@ -358,14 +407,19 @@ function SuggestionCard({ suggestion: s, index, onUpdate, disabled }: Suggestion
       className={cn(
         "rounded-2xl border p-4 space-y-3 transition-all",
         isAccepted ? "border-primary/30 bg-primary/5" : "border-border bg-card",
-        isDeferred && "border-dashed",
+        isDeferred && "border-dashed"
       )}
       data-testid={`suggestion-card-${s.id}`}
     >
       {/* Header row */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-start gap-2 flex-1 min-w-0">
-          <span className={cn("text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0 mt-0.5", colorClass)}>
+          <span
+            className={cn(
+              "text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0 mt-0.5",
+              colorClass
+            )}
+          >
             {typeLabel}
           </span>
           <div className="flex-1 min-w-0">
@@ -377,23 +431,47 @@ function SuggestionCard({ suggestion: s, index, onUpdate, disabled }: Suggestion
                   onChange={(e) => setDraft(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") handleSaveEdit();
-                    if (e.key === "Escape") { setDraft(s.editedTitle ?? s.title); setEditing(false); }
+                    if (e.key === "Escape") {
+                      setDraft(s.editedTitle ?? s.title);
+                      setEditing(false);
+                    }
                   }}
                   className="flex-1 text-sm font-medium bg-transparent border-b border-primary outline-none pb-0.5"
                   disabled={disabled}
                   data-testid={`input-suggestion-title-${s.id}`}
                 />
-                <button onClick={handleSaveEdit} className="text-primary" disabled={disabled} aria-label="Save">
+                <button
+                  onClick={handleSaveEdit}
+                  className="text-primary"
+                  disabled={disabled}
+                  aria-label="Save"
+                >
                   <Check className="w-3.5 h-3.5" />
                 </button>
-                <button onClick={() => { setDraft(s.editedTitle ?? s.title); setEditing(false); }} className="text-muted-foreground" aria-label="Cancel">
+                <button
+                  onClick={() => {
+                    setDraft(s.editedTitle ?? s.title);
+                    setEditing(false);
+                  }}
+                  className="text-muted-foreground"
+                  aria-label="Cancel"
+                >
                   <X className="w-3.5 h-3.5" />
                 </button>
               </div>
             ) : (
-              <p className={cn("text-sm font-medium leading-snug", isDeferred && "text-muted-foreground")}>
+              <p
+                className={cn(
+                  "text-sm font-medium leading-snug",
+                  isDeferred && "text-muted-foreground"
+                )}
+              >
                 {displayTitle}
-                {s.status === "edited" && <span className="ml-1 text-[9px] text-primary uppercase tracking-wide">edited</span>}
+                {s.status === "edited" && (
+                  <span className="ml-1 text-[9px] text-primary uppercase tracking-wide">
+                    edited
+                  </span>
+                )}
               </p>
             )}
             <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{s.description}</p>
@@ -462,7 +540,10 @@ function SuggestionCard({ suggestion: s, index, onUpdate, disabled }: Suggestion
             size="sm"
             variant="ghost"
             className="h-7 text-xs px-2.5 text-muted-foreground"
-            onClick={() => { setDraft(s.editedTitle ?? s.title); setEditing(true); }}
+            onClick={() => {
+              setDraft(s.editedTitle ?? s.title);
+              setEditing(true);
+            }}
             disabled={disabled}
             data-testid={`button-rename-${s.id}`}
           >
@@ -507,6 +588,495 @@ function SuggestionCard({ suggestion: s, index, onUpdate, disabled }: Suggestion
         </Button>
       </div>
     </motion.div>
+  );
+}
+
+type PrioritizationMode = "manual" | "choose_for_me";
+
+interface PrioritizationDraft {
+  intents: OnboardingIntent[];
+  selectedReasons: OnboardingReasonId[];
+  reasonFreeText: string;
+  mode: PrioritizationMode;
+  signals: LifeAreaSignal[];
+  assignments: PriorityAssignment[];
+  focusWindow: PrioritizationSnapshot["focusWindow"] | null;
+}
+
+function bucketTitle(bucket: PriorityAssignment["bucket"]): string {
+  if (bucket === "protect") return "Protect";
+  if (bucket === "active_growth") return "Active Growth";
+  return "Background / Maintain";
+}
+
+function formatFocusWindowDate(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(date);
+}
+
+function isFutureDate(value: string | null | undefined): boolean {
+  if (!value) return false;
+  const time = new Date(value).getTime();
+  return Number.isFinite(time) && time > Date.now();
+}
+
+function getCurrentFocusWindowAdjustmentCount(
+  focusWindow: PrioritizationSnapshot["focusWindow"] | null
+): number {
+  if (!focusWindow?.startAt) return 0;
+  const startAt = new Date(focusWindow.startAt).getTime();
+  if (!Number.isFinite(startAt)) return 0;
+  const weekIndex = Math.floor(Math.max(0, Date.now() - startAt) / FOCUS_WINDOW_WEEK_MS);
+  return focusWindow.adjustments.find((entry) => entry.weekIndex === weekIndex)?.count ?? 0;
+}
+
+function createDefaultAssignments(signals: LifeAreaSignal[]): PriorityAssignment[] {
+  return normalizeAssignments([], signals);
+}
+
+function orderAssignments(assignments: PriorityAssignment[]): PriorityAssignment[] {
+  const bucketOrder: Record<PriorityAssignment["bucket"], number> = {
+    protect: 0,
+    active_growth: 1,
+    background: 2,
+  };
+  return [...assignments].sort(
+    (a, b) =>
+      bucketOrder[a.bucket] - bucketOrder[b.bucket] ||
+      b.score - a.score ||
+      a.areaId.localeCompare(b.areaId)
+  );
+}
+
+function createDraftFromProfile(
+  profileContext?: OnboardingProfileContext | null,
+  prioritySnapshot?: PrioritizationSnapshot | null
+): PrioritizationDraft {
+  const signals = normalizeSignals(prioritySnapshot?.signals);
+  const assignments = prioritySnapshot?.assignments?.length
+    ? normalizeAssignments(prioritySnapshot.assignments, signals)
+    : createDefaultAssignments(signals);
+
+  return {
+    intents: profileContext?.intents ?? [],
+    selectedReasons: profileContext?.selectedReasons ?? [],
+    reasonFreeText: profileContext?.reasonFreeText ?? "",
+    mode: prioritySnapshot?.mode ?? "manual",
+    signals,
+    assignments: orderAssignments(assignments),
+    focusWindow: prioritySnapshot?.focusWindow ?? null,
+  };
+}
+
+interface PrioritizationPanelProps {
+  draft: PrioritizationDraft;
+  onChange: (next: PrioritizationDraft) => void;
+  disabled?: boolean;
+}
+
+function PrioritizationPanel({ draft, onChange, disabled }: PrioritizationPanelProps) {
+  const groupedAssignments = useMemo(
+    () => ({
+      protect: draft.assignments.filter((assignment) => assignment.bucket === "protect"),
+      active_growth: draft.assignments.filter(
+        (assignment) => assignment.bucket === "active_growth"
+      ),
+      background: draft.assignments.filter((assignment) => assignment.bucket === "background"),
+    }),
+    [draft.assignments]
+  );
+
+  const updateDraft = useCallback(
+    (patch: Partial<PrioritizationDraft>) => {
+      onChange({ ...draft, ...patch });
+    },
+    [draft, onChange]
+  );
+
+  const toggleIntent = useCallback(
+    (intent: OnboardingIntent) => {
+      const nextIntents = draft.intents.includes(intent)
+        ? draft.intents.filter((value) => value !== intent)
+        : [...draft.intents, intent];
+      updateDraft({ intents: nextIntents });
+    },
+    [draft.intents, updateDraft]
+  );
+
+  const toggleReason = useCallback(
+    (reasonId: OnboardingReasonId) => {
+      const nextReasons = draft.selectedReasons.includes(reasonId)
+        ? draft.selectedReasons.filter((value) => value !== reasonId)
+        : [...draft.selectedReasons, reasonId];
+      updateDraft({ selectedReasons: nextReasons });
+      trackEvent(EVENTS.ONBOARDING_MULTI_REASON_SELECTED, {
+        selectedReasons: nextReasons,
+        selectedReasonCount: nextReasons.length,
+      });
+    },
+    [draft.selectedReasons, updateDraft]
+  );
+
+  const setBucket = useCallback(
+    (areaId: PriorityAssignment["areaId"], bucket: PriorityAssignment["bucket"]) => {
+      const nextAssignments = orderAssignments(
+        draft.assignments.map((assignment) =>
+          assignment.areaId === areaId ? { ...assignment, bucket, recommended: false } : assignment
+        )
+      );
+      updateDraft({ assignments: nextAssignments, mode: "manual" });
+    },
+    [draft.assignments, updateDraft]
+  );
+
+  const updateSignal = useCallback(
+    (areaId: LifeAreaSignal["areaId"], field: keyof LifeAreaSignal, value: number | boolean) => {
+      const nextSignals = draft.signals.map((signal) =>
+        signal.areaId === areaId ? { ...signal, [field]: value } : signal
+      );
+      updateDraft({ signals: nextSignals });
+    },
+    [draft.signals, updateDraft]
+  );
+
+  const applyRecommendations = useCallback(() => {
+    const result = recommendPriorityAssignments(draft.signals);
+    updateDraft({
+      mode: "choose_for_me",
+      assignments: orderAssignments(result.assignments),
+    });
+  }, [draft.signals, updateDraft]);
+
+  const focusWindowEnd = formatFocusWindowDate(draft.focusWindow?.endAt);
+  const hasActiveFocusWindow = isFutureDate(draft.focusWindow?.endAt);
+  const thisWeekAdjustments = getCurrentFocusWindowAdjustmentCount(draft.focusWindow);
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-2xl border bg-card p-4 space-y-4">
+        <div className="space-y-1">
+          <h2 className="text-sm font-semibold text-foreground">Why you're here right now</h2>
+          <p className="text-xs text-muted-foreground">
+            Pick more than one if you need to. This helps DW support resets, maintenance, and
+            assistant-style help at the same time.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Intent
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {ONBOARDING_INTENTS.map((intent) => {
+              const active = draft.intents.includes(intent);
+              const label =
+                intent === "assistant_support"
+                  ? "Assistant support"
+                  : intent === "maintain"
+                    ? "Maintain"
+                    : "Reset";
+              return (
+                <button
+                  key={intent}
+                  type="button"
+                  aria-pressed={active}
+                  disabled={disabled}
+                  onClick={() => toggleIntent(intent)}
+                  className={cn(
+                    "rounded-full border px-3 py-1.5 text-xs transition-colors",
+                    active
+                      ? "border-primary bg-primary/10 text-foreground"
+                      : "border-border text-muted-foreground"
+                  )}
+                  data-testid={`intent-${intent}`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Reasons
+          </p>
+          <div className="grid gap-2 md:grid-cols-2">
+            {ONBOARDING_REASON_OPTIONS.map((reason) => {
+              const active = draft.selectedReasons.includes(reason.id);
+              return (
+                <button
+                  key={reason.id}
+                  type="button"
+                  aria-pressed={active}
+                  disabled={disabled}
+                  onClick={() => toggleReason(reason.id)}
+                  className={cn(
+                    "rounded-2xl border p-3 text-left text-sm transition-colors",
+                    active
+                      ? "border-primary bg-primary/10 text-foreground"
+                      : "border-border text-muted-foreground"
+                  )}
+                  data-testid={`reason-${reason.id}`}
+                >
+                  {reason.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            In your own words
+          </p>
+          <Textarea
+            value={draft.reasonFreeText}
+            onChange={(event) => updateDraft({ reasonFreeText: event.target.value.slice(0, 280) })}
+            onBlur={() => {
+              if (draft.reasonFreeText.trim()) {
+                trackEvent(EVENTS.ONBOARDING_FREE_TEXT_REASON_SUBMITTED, {
+                  textLength: draft.reasonFreeText.trim().length,
+                });
+              }
+            }}
+            disabled={disabled}
+            placeholder="Tell DW what matters, what you're carrying, or what kind of help you want."
+            rows={3}
+            data-testid="textarea-reason-free-text"
+          />
+        </div>
+      </div>
+
+      <div className="rounded-2xl border bg-card p-4 space-y-4">
+        <div className="space-y-1">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-sm font-semibold text-foreground">Life Areas Map</h2>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant={draft.mode === "manual" ? "default" : "outline"}
+                disabled={disabled}
+                onClick={() => updateDraft({ mode: "manual" })}
+                data-testid="button-manual-prioritization"
+              >
+                Assign myself
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={draft.mode === "choose_for_me" ? "default" : "outline"}
+                disabled={disabled}
+                onClick={() => {
+                  updateDraft({ mode: "choose_for_me" });
+                  trackEvent(EVENTS.ONBOARDING_CHOOSE_FOR_ME_CLICKED, {
+                    areaCount: ONBOARDING_LIFE_AREAS.length,
+                  });
+                }}
+                data-testid="button-choose-for-me"
+              >
+                Choose for me
+              </Button>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Protect = keep stable. Active Growth = improve now. Background / Maintain = not the main
+            focus this cycle.
+          </p>
+          {hasActiveFocusWindow && focusWindowEnd && (
+            <p className="text-xs text-primary" data-testid="focus-window-banner">
+              Focus window active until {focusWindowEnd}. Weekly micro-adjustments used:{" "}
+              {thisWeekAdjustments}.
+            </p>
+          )}
+        </div>
+
+        {draft.mode === "choose_for_me" && (
+          <div className="space-y-3 rounded-2xl border border-primary/15 bg-primary/5 p-4">
+            <p className="text-xs text-muted-foreground">{PRIORITIZATION_FORMULA}</p>
+            {draft.signals.map((signal) => {
+              const area = ONBOARDING_LIFE_AREAS.find((entry) => entry.id === signal.areaId)!;
+              return (
+                <div
+                  key={signal.areaId}
+                  className="rounded-xl border bg-background/80 p-3 space-y-3"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-medium text-foreground">{area.label}</span>
+                    <span className="text-[11px] text-muted-foreground">
+                      state {signal.currentState}/10 · importance {signal.importance}/10
+                    </span>
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <label className="space-y-1 text-xs text-muted-foreground">
+                      <span>Current state</span>
+                      <input
+                        type="range"
+                        min={1}
+                        max={10}
+                        value={signal.currentState}
+                        disabled={disabled}
+                        onChange={(event) =>
+                          updateSignal(signal.areaId, "currentState", Number(event.target.value))
+                        }
+                        className="w-full"
+                      />
+                    </label>
+                    <label className="space-y-1 text-xs text-muted-foreground">
+                      <span>Importance</span>
+                      <input
+                        type="range"
+                        min={1}
+                        max={10}
+                        value={signal.importance}
+                        disabled={disabled}
+                        onChange={(event) =>
+                          updateSignal(signal.areaId, "importance", Number(event.target.value))
+                        }
+                        className="w-full"
+                      />
+                    </label>
+                  </div>
+                  <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
+                    <label className="inline-flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={signal.urgency}
+                        disabled={disabled}
+                        onChange={(event) =>
+                          updateSignal(signal.areaId, "urgency", event.target.checked)
+                        }
+                      />
+                      Urgent right now
+                    </label>
+                    <label className="inline-flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={signal.energyDrain}
+                        disabled={disabled}
+                        onChange={(event) =>
+                          updateSignal(signal.areaId, "energyDrain", event.target.checked)
+                        }
+                      />
+                      Drains energy
+                    </label>
+                  </div>
+                </div>
+              );
+            })}
+            <Button
+              type="button"
+              onClick={applyRecommendations}
+              disabled={disabled}
+              data-testid="button-generate-priorities"
+            >
+              Generate recommendations
+            </Button>
+          </div>
+        )}
+
+        {draft.mode === "manual" && (
+          <div className="space-y-3">
+            {draft.assignments.map((assignment) => {
+              const area = ONBOARDING_LIFE_AREAS.find((entry) => entry.id === assignment.areaId)!;
+              return (
+                <div
+                  key={assignment.areaId}
+                  className="rounded-xl border bg-background/80 p-3 space-y-2"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-medium text-foreground">{area.label}</span>
+                    <span className="text-[11px] text-muted-foreground">
+                      {bucketTitle(assignment.bucket)}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {(["protect", "active_growth", "background"] as const).map((bucket) => (
+                      <Button
+                        key={bucket}
+                        type="button"
+                        size="sm"
+                        variant={assignment.bucket === bucket ? "default" : "outline"}
+                        disabled={disabled}
+                        onClick={() => setBucket(assignment.areaId, bucket)}
+                        data-testid={`bucket-${assignment.areaId}-${bucket}`}
+                      >
+                        {bucketTitle(bucket)}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="grid gap-3 md:grid-cols-3">
+          {(
+            [
+              ["protect", groupedAssignments.protect],
+              ["active_growth", groupedAssignments.active_growth],
+              ["background", groupedAssignments.background],
+            ] as const
+          ).map(([bucket, assignments]) => (
+            <div key={bucket} className="rounded-2xl border bg-muted/20 p-3 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  {bucketTitle(bucket)}
+                </h3>
+                <span className="text-[11px] text-muted-foreground">{assignments.length}</span>
+              </div>
+              <div className="space-y-2">
+                {assignments.map((assignment) => {
+                  const area = ONBOARDING_LIFE_AREAS.find(
+                    (entry) => entry.id === assignment.areaId
+                  )!;
+                  return (
+                    <div
+                      key={assignment.areaId}
+                      className="rounded-xl border bg-background p-3 space-y-2"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-medium text-foreground">{area.label}</p>
+                        <span className="text-[11px] text-muted-foreground">
+                          {assignment.score.toFixed(2)}
+                        </span>
+                      </div>
+                      {assignment.why ? (
+                        <p
+                          className="text-xs text-muted-foreground"
+                          data-testid={`recommendation-why-${assignment.areaId}`}
+                        >
+                          {assignment.why}
+                        </p>
+                      ) : null}
+                      <div className="flex flex-wrap gap-1.5">
+                        {(["protect", "active_growth", "background"] as const).map((nextBucket) => (
+                          <Button
+                            key={nextBucket}
+                            type="button"
+                            size="sm"
+                            variant={assignment.bucket === nextBucket ? "default" : "outline"}
+                            disabled={disabled}
+                            onClick={() => setBucket(assignment.areaId, nextBucket)}
+                            className="h-7 px-2.5 text-[11px]"
+                          >
+                            {assignment.bucket === nextBucket ? "Keep" : bucketTitle(nextBucket)}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -558,6 +1128,18 @@ export default function VoiceOnboardingPage() {
   const [standardsText, setStandardsText] = useState("");
   const [anchorsText, setAnchorsText] = useState("");
   const [minimumDayText, setMinimumDayText] = useState("");
+  const [prioritizationDraft, setPrioritizationDraft] = useState<PrioritizationDraft>(() =>
+    createDraftFromProfile(null, null)
+  );
+  const [guardrailMessage, setGuardrailMessage] = useState<string | null>(null);
+  const [guardrailNeedsOverride, setGuardrailNeedsOverride] = useState(false);
+
+  const currentOnboardingVersion = useMemo(() => {
+    if (typeof window === "undefined") return "v1";
+    return new URLSearchParams(window.location.search).get("v") === "2" ? "v2" : "v1";
+  }, []);
+  const prioritizationEnabled =
+    currentOnboardingVersion === "v2" && isFeatureEnabled("onboarding_prioritization_v2");
 
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -583,7 +1165,15 @@ export default function VoiceOnboardingPage() {
 
   // ── Hydrate summary phase from persisted profile ──
   // Allows returning to /voice-onboarding after closing and seeing pending suggestions.
-  const { data: profileData } = useQuery<{ profile: { suggestedStructure?: OnboardingSuggestion[]; generatedSummary?: string | null; generatedDirection?: string | null } | null }>({
+  const { data: profileData } = useQuery<{
+    profile: {
+      suggestedStructure?: OnboardingSuggestion[];
+      generatedSummary?: string | null;
+      generatedDirection?: string | null;
+      profileContext?: OnboardingProfileContext | null;
+      prioritySnapshot?: PrioritizationSnapshot | null;
+    } | null;
+  }>({
     queryKey: ["/api/onboarding/profile"],
     retry: false,
   });
@@ -603,9 +1193,7 @@ export default function VoiceOnboardingPage() {
       new URLSearchParams(window.location.search).get("review") === "1";
     const reviewable = (profile.suggestedStructure ?? []).filter(
       (s) =>
-        s.status === "pending" ||
-        s.status === "accepted" ||
-        (isReview && s.status === "deferred"),
+        s.status === "pending" || s.status === "accepted" || (isReview && s.status === "deferred")
     );
     if (reviewable.length > 0 && suggestions.length === 0) {
       setSummaryText(profile.generatedSummary ?? null);
@@ -614,6 +1202,15 @@ export default function VoiceOnboardingPage() {
       setPhase("summary");
     }
   }, [profileData, phase, suggestions.length, entryMode]);
+
+  useEffect(() => {
+    if (!prioritizationEnabled) return;
+    const profile = profileData?.profile;
+    if (!profile) return;
+    setPrioritizationDraft(
+      createDraftFromProfile(profile.profileContext ?? null, profile.prioritySnapshot ?? null)
+    );
+  }, [profileData, prioritizationEnabled]);
 
   useEffect(() => {
     if (!lifestylePreferences) return;
@@ -700,7 +1297,8 @@ export default function VoiceOnboardingPage() {
       const fallback: ThreadMessage = {
         id: `a-${Date.now()}`,
         role: "assistant",
-        content: "I'm having a small moment on my end — nothing to worry about. Take a breath and share that again whenever you're ready.",
+        content:
+          "I'm having a small moment on my end — nothing to worry about. Take a breath and share that again whenever you're ready.",
       };
       setThread((prev) => [...prev, fallback]);
       setIsReplying(false);
@@ -725,7 +1323,7 @@ export default function VoiceOnboardingPage() {
 
       chatMutation.mutate(newThread);
     },
-    [thread, phase, chatMutation],
+    [thread, phase, chatMutation]
   );
 
   // Keep a ref to sendUserMessage so voice recognition handlers never hold a
@@ -776,7 +1374,8 @@ export default function VoiceOnboardingPage() {
 
       recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
         updateVoiceState("error");
-        const isPermissionError = event.error === "not-allowed" || event.error === "permission-denied";
+        const isPermissionError =
+          event.error === "not-allowed" || event.error === "permission-denied";
         if (isPermissionError) {
           setMicPermissionDenied(true);
           updateInputMode("text");
@@ -786,7 +1385,11 @@ export default function VoiceOnboardingPage() {
             variant: "destructive",
           });
         } else {
-          toast({ title: "Voice input", description: VOICE_SCRIPTS.errorFallback, variant: "destructive" });
+          toast({
+            title: "Voice input",
+            description: VOICE_SCRIPTS.errorFallback,
+            variant: "destructive",
+          });
         }
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
         timeoutRef.current = setTimeout(() => updateVoiceState("idle"), 2000);
@@ -800,7 +1403,11 @@ export default function VoiceOnboardingPage() {
       recognition.start();
     } catch {
       updateVoiceState("error");
-      toast({ title: "Voice input", description: VOICE_SCRIPTS.microphoneError, variant: "destructive" });
+      toast({
+        title: "Voice input",
+        description: VOICE_SCRIPTS.microphoneError,
+        variant: "destructive",
+      });
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       timeoutRef.current = setTimeout(() => updateVoiceState("idle"), 2000);
     }
@@ -847,7 +1454,7 @@ export default function VoiceOnboardingPage() {
       setIsReplying(true);
       sendUserMessage(newContent, truncated);
     },
-    [thread, sendUserMessage],
+    [thread, sendUserMessage]
   );
 
   // ── Begin onboarding: trigger first AI greeting ──
@@ -904,11 +1511,9 @@ export default function VoiceOnboardingPage() {
   const handleDone = useCallback(async () => {
     setIsReplying(true);
     try {
-      const params = new URLSearchParams(window.location.search);
-      const onboardingVersion = params.get("v") === "2" ? "v2" : "v1";
       const response = await apiRequest("POST", "/api/onboarding/voice-complete", {
         messages: thread.map((m) => ({ role: m.role, content: m.content })),
-        onboardingVersion,
+        onboardingVersion: currentOnboardingVersion,
         // "refresh" tells the server to merge-preserve the existing profile
         // instead of overwriting it with a short conversation's extraction.
         ...(entryMode === "refresh" ? { mode: "refresh" } : {}),
@@ -917,10 +1522,10 @@ export default function VoiceOnboardingPage() {
       markConversationalComplete();
       // Keep Command Center's cached profile (staleness card) in sync.
       queryClient.invalidateQueries({ queryKey: ["/api/onboarding/profile"] });
-      if (data.suggestions && data.suggestions.length > 0) {
+      if ((data.suggestions && data.suggestions.length > 0) || prioritizationEnabled) {
         setSummaryText(data.summary ?? null);
         setDirectionText(data.direction ?? null);
-        setSuggestions(data.suggestions);
+        setSuggestions(data.suggestions ?? []);
         setIsReplying(false);
         setPhase("summary");
       } else {
@@ -934,7 +1539,14 @@ export default function VoiceOnboardingPage() {
       setIsReplying(false);
       setLocation("/");
     }
-  }, [thread, setLocation, markConversationalComplete]);
+  }, [
+    thread,
+    setLocation,
+    markConversationalComplete,
+    currentOnboardingVersion,
+    entryMode,
+    prioritizationEnabled,
+  ]);
 
   const persistFoundationSnapshot = useCallback(async () => {
     const payload = {
@@ -952,6 +1564,97 @@ export default function VoiceOnboardingPage() {
     await apiRequest("POST", "/api/profile/lifestyle-preferences", payload);
   }, [anchorsText, identityDirection, lifestylePreferences, minimumDayText, standardsText]);
 
+  const persistPrioritization = useCallback(
+    async (override = false) => {
+      if (!prioritizationEnabled) return true;
+
+      try {
+        const response = await fetch("/api/onboarding/prioritization", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            intents: prioritizationDraft.intents,
+            selectedReasons: prioritizationDraft.selectedReasons,
+            reasonFreeText: prioritizationDraft.reasonFreeText,
+            mode: prioritizationDraft.mode,
+            signals: prioritizationDraft.signals,
+            assignments: prioritizationDraft.assignments,
+            override,
+          }),
+        });
+
+        let payload: Record<string, unknown> = {};
+        try {
+          payload = (await response.json()) as Record<string, unknown>;
+        } catch {
+          payload = {};
+        }
+
+        if (!response.ok) {
+          setGuardrailMessage(
+            typeof payload.message === "string"
+              ? payload.message
+              : "Couldn't save your priority map yet."
+          );
+          setGuardrailNeedsOverride(Boolean(payload.requiresOverride));
+          return false;
+        }
+
+        setGuardrailMessage(typeof payload.message === "string" ? payload.message : null);
+        setGuardrailNeedsOverride(false);
+        if (payload.prioritySnapshot) {
+          setPrioritizationDraft(
+            createDraftFromProfile(
+              (payload.profileContext as OnboardingProfileContext | null | undefined) ?? null,
+              (payload.prioritySnapshot as PrioritizationSnapshot | null | undefined) ?? null
+            )
+          );
+        }
+        trackEvent(EVENTS.ONBOARDING_RECOMMENDATIONS_SAVED, {
+          mode: prioritizationDraft.mode,
+          protectCount: prioritizationDraft.assignments.filter(
+            (assignment) => assignment.bucket === "protect"
+          ).length,
+          activeGrowthCount: prioritizationDraft.assignments.filter(
+            (assignment) => assignment.bucket === "active_growth"
+          ).length,
+          editedCount: prioritizationDraft.assignments.filter(
+            (assignment) => !assignment.recommended
+          ).length,
+        });
+
+        if (payload.focusWindowStatus === "created") {
+          trackEvent(EVENTS.ONBOARDING_FOCUS_WINDOW_CREATED, {
+            mode: prioritizationDraft.mode,
+            changedAreaCount: Array.isArray(payload.changedAreaIds)
+              ? payload.changedAreaIds.length
+              : 0,
+          });
+        } else if (
+          payload.focusWindowStatus === "adjusted" ||
+          payload.focusWindowStatus === "override_applied"
+        ) {
+          trackEvent(EVENTS.ONBOARDING_FOCUS_WINDOW_ADJUSTED, {
+            mode: prioritizationDraft.mode,
+            changedAreaCount: Array.isArray(payload.changedAreaIds)
+              ? payload.changedAreaIds.length
+              : 0,
+          });
+        }
+
+        return true;
+      } catch {
+        setGuardrailMessage(
+          "Couldn't save your priority map right now. Check your connection and try again."
+        );
+        setGuardrailNeedsOverride(false);
+        return false;
+      }
+    },
+    [prioritizationDraft, prioritizationEnabled]
+  );
+
   // ── Accept/defer suggestions and populate My Life ──
   const handleAcceptSuggestions = useCallback(async () => {
     setIsSubmittingSuggestions(true);
@@ -959,6 +1662,16 @@ export default function VoiceOnboardingPage() {
       await persistFoundationSnapshot();
     } catch {
       // Non-fatal
+    }
+    try {
+      const saved = await persistPrioritization(false);
+      if (!saved) {
+        setIsSubmittingSuggestions(false);
+        return;
+      }
+    } catch {
+      setIsSubmittingSuggestions(false);
+      return;
     }
     try {
       await apiRequest("POST", "/api/onboarding/accept-suggestions", {
@@ -976,7 +1689,7 @@ export default function VoiceOnboardingPage() {
     setIsSubmittingSuggestions(false);
     markOnboardingComplete();
     setLocation("/command-center");
-  }, [persistFoundationSnapshot, suggestions, setLocation]);
+  }, [persistFoundationSnapshot, persistPrioritization, suggestions, setLocation]);
 
   // ── Update a single suggestion status ──
   const updateSuggestion = useCallback((id: string, patch: Partial<OnboardingSuggestion>) => {
@@ -994,6 +1707,18 @@ export default function VoiceOnboardingPage() {
       // Non-fatal
     }
     try {
+      const saved = await persistPrioritization(false);
+      if (!saved) {
+        setSuggestions(suggestions);
+        setIsSubmittingSuggestions(false);
+        return;
+      }
+    } catch {
+      setSuggestions(suggestions);
+      setIsSubmittingSuggestions(false);
+      return;
+    }
+    try {
       await apiRequest("POST", "/api/onboarding/accept-suggestions", {
         suggestions: deferred,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -1009,14 +1734,17 @@ export default function VoiceOnboardingPage() {
     setIsSubmittingSuggestions(false);
     markOnboardingComplete();
     setLocation("/command-center");
-  }, [persistFoundationSnapshot, suggestions, setLocation]);
+  }, [persistFoundationSnapshot, persistPrioritization, suggestions, setLocation]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // Render: Summary phase — "What I'm hearing" + editable AI suggestions
   // ─────────────────────────────────────────────────────────────────────────
   if (phase === "summary") {
     return (
-      <div className="flex flex-col min-h-screen bg-background" data-testid="voice-onboarding-summary">
+      <div
+        className="flex flex-col min-h-screen bg-background"
+        data-testid="voice-onboarding-summary"
+      >
         <header className="flex items-center justify-between px-4 py-3 border-b bg-background/95 backdrop-blur-sm">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
@@ -1028,10 +1756,13 @@ export default function VoiceOnboardingPage() {
             variant="ghost"
             size="sm"
             onClick={() => {
-              void persistFoundationSnapshot().finally(() => {
-                markOnboardingComplete();
-                setLocation("/command-center");
-              });
+              void persistFoundationSnapshot()
+                .then(() => persistPrioritization(false))
+                .then((saved) => {
+                  if (saved === false) return;
+                  markOnboardingComplete();
+                  setLocation("/command-center");
+                });
             }}
             className="text-muted-foreground text-xs"
             data-testid="button-skip-summary"
@@ -1049,7 +1780,9 @@ export default function VoiceOnboardingPage() {
                 animate={{ opacity: 1, y: 0 }}
                 className="rounded-2xl bg-primary/5 border border-primary/15 p-5 space-y-2"
               >
-                <p className="text-xs font-semibold uppercase tracking-wider text-primary">What I noticed</p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+                  What I noticed
+                </p>
                 <p className="text-base leading-relaxed text-foreground">{summaryText}</p>
                 {directionText && (
                   <p className="text-sm text-muted-foreground italic mt-2">{directionText}</p>
@@ -1057,16 +1790,22 @@ export default function VoiceOnboardingPage() {
               </motion.div>
             )}
 
-            {/* Suggestions header */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.15 }}
-              className="space-y-1"
-            >
-              <h2 className="text-sm font-semibold text-foreground">Based on our conversation, I'd like to suggest a starting structure for your life.</h2>
-              <p className="text-xs text-muted-foreground">Accept, rename, or set aside anything that doesn't feel right. This is yours to shape.</p>
-            </motion.div>
+            {suggestions.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.15 }}
+                className="space-y-1"
+              >
+                <h2 className="text-sm font-semibold text-foreground">
+                  Based on our conversation, I'd like to suggest a starting structure for your life.
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  Accept, rename, or set aside anything that doesn't feel right. This is yours to
+                  shape.
+                </p>
+              </motion.div>
+            )}
 
             <motion.div
               initial={{ opacity: 0 }}
@@ -1075,12 +1814,18 @@ export default function VoiceOnboardingPage() {
               className="rounded-2xl border bg-card p-4 space-y-4"
             >
               <div className="space-y-1">
-                <h2 className="text-sm font-semibold text-foreground">A few foundation notes to carry forward</h2>
-                <p className="text-xs text-muted-foreground">These can stay simple. You can refine them later.</p>
+                <h2 className="text-sm font-semibold text-foreground">
+                  A few foundation notes to carry forward
+                </h2>
+                <p className="text-xs text-muted-foreground">
+                  These can stay simple. You can refine them later.
+                </p>
               </div>
 
               <div className="space-y-2">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Identity direction</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Identity direction
+                </p>
                 <Textarea
                   value={identityDirection}
                   onChange={(event) => setIdentityDirection(event.target.value)}
@@ -1092,7 +1837,9 @@ export default function VoiceOnboardingPage() {
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Standards</p>
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Standards
+                  </p>
                   <Textarea
                     value={standardsText}
                     onChange={(event) => setStandardsText(event.target.value)}
@@ -1101,7 +1848,9 @@ export default function VoiceOnboardingPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Anchors</p>
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Anchors
+                  </p>
                   <Textarea
                     value={anchorsText}
                     onChange={(event) => setAnchorsText(event.target.value)}
@@ -1112,7 +1861,9 @@ export default function VoiceOnboardingPage() {
               </div>
 
               <div className="space-y-2">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Minimum Day</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Minimum Day
+                </p>
                 <Textarea
                   value={minimumDayText}
                   onChange={(event) => setMinimumDayText(event.target.value)}
@@ -1122,18 +1873,55 @@ export default function VoiceOnboardingPage() {
               </div>
             </motion.div>
 
-            {/* Suggestion cards */}
-            <div className="space-y-3">
-              {suggestions.map((s, i) => (
-                <SuggestionCard
-                  key={s.id}
-                  suggestion={s}
-                  index={i}
-                  onUpdate={updateSuggestion}
+            {prioritizationEnabled && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.24 }}
+                className="space-y-3"
+              >
+                <PrioritizationPanel
+                  draft={prioritizationDraft}
+                  onChange={setPrioritizationDraft}
                   disabled={isSubmittingSuggestions}
                 />
-              ))}
-            </div>
+                {guardrailMessage ? (
+                  <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 space-y-3">
+                    <p className="text-sm text-foreground">{guardrailMessage}</p>
+                    {guardrailNeedsOverride ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={async () => {
+                          setIsSubmittingSuggestions(true);
+                          const saved = await persistPrioritization(true);
+                          setIsSubmittingSuggestions(false);
+                          if (!saved) return;
+                        }}
+                        data-testid="button-priority-override"
+                      >
+                        Override focus window
+                      </Button>
+                    ) : null}
+                  </div>
+                ) : null}
+              </motion.div>
+            )}
+
+            {/* Suggestion cards */}
+            {suggestions.length > 0 && (
+              <div className="space-y-3">
+                {suggestions.map((s, i) => (
+                  <SuggestionCard
+                    key={s.id}
+                    suggestion={s}
+                    index={i}
+                    onUpdate={updateSuggestion}
+                    disabled={isSubmittingSuggestions}
+                  />
+                ))}
+              </div>
+            )}
 
             {/* Actions */}
             <motion.div
@@ -1177,12 +1965,7 @@ export default function VoiceOnboardingPage() {
   // Render: Value preview phase — show DW capability cards
   // ─────────────────────────────────────────────────────────────────────────
   if (phase === "value-preview") {
-    return (
-      <OnboardingValuePreview
-        onBegin={() => setPhase("intro")}
-        onSkip={handleSkip}
-      />
-    );
+    return <OnboardingValuePreview onBegin={() => setPhase("intro")} onSkip={handleSkip} />;
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -1303,7 +2086,9 @@ export default function VoiceOnboardingPage() {
               >
                 {msg.role === "assistant" ? (
                   <div className="space-y-1">
-                    <p className="text-xs uppercase tracking-wider font-medium text-muted-foreground">DW</p>
+                    <p className="text-xs uppercase tracking-wider font-medium text-muted-foreground">
+                      DW
+                    </p>
                     <p className="text-base leading-relaxed whitespace-pre-line">{msg.content}</p>
                   </div>
                 ) : (
@@ -1364,7 +2149,7 @@ export default function VoiceOnboardingPage() {
                 inputMode === "voice"
                   ? "bg-primary text-primary-foreground border-primary"
                   : "text-muted-foreground border-border hover:border-primary/50",
-                !voiceSupported && "opacity-50 cursor-not-allowed",
+                !voiceSupported && "opacity-50 cursor-not-allowed"
               )}
               data-testid="button-mode-voice"
             >
@@ -1378,7 +2163,7 @@ export default function VoiceOnboardingPage() {
                 "flex items-center gap-1 text-xs px-2.5 py-1 rounded-full border transition-colors",
                 inputMode === "text"
                   ? "bg-primary text-primary-foreground border-primary"
-                  : "text-muted-foreground border-border hover:border-primary/50",
+                  : "text-muted-foreground border-border hover:border-primary/50"
               )}
               data-testid="button-mode-text"
             >
@@ -1389,13 +2174,22 @@ export default function VoiceOnboardingPage() {
 
           {/* Voice/mic status notices */}
           {!voiceSupported && (
-            <p className="text-xs text-muted-foreground mb-3" role="note" data-testid="notice-voice-unsupported">
+            <p
+              className="text-xs text-muted-foreground mb-3"
+              role="note"
+              data-testid="notice-voice-unsupported"
+            >
               {VOICE_SCRIPTS.voiceNotSupported}
             </p>
           )}
           {micPermissionDenied && voiceSupported && (
-            <p className="text-xs text-destructive mb-3" role="alert" data-testid="notice-mic-permission-denied">
-              {VOICE_SCRIPTS.microphoneError} Tap Voice to retry once you've updated your browser settings.
+            <p
+              className="text-xs text-destructive mb-3"
+              role="alert"
+              data-testid="notice-mic-permission-denied"
+            >
+              {VOICE_SCRIPTS.microphoneError} Tap Voice to retry once you've updated your browser
+              settings.
             </p>
           )}
 
@@ -1410,8 +2204,8 @@ export default function VoiceOnboardingPage() {
                   voiceState === "listening"
                     ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30"
                     : voiceState === "error"
-                    ? "bg-destructive/10 text-destructive"
-                    : "bg-muted hover:bg-muted/80",
+                      ? "bg-destructive/10 text-destructive"
+                      : "bg-muted hover:bg-muted/80"
                 )}
                 aria-label={voiceState === "listening" ? "Stop listening" : "Start listening"}
                 aria-busy={voiceState === "processing" || isReplying}
@@ -1434,10 +2228,10 @@ export default function VoiceOnboardingPage() {
                 {voiceState === "listening"
                   ? "Listening — tap to stop"
                   : voiceState === "processing"
-                  ? "Processing…"
-                  : voiceState === "error"
-                  ? "Try again"
-                  : "Tap to speak"}
+                    ? "Processing…"
+                    : voiceState === "error"
+                      ? "Try again"
+                      : "Tap to speak"}
               </p>
             </div>
           )}
@@ -1462,7 +2256,11 @@ export default function VoiceOnboardingPage() {
                 className="rounded-full h-12 w-12 shrink-0"
                 data-testid="button-send-text"
               >
-                {isReplying ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+                {isReplying ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <Send className="w-5 h-5" />
+                )}
               </Button>
             </div>
           )}

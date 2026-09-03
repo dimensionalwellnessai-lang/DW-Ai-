@@ -7,6 +7,8 @@ const hoisted = vi.hoisted(() => ({
   apiRequest: vi.fn(),
   setLocation: vi.fn(),
   markOnboardingComplete: vi.fn(),
+  enabledFlags: new Set<string>(),
+  fetch: vi.fn(),
 }));
 
 vi.mock("@/lib/queryClient", () => ({
@@ -21,6 +23,10 @@ vi.mock("wouter", () => ({
 
 vi.mock("@/lib/onboarding", () => ({
   markOnboardingComplete: hoisted.markOnboardingComplete,
+}));
+
+vi.mock("@/config/featureFlags", () => ({
+  isFeatureEnabled: (flag: string) => hoisted.enabledFlags.has(flag),
 }));
 
 vi.mock("@/hooks/use-toast", () => ({
@@ -73,15 +79,17 @@ function renderPage(queryFn: (queryKey: readonly unknown[]) => Promise<unknown>)
   return render(
     <QueryClientProvider client={qc}>
       <VoiceOnboardingPage />
-    </QueryClientProvider>,
+    </QueryClientProvider>
   );
 }
 
 beforeEach(() => {
   localStorage.clear();
   vi.clearAllMocks();
+  hoisted.enabledFlags.clear();
   Element.prototype.scrollIntoView = vi.fn();
   window.history.replaceState({}, "", "/voice-onboarding");
+  vi.stubGlobal("fetch", hoisted.fetch);
 });
 
 afterEach(() => {
@@ -190,5 +198,257 @@ describe("voice onboarding flow updates", () => {
 
     await waitFor(() => expect(hoisted.setLocation).toHaveBeenCalledWith("/command-center"));
     expect(hoisted.markOnboardingComplete).toHaveBeenCalled();
+  });
+
+  it("renders recommendation explanations in the v2 prioritization summary", async () => {
+    hoisted.enabledFlags.add("onboarding_prioritization_v2");
+    window.history.replaceState({}, "", "/voice-onboarding?v=2");
+    const now = Date.now();
+
+    renderPage(async (queryKey) => {
+      if (queryKey[0] === "/api/onboarding/profile") {
+        return {
+          profile: {
+            generatedSummary: "You need steadier energy and clearer focus.",
+            generatedDirection: "Toward a calmer, more protected week.",
+            suggestedStructure: [
+              {
+                id: "sys-1",
+                type: "system",
+                title: "Morning reset",
+                description: "A short routine to settle into the day.",
+                sourceReason: "Suggested because mornings feel scattered.",
+                status: "pending",
+              },
+            ],
+            profileContext: {
+              intents: ["reset"],
+              selectedReasons: ["clarify_focus"],
+              reasonFreeText: "I need help deciding what to protect.",
+              userLanguageInputs: {
+                reasonNarrative: "I need help deciding what to protect.",
+                lastUpdatedAt: new Date().toISOString(),
+              },
+            },
+            prioritySnapshot: {
+              mode: "choose_for_me",
+              formula: "score = ...",
+              signals: [],
+              assignments: [
+                {
+                  areaId: "physical",
+                  bucket: "protect",
+                  score: 8.9,
+                  why: "Physical health scored 8.90 from importance 10/10 and current state 3/10.",
+                  recommended: true,
+                },
+                {
+                  areaId: "mental",
+                  bucket: "protect",
+                  score: 8.4,
+                  why: "Mental & emotional scored 8.40 from importance 9/10 and current state 4/10.",
+                  recommended: true,
+                },
+                {
+                  areaId: "rest",
+                  bucket: "protect",
+                  score: 8.2,
+                  why: "Rest & recovery scored 8.20 from importance 9/10 and current state 4/10.",
+                  recommended: true,
+                },
+                {
+                  areaId: "financial",
+                  bucket: "active_growth",
+                  score: 7.6,
+                  why: "Money scored 7.60 from importance 8/10 and current state 4/10.",
+                  recommended: true,
+                },
+                {
+                  areaId: "relationships",
+                  bucket: "active_growth",
+                  score: 7.1,
+                  why: "Relationships scored 7.10 from importance 8/10 and current state 5/10.",
+                  recommended: true,
+                },
+              ],
+              focusWindow: {
+                startAt: new Date(now - 9 * 24 * 60 * 60 * 1000).toISOString(),
+                endAt: new Date(now + 5 * 24 * 60 * 60 * 1000).toISOString(),
+                adjustments: [
+                  {
+                    weekIndex: 0,
+                    count: 1,
+                    changedAreaIds: ["physical"],
+                    adjustedAt: new Date(now - 8 * 24 * 60 * 60 * 1000).toISOString(),
+                  },
+                  {
+                    weekIndex: 1,
+                    count: 1,
+                    changedAreaIds: ["mental"],
+                    adjustedAt: new Date(now - 2 * 24 * 60 * 60 * 1000).toISOString(),
+                  },
+                ],
+                overrideCount: 0,
+                lastAdjustedAt: null,
+              },
+              recommendedAt: new Date(now - 9 * 24 * 60 * 60 * 1000).toISOString(),
+            },
+          },
+        };
+      }
+      if (queryKey[0] === "/api/profile/lifestyle-preferences") {
+        return {};
+      }
+      return null;
+    });
+
+    await waitFor(() => expect(screen.getByTestId("voice-onboarding-summary")).toBeTruthy());
+    expect(screen.getByTestId("recommendation-why-physical").textContent).toContain("scored 8.90");
+    expect(screen.getByTestId("focus-window-banner").textContent).toContain(
+      "Focus window active until"
+    );
+    expect(screen.getByTestId("focus-window-banner").textContent).toContain(
+      "Weekly micro-adjustments used: 1"
+    );
+  });
+
+  it("hides expired focus window banners and exposes pressed state for prioritization toggles", async () => {
+    hoisted.enabledFlags.add("onboarding_prioritization_v2");
+    window.history.replaceState({}, "", "/voice-onboarding?v=2");
+    const now = Date.now();
+
+    renderPage(async (queryKey) => {
+      if (queryKey[0] === "/api/onboarding/profile") {
+        return {
+          profile: {
+            generatedSummary: "You want calmer days.",
+            generatedDirection: "Toward calmer, steadier days.",
+            suggestedStructure: [
+              {
+                id: "sys-1",
+                type: "system",
+                title: "Morning reset",
+                description: "A short routine to settle into the day.",
+                sourceReason: "Suggested because mornings feel scattered.",
+                status: "pending",
+              },
+            ],
+            profileContext: {
+              intents: ["reset"],
+              selectedReasons: ["clarify_focus"],
+              reasonFreeText: "I need help deciding what to protect.",
+              userLanguageInputs: {
+                reasonNarrative: "I need help deciding what to protect.",
+                lastUpdatedAt: new Date(now).toISOString(),
+              },
+            },
+            prioritySnapshot: {
+              mode: "manual",
+              formula: "score = ...",
+              signals: [],
+              assignments: [],
+              focusWindow: {
+                startAt: new Date(now - 21 * 24 * 60 * 60 * 1000).toISOString(),
+                endAt: new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString(),
+                adjustments: [
+                  {
+                    weekIndex: 1,
+                    count: 1,
+                    changedAreaIds: ["physical"],
+                    adjustedAt: new Date(now - 10 * 24 * 60 * 60 * 1000).toISOString(),
+                  },
+                ],
+                overrideCount: 0,
+                lastAdjustedAt: null,
+              },
+              recommendedAt: new Date(now - 21 * 24 * 60 * 60 * 1000).toISOString(),
+            },
+          },
+        };
+      }
+      if (queryKey[0] === "/api/profile/lifestyle-preferences") {
+        return {};
+      }
+      return null;
+    });
+
+    await waitFor(() => expect(screen.getByTestId("voice-onboarding-summary")).toBeTruthy());
+    expect(screen.queryByTestId("focus-window-banner")).toBeNull();
+    expect(screen.getByTestId("intent-reset").getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByTestId("intent-maintain").getAttribute("aria-pressed")).toBe("false");
+    expect(screen.getByTestId("reason-clarify_focus").getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByTestId("reason-overwhelmed").getAttribute("aria-pressed")).toBe("false");
+  });
+
+  it("shows recovery guidance when prioritization save fails during skip", async () => {
+    hoisted.enabledFlags.add("onboarding_prioritization_v2");
+    window.history.replaceState({}, "", "/voice-onboarding?v=2");
+    hoisted.apiRequest.mockImplementation(async (_method: string, url: string) => {
+      if (url === "/api/profile/lifestyle-preferences") {
+        return jsonResponse({ success: true });
+      }
+      throw new Error(`Unexpected apiRequest: ${url}`);
+    });
+    hoisted.fetch.mockRejectedValue(new Error("network down"));
+
+    renderPage(async (queryKey) => {
+      if (queryKey[0] === "/api/onboarding/profile") {
+        return {
+          profile: {
+            generatedSummary: "You want calmer days.",
+            generatedDirection: "Toward calmer, steadier days.",
+            suggestedStructure: [
+              {
+                id: "sys-1",
+                type: "system",
+                title: "Morning reset",
+                description: "A short routine to settle into the day.",
+                sourceReason: "Suggested because mornings feel scattered.",
+                status: "pending",
+              },
+            ],
+            profileContext: {
+              intents: ["reset"],
+              selectedReasons: ["clarify_focus"],
+              reasonFreeText: "I need help deciding what to protect.",
+              userLanguageInputs: {
+                reasonNarrative: "I need help deciding what to protect.",
+                lastUpdatedAt: new Date().toISOString(),
+              },
+            },
+            prioritySnapshot: {
+              mode: "manual",
+              formula: "score = ...",
+              signals: [],
+              assignments: [],
+              focusWindow: {
+                startAt: new Date().toISOString(),
+                endAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),
+                adjustments: [],
+                overrideCount: 0,
+                lastAdjustedAt: null,
+              },
+              recommendedAt: new Date().toISOString(),
+            },
+          },
+        };
+      }
+      if (queryKey[0] === "/api/profile/lifestyle-preferences") {
+        return {};
+      }
+      return null;
+    });
+
+    await waitFor(() => expect(screen.getByTestId("voice-onboarding-summary")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("button-skip-summary"));
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(
+          "Couldn't save your priority map right now. Check your connection and try again."
+        )
+      ).toBeTruthy()
+    );
+    expect(hoisted.setLocation).not.toHaveBeenCalledWith("/command-center");
   });
 });
