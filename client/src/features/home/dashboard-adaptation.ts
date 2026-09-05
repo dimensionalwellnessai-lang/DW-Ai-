@@ -297,7 +297,7 @@ export function buildDashboardAdaptiveState(summary: HomeSummary, context: Dashb
 
   const topCard = rankedCards[0] ?? { ...candidateCards[0], score: BASE_LANE_SCORES[mode][candidateCards[0].lane] };
   const topLane = topCard.lane;
-  const protectLabel = protectAreas[0]?.replace("_", " ");
+  const protectLabel = protectAreas[0]?.replaceAll("_", " ");
   const modeLine =
     mode === "reset"
       ? "Your signals say simplify and recover first."
