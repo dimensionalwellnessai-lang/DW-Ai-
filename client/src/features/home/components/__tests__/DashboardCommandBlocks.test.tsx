@@ -79,4 +79,15 @@ describe("DashboardCommandBlocks", () => {
     fireEvent.click(screen.getByText("Realign now"));
     expect(onRealign).toHaveBeenCalledWith("/voice-onboarding?review=1", "quick_update");
   });
+
+  it("uses accessible realign action labels and touch targets", () => {
+    render(<DashboardCommandBlocks state={makeState()} onNavigate={vi.fn()} onRealign={vi.fn()} />);
+
+    const realignButton = screen.getByRole("button", { name: "Realign now" });
+    const refreshButton = screen.getByRole("button", { name: /Full refresh/i });
+
+    expect(realignButton.className).toContain("h-11");
+    expect(refreshButton.className).toContain("h-11");
+    expect(screen.queryByText("Full reset")).toBeNull();
+  });
 });

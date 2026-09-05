@@ -262,6 +262,11 @@ export default function HomeCommandCenter() {
       onboardingProfile?.prioritySnapshot?.assignments,
     ],
   );
+  const dashboardInputsLoading =
+    summary.isLoading ||
+    onboardingProfileQ.isLoading ||
+    lifestylePreferencesQ.isLoading ||
+    summary.momentumData?.isLoading === true;
 
   const showFinishSetupCard =
     !isE2ETestMode() &&
@@ -353,11 +358,13 @@ export default function HomeCommandCenter() {
   };
 
   useEffect(() => {
+    if (dashboardInputsLoading) return;
     const signature = [
       dashboardState.mode,
       dashboardState.telemetry.topLane,
       dashboardState.telemetry.cardCount,
       dashboardState.telemetry.calendarState,
+      dashboardState.whatToDoNow.id,
     ].join("|");
     if (lastRankingSignatureRef.current === signature) return;
     lastRankingSignatureRef.current = signature;
@@ -367,7 +374,7 @@ export default function HomeCommandCenter() {
       cardCount: dashboardState.telemetry.cardCount,
       calendarState: dashboardState.telemetry.calendarState,
     });
-  }, [dashboardState]);
+  }, [dashboardInputsLoading, dashboardState]);
 
   const handleDashboardNavigate = (
     path: string,

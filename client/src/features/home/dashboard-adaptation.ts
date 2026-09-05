@@ -1,4 +1,9 @@
-import type { OnboardingIntent, OnboardingReasonId, PriorityAssignment } from "@shared/onboardingPrioritization";
+import type {
+  OnboardingIntent,
+  OnboardingLifeAreaId,
+  OnboardingReasonId,
+  PriorityAssignment,
+} from "@shared/onboardingPrioritization";
 import type { HomeSummary } from "./types";
 
 export type AdaptiveMode = "reset" | "maintain" | "assistant";
@@ -77,9 +82,10 @@ const LANE_CARD_LIMIT: Record<AdaptiveMode, number> = {
   assistant: 3,
 };
 
-const AREA_LANE_BONUS: Record<string, AdaptiveLane> = {
+const AREA_LANE_BONUS: Record<OnboardingLifeAreaId, AdaptiveLane> = {
   rest: "stabilize",
   mental: "stabilize",
+  environment: "stabilize",
   spiritual: "understand",
   identity: "understand",
   career: "plan",
@@ -87,6 +93,7 @@ const AREA_LANE_BONUS: Record<string, AdaptiveLane> = {
   relationships: "expand",
   creativity: "expand",
   learning: "expand",
+  fun: "expand",
   physical: "execute",
 };
 
@@ -96,15 +103,21 @@ function toMs(value: string | undefined): number | null {
   return Number.isFinite(ms) ? ms : null;
 }
 
-function formatTime(value: string): string {
+function formatTime(value: string | number | Date): string {
   const dt = new Date(value);
   if (Number.isNaN(dt.getTime())) return "";
   return dt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 }
 
+function hasOverloadedScheduleSignals(summary: HomeSummary): boolean {
+  return summary.todayEvents.length >= 6 || summary.todayScheduleBlocks.length >= 7;
+}
+
 function hasOverwhelmedSignals(summary: HomeSummary, context: DashboardContext): boolean {
+  const intentSet = new Set(context.intents ?? []);
   const reasonIds = new Set(context.selectedReasons ?? []);
   return Boolean(
+    intentSet.has("reset") ||
     reasonIds.has("overwhelmed") ||
     reasonIds.has("stuck") ||
     reasonIds.has("reset_routines") ||
@@ -126,19 +139,37 @@ function hasAssistantCentricSignals(summary: HomeSummary, context: DashboardCont
 }
 
 export function deriveAdaptiveMode(summary: HomeSummary, context: DashboardContext): AdaptiveMode {
-  if (hasOverwhelmedSignals(summary, context)) return "reset";
+  if (hasOverwhelmedSignals(summary, context) || hasOverloadedScheduleSignals(summary)) return "reset";
   if (hasAssistantCentricSignals(summary, context)) return "assistant";
   return "maintain";
 }
 
+function normalizeTimedItems(summary: HomeSummary) {
+  const deduped = new Map<string, { title: string; startTime: string; start: number; end: number | null }>();
+  const items = [...summary.todayEvents, ...summary.todayScheduleBlocks]
+    .map((item) => ({
+      title: item.title,
+      startTime: item.startTime,
+      start: toMs(item.startTime),
+      end: toMs(item.endTime),
+    }))
+    .filter((item): item is { title: string; startTime: string; start: number; end: number | null } => item.start !== null);
+
+  for (const item of items) {
+    const key = `${item.title.trim().toLowerCase()}|${item.start}|${item.end ?? ""}`;
+    if (!deduped.has(key)) {
+      deduped.set(key, item);
+    }
+  }
+
+  return Array.from(deduped.values()).sort((left, right) => left.start - right.start);
+}
+
 function buildCalendarSuggestion(summary: HomeSummary): DashboardAdaptiveState["calendar"] {
   const now = Date.now();
-  const eventTimes = summary.todayEvents
-    .map((event) => ({ event, start: toMs(event.startTime), end: toMs(event.endTime) }))
-    .filter((value): value is { event: HomeSummary["todayEvents"][number]; start: number; end: number | null } => value.start !== null)
-    .sort((left, right) => left.start - right.start);
+  const timedItems = normalizeTimedItems(summary);
   const hasCalendarData = summary.todayEvents.length > 0 || summary.todayScheduleBlocks.length > 0;
-  const overloaded = summary.todayEvents.length >= 6 || summary.todayScheduleBlocks.length >= 7;
+  const overloaded = hasOverloadedScheduleSignals(summary);
 
   if (!hasCalendarData) {
     return {
@@ -158,25 +189,26 @@ function buildCalendarSuggestion(summary: HomeSummary): DashboardAdaptiveState["
     };
   }
 
-  const upcoming = eventTimes.find((entry) => entry.start > now && entry.start - now <= 2 * 60 * 60 * 1000);
+  const upcoming = timedItems.find((entry) => entry.start > now && entry.start - now <= 2 * 60 * 60 * 1000);
   if (upcoming) {
     return {
       type: "upcoming_prep",
-      title: `Prep for ${upcoming.event.title}`,
-      body: `Starts at ${formatTime(upcoming.event.startTime)}. A 5-minute reset now will help.`,
+      title: `Prep for ${upcoming.title}`,
+      body: `Starts at ${formatTime(upcoming.startTime)}. A 5-minute reset now will help.`,
       path: "/calendar?view=day",
     };
   }
 
-  for (let i = 0; i < eventTimes.length - 1; i += 1) {
-    const currentEnd = eventTimes[i].end ?? (eventTimes[i].start + 60 * 60 * 1000);
-    const nextStart = eventTimes[i + 1].start;
-    const gapMinutes = (nextStart - currentEnd) / (1000 * 60);
-    if (gapMinutes >= 45 && currentEnd > now) {
+  for (let i = 0; i < timedItems.length - 1; i += 1) {
+    const currentEnd = timedItems[i].end ?? (timedItems[i].start + 60 * 60 * 1000);
+    const nextStart = timedItems[i + 1].start;
+    const windowStart = Math.max(currentEnd, now);
+    const gapMinutes = (nextStart - windowStart) / (1000 * 60);
+    if (gapMinutes >= 45 && nextStart > windowStart) {
       return {
         type: "focus_window",
         title: "Focus window available",
-        body: `${Math.round(gapMinutes)} free minutes around ${formatTime(new Date(currentEnd).toISOString())}.`,
+        body: `${Math.round(gapMinutes)} free minutes around ${formatTime(new Date(windowStart).toISOString())}.`,
         path: "/calendar?view=day",
       };
     }
@@ -206,17 +238,27 @@ export function buildDashboardAdaptiveState(summary: HomeSummary, context: Dashb
   const momentumGreen = summary.momentumData?.status === "green";
   const lowEnergy = (summary.energyLevel ?? 6) <= 4 || (summary.moodLevel ?? 6) <= 4;
   const overloaded = calendarSuggestion.type === "overload_recovery";
+  const hasActiveHabits = summary.activeHabits.length > 0;
 
   const candidateCards: Array<Omit<AdaptiveCard, "score"> & { tags?: string[] }> = [
-    { id: "recover-reset", title: "Run a 2-minute reset", description: "Calm your nervous system before adding more tasks.", path: "/recovery", lane: "stabilize", tags: ["rest", "mental"] },
+    { id: "recover-reset", title: "Run a 2-minute reset", description: "Calm your nervous system before adding more tasks.", path: "/recovery", lane: "stabilize", tags: ["rest", "mental", "environment"] },
     { id: "mood-checkin", title: "Log how you feel", description: "A quick check-in helps DW adapt guidance automatically.", path: "/tracking", lane: "stabilize", tags: ["mental"] },
     { id: "talk-reflect", title: "Talk to DW", description: "Name what's heavy and choose one next move.", path: "/talk?prefill=I+need+help+realigning+today", lane: "understand", tags: ["identity", "mental"] },
     { id: "insight-review", title: "Review your insights", description: "Spot patterns before making the next decision.", path: "/insights", lane: "understand", tags: ["learning", "identity"] },
     { id: "calendar-plan", title: "Shape today's calendar", description: "Convert your priorities into real time blocks.", path: "/calendar?view=day", lane: "plan", tags: ["career", "financial"] },
     { id: "task-triage", title: "Triage tasks", description: "Keep only what matters for today in focus.", path: "/tasks", lane: "plan", tags: ["career", "identity"] },
-    { id: "feed-expand", title: "Explore with intention", description: "Use Explore for ideas that support your current goals.", path: "/feed", lane: "expand", tags: ["learning", "creativity"] },
+    { id: "feed-expand", title: "Explore with intention", description: "Use Explore for ideas that support your current goals.", path: "/feed", lane: "expand", tags: ["learning", "creativity", "fun"] },
     { id: "relationship-touch", title: "Nurture one relationship", description: "A small message can strengthen your support system.", path: "/relationships", lane: "expand", tags: ["relationships"] },
-    { id: "habit-execute", title: "Complete one habit", description: "Small execution keeps momentum alive.", path: "/habits", lane: "execute", tags: ["physical", "identity"] },
+    {
+      id: "habit-execute",
+      title: hasActiveHabits ? "Complete one habit" : "Create one habit",
+      description: hasActiveHabits
+        ? "Small execution keeps momentum alive."
+        : "Start one repeatable action so today's momentum has somewhere to land.",
+      path: "/habits",
+      lane: "execute",
+      tags: ["physical", "identity"],
+    },
     { id: "workout-execute", title: "Start your workout block", description: "Use the next 20–40 minutes for body momentum.", path: "/workout", lane: "execute", tags: ["physical"] },
   ];
 
@@ -224,7 +266,7 @@ export function buildDashboardAdaptiveState(summary: HomeSummary, context: Dashb
     let score = BASE_LANE_SCORES[mode][card.lane];
     if (lowEnergy && card.lane === "stabilize") score += 22;
     if (momentumGreen && (card.lane === "expand" || card.lane === "execute")) score += 14;
-    if (overloaded && (card.lane === "stabilize" || card.lane === "plan")) score += 12;
+    if (overloaded && card.lane === "stabilize") score += 20;
     if (mode === "assistant" && (card.path.includes("/calendar") || card.path.includes("/tasks") || card.path.includes("/daily"))) {
       score += 18;
     }
@@ -253,8 +295,8 @@ export function buildDashboardAdaptiveState(summary: HomeSummary, context: Dashb
     cards: (byLane.get(lane) ?? []).slice(0, LANE_CARD_LIMIT[mode]),
   })).filter((lane) => lane.cards.length > 0);
 
-  const topLane = lanes[0]?.lane ?? "stabilize";
-  const topCard = lanes[0]?.cards[0] ?? rankedCards[0];
+  const topCard = rankedCards[0] ?? { ...candidateCards[0], score: BASE_LANE_SCORES[mode][candidateCards[0].lane] };
+  const topLane = topCard.lane;
   const protectLabel = protectAreas[0]?.replace("_", " ");
   const modeLine =
     mode === "reset"

@@ -69,7 +69,7 @@ export function DashboardCommandBlocks({ state, onNavigate, onRealign }: Dashboa
           <div className="flex gap-2">
             <Button
               size="sm"
-              className="h-8 text-xs px-3"
+              className="h-11 text-xs px-3"
               onClick={() => onRealign(state.realign.quickPath, "quick_update")}
             >
               Realign now
@@ -77,11 +77,11 @@ export function DashboardCommandBlocks({ state, onNavigate, onRealign }: Dashboa
             <Button
               size="sm"
               variant="outline"
-              className="h-8 text-xs px-3"
+              className="h-11 text-xs px-3"
               onClick={() => onRealign(state.realign.resetPath, "full_refresh")}
             >
               <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
-              Full reset
+              Full refresh
             </Button>
           </div>
         </CardContent>
