@@ -75,4 +75,14 @@ describe("BottomNav", () => {
     expect(screen.getByText("Calendar")).toBeTruthy();
     expect(screen.getByText("Shortcuts")).toBeTruthy();
   });
+
+  it("does not mark Dashboard active on the root redirect route", () => {
+    mockLocation = "/";
+    mockHabits = [];
+    mockOnboardingProfile = undefined;
+
+    render(<BottomNav />);
+
+    expect(screen.getByTestId("nav-dashboard").getAttribute("aria-current")).toBeNull();
+  });
 });

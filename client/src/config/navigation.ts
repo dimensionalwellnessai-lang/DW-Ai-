@@ -187,7 +187,7 @@ export const BOTTOM_NAV_ITEMS: BottomNavItem[] = [
     path: "/command-center",
     icon: Home,
     label: "Dashboard",
-    aliases: ["/today", "/home", "/"],
+    aliases: ["/today", "/home"],
   },
   {
     id: "talk",
