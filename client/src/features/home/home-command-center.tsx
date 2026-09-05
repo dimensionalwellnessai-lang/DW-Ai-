@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, type ReactNode } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo, type ReactNode } from "react";
 import { usePageMeta } from "@/hooks/use-page-meta";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -18,12 +18,10 @@ import { ExploreCard } from "./components/ExploreCard";
 import { EntertainmentCard } from "./components/EntertainmentCard";
 import { CreatorsCard } from "./components/CreatorsCard";
 import { CompanionshipCard } from "./components/CompanionshipCard";
-import type { HomeSummary } from "./types";
 import {
   Brain,
   Check,
   ChevronRight,
-  Clock,
   Compass,
   Import,
   LifeBuoy,
@@ -40,6 +38,10 @@ import type { TriggerEventListResponse } from "@/lib/triggers";
 import { JournalPromptSheet } from "@/components/mood/journal-prompt-sheet";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import { DashboardCommandBlocks } from "./components/DashboardCommandBlocks";
+import { buildDashboardAdaptiveState } from "./dashboard-adaptation";
+import { EVENTS, trackEvent } from "@/lib/analytics";
+import type { OnboardingIntent, OnboardingReasonId, PriorityAssignment } from "@shared/onboardingPrioritization";
 
 const LS_VOICE_ONBOARDING_COMPLETED = "dw_voice_onboarding_completed";
 const LS_VOICE_ONBOARDING_SKIPPED = "dw_voice_onboarding_skipped";
@@ -149,36 +151,6 @@ function getGreeting(): string {
   return "Good evening";
 }
 
-function formatClock(value: string | Date): string {
-  const d = typeof value === "string" ? new Date(value) : value;
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-}
-
-function getNowOrNext(summary: HomeSummary): { kind: "now" | "next"; time: string; title: string } | null {
-  const now = Date.now();
-  const events = summary.todayEvents ?? [];
-  for (const e of events) {
-    const start = new Date(e.startTime).getTime();
-    if (Number.isNaN(start)) continue;
-    const end = e.endTime ? new Date(e.endTime).getTime() : start + 60 * 60 * 1000;
-    if (now >= start && now <= end) {
-      return { kind: "now", time: formatClock(e.startTime), title: e.title };
-    }
-  }
-  const upcoming = events
-    .map((e) => ({ e, t: new Date(e.startTime).getTime() }))
-    .filter((x) => !Number.isNaN(x.t) && x.t > now)
-    .sort((a, b) => a.t - b.t)[0];
-  if (upcoming) {
-    return { kind: "next", time: formatClock(upcoming.e.startTime), title: upcoming.e.title };
-  }
-  if (summary.nextEvent?.startTime) {
-    return { kind: "next", time: formatClock(summary.nextEvent.startTime), title: summary.nextEvent.title };
-  }
-  return null;
-}
-
 function truncateDirection(value: string | null | undefined): string | null {
   const trimmed = value?.trim();
   if (!trimmed) return null;
@@ -186,7 +158,7 @@ function truncateDirection(value: string | null | undefined): string | null {
 }
 
 export default function HomeCommandCenter() {
-  usePageMeta("Today", "Your day at a glance with DW.");
+  usePageMeta("Dashboard", "Your command center with adaptive guidance from DW.");
   const summary = useHomeSummary();
   const [, navigate] = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -198,6 +170,7 @@ export default function HomeCommandCenter() {
   const [journalOpen, setJournalOpen] = useState(false);
   const [journalMoodLogId, setJournalMoodLogId] = useState<string | null>(null);
   const { toast } = useToast();
+  const lastRankingSignatureRef = useRef<string>("");
 
   const refreshQueryKeys = [
     "/api/trigger-events",
@@ -240,13 +213,24 @@ export default function HomeCommandCenter() {
   });
   const weekStats = triggersQ.data?.week;
 
-  const nowItem = getNowOrNext(summary);
   const showOnboardingCard = !isConversationalOnboardingDone() && !isConversationalOnboardingSkipped() && !isE2ETestMode();
 
   const [finishSetupDismissed, setFinishSetupDismissed] = useState(() => isFinishSetupDismissedToday());
   const [lifeRefreshDismissed, setLifeRefreshDismissed] = useState(() => isLifeRefreshSnoozed());
 
-  const onboardingProfileQ = useQuery<{ profile: { completedAt?: string | null; generatedDirection?: string | null } | null }>({
+  const onboardingProfileQ = useQuery<{
+    profile: {
+      completedAt?: string | null;
+      generatedDirection?: string | null;
+      profileContext?: {
+        intents?: OnboardingIntent[];
+        selectedReasons?: OnboardingReasonId[];
+      } | null;
+      prioritySnapshot?: {
+        assignments?: PriorityAssignment[];
+      } | null;
+    } | null;
+  }>({
     queryKey: ["/api/onboarding/profile"],
     enabled: !isE2ETestMode(),
     retry: false,
@@ -262,6 +246,27 @@ export default function HomeCommandCenter() {
   const generatedDirectionLine = truncateDirection(onboardingProfile?.generatedDirection);
   const identityVisionLine = truncateDirection(lifestylePreferencesQ.data?.identityVision);
   const directionLine = generatedDirectionLine ?? identityVisionLine;
+  const dashboardState = useMemo(
+    () =>
+      buildDashboardAdaptiveState(summary, {
+        directionLine,
+        intents: onboardingProfile?.profileContext?.intents ?? [],
+        selectedReasons: onboardingProfile?.profileContext?.selectedReasons ?? [],
+        priorityAssignments: onboardingProfile?.prioritySnapshot?.assignments ?? [],
+      }),
+    [
+      summary,
+      directionLine,
+      onboardingProfile?.profileContext?.intents,
+      onboardingProfile?.profileContext?.selectedReasons,
+      onboardingProfile?.prioritySnapshot?.assignments,
+    ],
+  );
+  const dashboardInputsLoading =
+    summary.isLoading ||
+    onboardingProfileQ.isLoading ||
+    lifestylePreferencesQ.isLoading ||
+    summary.momentumData?.isLoading === true;
 
   const showFinishSetupCard =
     !isE2ETestMode() &&
@@ -350,6 +355,51 @@ export default function HomeCommandCenter() {
 
   const dismissCard = (type: string) => {
     setDismissedCards((prev) => new Set(Array.from(prev).concat(type)));
+  };
+
+  useEffect(() => {
+    if (dashboardInputsLoading) return;
+    const signature = [
+      dashboardState.mode,
+      dashboardState.telemetry.topLane,
+      dashboardState.telemetry.cardCount,
+      dashboardState.telemetry.calendarState,
+      dashboardState.whatToDoNow.id,
+    ].join("|");
+    if (lastRankingSignatureRef.current === signature) return;
+    lastRankingSignatureRef.current = signature;
+    trackEvent(EVENTS.DASHBOARD_ADAPTIVE_RANKING_DECIDED, {
+      adaptationMode: dashboardState.mode,
+      lane: dashboardState.telemetry.topLane,
+      cardCount: dashboardState.telemetry.cardCount,
+      calendarState: dashboardState.telemetry.calendarState,
+    });
+  }, [dashboardInputsLoading, dashboardState]);
+
+  const handleDashboardNavigate = (
+    path: string,
+    block: "where_i_stand" | "what_to_do_now" | "calendar" | "lane_card",
+  ) => {
+    if (block === "calendar") {
+      trackEvent(EVENTS.DASHBOARD_CALENDAR_SUGGESTION_CLICKED, {
+        suggestionType: dashboardState.calendar.type,
+      });
+    } else {
+      trackEvent(EVENTS.DASHBOARD_BLOCK_INTERACTED, {
+        block,
+        action: "open",
+        adaptationMode: dashboardState.mode,
+      });
+    }
+    navigate(path);
+  };
+
+  const handleRealign = (path: string, mode: "quick_update" | "full_refresh") => {
+    trackEvent(EVENTS.DASHBOARD_REALIGN_USED, {
+      mode,
+      adaptationMode: dashboardState.mode,
+    });
+    navigate(path);
   };
 
   const updateNameMutation = useMutation({
@@ -711,42 +761,11 @@ export default function HomeCommandCenter() {
 
       <div className="flex-1 overflow-y-auto">
         <div className="w-full max-w-lg mx-auto px-4 pb-8 pt-3 space-y-4">
-          <section className="w-full rounded-2xl border border-border bg-card px-4 py-3.5 flex flex-col" data-testid="card-now-schedule">
-            <button
-              type="button"
-              onClick={() => navigate("/calendar?view=day")}
-              className="text-left flex items-start gap-3"
-            >
-              <div className="h-9 w-9 rounded-full bg-emerald-500/15 flex items-center justify-center shrink-0">
-                <Clock className="h-4 w-4 text-emerald-400" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-400" data-testid="text-now-label">
-                  {nowItem ? (nowItem.kind === "now" ? `Now · ${nowItem.time}` : `Next · ${nowItem.time}`) : "Today"}
-                </p>
-                <p className="text-sm font-semibold leading-snug mt-0.5 truncate" data-testid="text-now-title">
-                  {nowItem ? nowItem.title : "Your day is open"}
-                </p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {nowItem ? "On your schedule. Tap to open." : "Tap to plan something gentle."}
-                </p>
-              </div>
-              <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-            </button>
-            <div className="flex items-center gap-2 mt-3 pl-12">
-              {(["day", "week", "month"] as const).map((v) => (
-                <button
-                  key={v}
-                  type="button"
-                  onClick={() => navigate(`/calendar?view=${v}`)}
-                  className="text-xs capitalize px-2.5 py-1 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
-                  data-testid={`btn-now-${v}`}
-                >
-                  {v}
-                </button>
-              ))}
-            </div>
-          </section>
+          <DashboardCommandBlocks
+            state={dashboardState}
+            onNavigate={handleDashboardNavigate}
+            onRealign={handleRealign}
+          />
 
           <section data-testid="section-priority-card">
             {renderPriorityCard()}

@@ -19,17 +19,17 @@ vi.mock("@tanstack/react-query", () => ({
 import { BottomNav } from "./bottom-nav";
 
 describe("BottomNav", () => {
-  it("shows a habits attention dot on Zones only when Zones is inactive", () => {
+  it("shows a habits attention dot on Shortcuts only when tab is inactive", () => {
     mockLocation = "/feed";
     mockHabits = [{ id: 1, isActive: true, completedToday: false }];
     mockOnboardingProfile = undefined;
 
     render(<BottomNav />);
 
-    expect(screen.getByLabelText("Zones, Habits need attention")).toBeTruthy();
+    expect(screen.getByLabelText("Shortcuts, Habits need attention")).toBeTruthy();
   });
 
-  it("shows a setup attention dot on Zones when pending suggestions exist and tab is inactive", () => {
+  it("shows a setup attention dot on Shortcuts when pending suggestions exist and tab is inactive", () => {
     mockLocation = "/talk";
     mockHabits = [];
     mockOnboardingProfile = {
@@ -40,10 +40,10 @@ describe("BottomNav", () => {
 
     render(<BottomNav />);
 
-    expect(screen.getByLabelText("Zones, Setup suggestions are waiting")).toBeTruthy();
+    expect(screen.getByLabelText("Shortcuts, Setup suggestions are waiting")).toBeTruthy();
   });
 
-  it("does not show the setup attention dot when Zones is active", () => {
+  it("does not show the setup attention dot when Shortcuts is active", () => {
     mockLocation = "/zones";
     mockHabits = [];
     mockOnboardingProfile = {
@@ -54,24 +54,35 @@ describe("BottomNav", () => {
 
     render(<BottomNav />);
 
-    expect(screen.queryByLabelText("Zones, Setup suggestions are waiting")).toBeNull();
+    expect(screen.queryByLabelText("Shortcuts, Setup suggestions are waiting")).toBeNull();
   });
 
-  it("renders the 4-tab navigation with DW, Current, Zones, and Cosmic", () => {
+  it("renders the 5-tab navigation with Dashboard, Talk to DW, Explore, Calendar, and Shortcuts", () => {
     mockLocation = "/talk";
     mockHabits = [];
     mockOnboardingProfile = undefined;
     render(<BottomNav />);
 
     expect(screen.getByTestId("nav-bottom")).toBeTruthy();
+    expect(screen.getByTestId("nav-dashboard")).toBeTruthy();
     expect(screen.getByTestId("nav-talk")).toBeTruthy();
-    expect(screen.getByTestId("nav-feed")).toBeTruthy();
-    expect(screen.getByTestId("nav-zones")).toBeTruthy();
-    expect(screen.getByTestId("nav-cosmic")).toBeTruthy();
-    expect(screen.queryByTestId("nav-calendar")).toBeNull();
-    expect(screen.getByText("DW")).toBeTruthy();
-    expect(screen.getByText("Current")).toBeTruthy();
-    expect(screen.getByText("Zones")).toBeTruthy();
-    expect(screen.getByText("Cosmic")).toBeTruthy();
+    expect(screen.getByTestId("nav-explore")).toBeTruthy();
+    expect(screen.getByTestId("nav-calendar")).toBeTruthy();
+    expect(screen.getByTestId("nav-shortcuts")).toBeTruthy();
+    expect(screen.getByText("Dashboard")).toBeTruthy();
+    expect(screen.getByText("Talk to DW")).toBeTruthy();
+    expect(screen.getByText("Explore")).toBeTruthy();
+    expect(screen.getByText("Calendar")).toBeTruthy();
+    expect(screen.getByText("Shortcuts")).toBeTruthy();
+  });
+
+  it("does not mark Dashboard active on the root redirect route", () => {
+    mockLocation = "/";
+    mockHabits = [];
+    mockOnboardingProfile = undefined;
+
+    render(<BottomNav />);
+
+    expect(screen.getByTestId("nav-dashboard").getAttribute("aria-current")).toBeNull();
   });
 });

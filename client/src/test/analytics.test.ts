@@ -137,6 +137,35 @@ describe("trackEvent", () => {
       })
     ).not.toThrow();
   });
+
+  it("tracks dashboard adaptation and calendar events", () => {
+    expect(() =>
+      trackEvent(EVENTS.DASHBOARD_BLOCK_INTERACTED, {
+        block: "what_to_do_now",
+        action: "open",
+        adaptationMode: "maintain",
+      })
+    ).not.toThrow();
+    expect(() =>
+      trackEvent(EVENTS.DASHBOARD_REALIGN_USED, {
+        mode: "quick_update",
+        adaptationMode: "reset",
+      })
+    ).not.toThrow();
+    expect(() =>
+      trackEvent(EVENTS.DASHBOARD_ADAPTIVE_RANKING_DECIDED, {
+        adaptationMode: "assistant",
+        lane: "plan",
+        cardCount: 6,
+        calendarState: "connected",
+      })
+    ).not.toThrow();
+    expect(() =>
+      trackEvent(EVENTS.DASHBOARD_CALENDAR_SUGGESTION_CLICKED, {
+        suggestionType: "focus_window",
+      })
+    ).not.toThrow();
+  });
 });
 
 // ─── Opt-out toggle ───────────────────────────────────────────────────────────
