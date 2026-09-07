@@ -32,11 +32,9 @@ import {
   Compass,
   Wrench,
   Home,
-  User,
   Moon,
-  LayoutGrid,
-  Star,
   Rss,
+  Zap,
   type LucideIcon,
 } from "lucide-react";
 
@@ -49,8 +47,8 @@ import {
  * - shared-menu.tsx       (NAV_SECTIONS, SETTINGS_ITEMS)
  * - home/command-center-orbit.tsx (ORBIT_MODULES)
  *
- * Labels use canonical names: Today, Talk to DW, Calendar,
- * Life Blueprint, My Plan.
+ * Labels use canonical names: Dashboard, Talk to DW, Explore,
+ * Calendar, Shortcuts.
  */
 
 export interface NavMenuItem {
@@ -185,31 +183,37 @@ export interface BottomNavItem {
 /** Bottom navigation tabs. Labels use canonical names. */
 export const BOTTOM_NAV_ITEMS: BottomNavItem[] = [
   {
+    id: "dashboard",
+    path: "/command-center",
+    icon: Home,
+    label: "Dashboard",
+    aliases: ["/today", "/home"],
+  },
+  {
     id: "talk",
     path: "/talk",
     icon: MessageCircle,
-    label: "DW",
-    aliases: ["/chat", "/command-center", "/"],
+    label: "Talk to DW",
+    aliases: ["/chat"],
   },
   {
-    id: "feed",
+    id: "explore",
     path: "/feed",
     icon: Rss,
-    label: "Current",
+    label: "Explore",
     aliases: ["/browse"],
   },
   {
-    id: "zones",
-    path: "/zones",
-    icon: LayoutGrid,
-    label: "Zones",
+    id: "calendar",
+    path: "/calendar",
+    icon: Calendar,
+    label: "Calendar",
   },
   {
-    id: "cosmic",
-    path: "/cosmic",
-    icon: Star,
-    label: "Cosmic",
-    aliases: ["/cosmic-insights", "/astrology"],
+    id: "shortcuts",
+    path: "/zones",
+    icon: Zap,
+    label: "Shortcuts",
   },
 ];
 
